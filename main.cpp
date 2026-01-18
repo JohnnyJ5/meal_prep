@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <boost/operators.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -45,7 +46,7 @@ std::map<std::string, std::string> read_config() {
     return config;
 }
 
-void SendEmail(const mailio::mail_group& toAddress, const std::string& subject, const std::string& body) 
+void SendEmail(const mailio::mail_address& toAddress, const std::string& subject, const std::string& body) 
 {
     try {
         // Read credentials from config file
@@ -95,7 +96,10 @@ void ConsolidateAllIngredients(std::map<std::string, Ingredient>& allIngredients
             }
         }
     }
+}
 
+void SendEmail(const std::map<std::string, Ingredient>& allIngredients,const std::vector<std::reference_wrapper<Meal>>& meals)
+{
     std::stringstream ss;
     ss << "Combined ingredients for: ";
     for (const auto& mealRef : meals) {
@@ -115,10 +119,14 @@ void ConsolidateAllIngredients(std::map<std::string, Ingredient>& allIngredients
     }
     try {
         std::vector<mailio::mail_address> recipients = {
-            mailio::mail_address("", "michaelcoffey5@gmail.com"),
-            mailio::mail_address("", "suzcoffey22@gmail.com")
+            mailio::mail_address("Michael Coffey", "michaelcoffey5@gmail.com"),
+            mailio::mail_address("Suzanne Coffey", "suzcoffey22@gmail.com")
         };
-        SendEmail(mailio::mail_group("Home", recipients), "Weekly Meal Prep Ingredients", crlf);
+        std::for_each(recipients.begin(), recipients.end(), [&](const mailio::mail_address& addr) {
+            std::cout << "Sending email to: " << addr.address << std::endl;
+            SendEmail(addr, "Weekly Meal Prep Ingredients", crlf);
+        });
+        
     } catch (const std::exception &e) {
         std::cerr << "Email error: " << e.what() << std::endl;
     }
@@ -203,7 +211,7 @@ int main(int argc, char** argv)
 
         std::map<std::string, Ingredient> allIngredients;
         ConsolidateAllIngredients(allIngredients, mealRefs);
-
+        SendEmail(allIngredients, mealRefs);
         PrintWeeklySchedule(allIngredients, mealRefs);
 
     }
