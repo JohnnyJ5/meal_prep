@@ -119,8 +119,8 @@ void SendEmail(const std::map<std::string, Ingredient>& allIngredients,const std
     }
     try {
         std::vector<mailio::mail_address> recipients = {
-            mailio::mail_address("Michael Coffey", "michaelcoffey5@gmail.com"),
-            mailio::mail_address("Suzanne Coffey", "suzcoffey22@gmail.com")
+            mailio::mail_address("Michael Coffey", "michaelcoffey5@gmail.com")
+            // mailio::mail_address("Suzanne Coffey", "suzcoffey22@gmail.com")
         };
         std::for_each(recipients.begin(), recipients.end(), [&](const mailio::mail_address& addr) {
             std::cout << "Sending email to: " << addr.address << std::endl;
