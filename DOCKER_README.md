@@ -4,7 +4,10 @@ This project uses a Containerized Development Environment. Instead of installing
 🚀 Quick Start
 To get the development environment running:
 
-Start the Container: ```Bash docker compose up -d```
+Start the Container: 
+```Bash 
+docker compose up -d
+```
 Enter the Environment: ```Bash docker exec -it meal_prep_dev bash```
 
 🛠 Key Components
