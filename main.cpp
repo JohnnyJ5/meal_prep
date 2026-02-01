@@ -17,8 +17,7 @@
 // Helper function to read configuration from ~/.meal_prep.conf
 std::map<std::string, std::string> read_config() {
     std::map<std::string, std::string> config;
-    std::string home = std::getenv("HOME") ? std::getenv("HOME") : "";
-    std::string config_path = home + "/.meal_prep.conf";
+    std::string config_path = "/home/johnnyj/meal_prep/.meal_prep.conf";
     
     std::ifstream config_file(config_path);
     if (!config_file.is_open()) {
@@ -167,7 +166,7 @@ int main(int argc, char** argv)
         
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
-            if (arg == "--help" || arg == "-h") {
+            if (arg == "--list" || arg == "-l") {
                 listMeals = true;
             } else if ((arg == "--meal" || arg == "-m") && i + 1 < argc) {
                 mealNames.push_back(argv[++i]);
