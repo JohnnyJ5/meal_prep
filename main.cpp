@@ -7,12 +7,14 @@
 #include "ingredient.h"
 #include "meal.h"
 #include "meal_factory.h"
-#include <mailio/mailboxes.hpp>
 #include <map>
 #include <functional>
-#include <mailio/message.hpp>
-#include <mailio/smtp.hpp>
 #include <sstream>
+
+#include <vmime/vmime.hpp>
+#include <vmime/platforms/posix/posixHandler.hpp>
+
+
 
 // Helper function to read configuration from ~/.meal_prep.conf
 std::map<std::string, std::string> read_config() {
@@ -45,7 +47,7 @@ std::map<std::string, std::string> read_config() {
     return config;
 }
 
-void SendEmail(const mailio::mail_address& toAddress, const std::string& subject, const std::string& body) 
+void SendEmail(const std::string& toAddress, const std::string& subject, const std::string& body) 
 {
     try {
         // Read credentials from config file
@@ -59,27 +61,43 @@ void SendEmail(const mailio::mail_address& toAddress, const std::string& subject
         std::string email = config["email"];
         std::string password = config["password"];
         
-        // 1. Create the message object
-        mailio::message msg;
-        msg.from(mailio::mail_address("Coffey Household", email));
-        msg.add_recipient(toAddress);
-        msg.subject(subject);
-        msg.content(body);
+       vmime::platform::setHandler<vmime::platforms::posix::posixHandler>();
 
-        // 2. Connect to the SMTP server (Example using Gmail)
-        // Use port 587 for STARTTLS
-        mailio::smtp conn("smtp.gmail.com", 587);
+        // // --- Build message ---
+        // vmime::messageBuilder builder;
+        // builder.setExpeditor(vmime::mailbox("Michael Coffey", email));
+        // builder.addRecipient(vmime::make_shared<vmime::mailbox>(toAddress));
+        // builder.setSubject(vmime::text("Hello from vmime"));
+        // builder.getTextPart()->setText(
+        //     vmime::make_shared<vmime::stringContentHandler>(
+        //         "This email was sent from C++ using vmime 🚀"
+        //     )
+        // );
 
-        // 3. Authenticate
-        // NOTE: For Gmail, use an 'App Password', not your regular password.
-        conn.authenticate(email, password, mailio::smtp::auth_method_t::LOGIN);
+        // vmime::shared_ptr<vmime::message> msg = builder.construct();
 
-        // 4. Send the message
-        conn.submit(msg);
-    } catch (mailio::smtp_error& exc) {
-        std::cerr << "SMTP Error: " << exc.what() << std::endl;
-    } catch (mailio::dialog_error& exc) {
-        std::cerr << "Dialog Error: " << exc.what() << std::endl;
+        // // --- SMTP session ---
+        // vmime::utility::url url("smtp://smtp.gmail.com:587");
+        // vmime::shared_ptr<vmime::net::session> session =
+        // vmime::net::session::create();
+
+        // vmime::shared_ptr<vmime::net::transport> transport =
+        // session->getTransport(url);
+
+        // // Auth
+        // transport->setProperty("connection.tls", true);
+        // transport->setProperty("auth", true);
+        // transport->setProperty("options.need-authentication", true);
+
+        // transport->connect(
+        //     vmime::make_shared<vmime::net::authentication::basicAuthenticator>(email, password)
+        // );
+
+        // // --- Send ---
+        // transport->send(msg);
+        // transport->disconnect();
+    } catch (const std::exception &e) {
+        std::cerr << "Email send error: " << e.what() << std::endl;
     }
 }
 
@@ -117,13 +135,13 @@ void SendEmail(const std::map<std::string, Ingredient>& allIngredients,const std
         else crlf += c;
     }
     try {
-        std::vector<mailio::mail_address> recipients = {
-            mailio::mail_address("Michael Coffey", "michaelcoffey5@gmail.com")
-            // mailio::mail_address("Suzanne Coffey", "suzcoffey22@gmail.com")
+        std::vector<std::pair<std::string, std::string>> recipients = {
+            {"Michael Coffey", "michaelcoffey5@gmail.com"},
+            // {"Suzanne Coffey", "suzcoffey22@gmail.com"}
         };
-        std::for_each(recipients.begin(), recipients.end(), [&](const mailio::mail_address& addr) {
-            std::cout << "Sending email to: " << addr.address << std::endl;
-            SendEmail(addr, "Weekly Meal Prep Ingredients", crlf);
+        std::for_each(recipients.begin(), recipients.end(), [&](const std::pair<std::string, std::string>& addr) {
+            std::cout << "Sending email to: " << addr.second << std::endl;
+            SendEmail(addr.second, "Weekly Meal Prep Ingredients", crlf);
         });
         
     } catch (const std::exception &e) {
