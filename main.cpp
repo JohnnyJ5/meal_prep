@@ -11,15 +11,15 @@
 #include <functional>
 #include <sstream>
 
-#include <vmime/vmime.hpp>
-#include <vmime/platforms/posix/posixHandler.hpp>
-
+#include <curl/curl.h>
+#include <cstring>
+#include <vector>
 
 
 // Helper function to read configuration from ~/.meal_prep.conf
 std::map<std::string, std::string> read_config() {
     std::map<std::string, std::string> config;
-    std::string config_path = "/home/johnnyj/meal_prep/.meal_prep.conf";
+    std::string config_path = "/home/johnnyj/.meal_prep.conf";
     
     std::ifstream config_file(config_path);
     if (!config_file.is_open()) {
@@ -47,6 +47,26 @@ std::map<std::string, std::string> read_config() {
     return config;
 }
 
+struct UploadStatus {
+    const char* data;
+    size_t length;
+    size_t pos;
+};
+
+static size_t payload_source(char *ptr, size_t size, size_t nmemb, void *userp) {
+    UploadStatus *upload_ctx = static_cast<UploadStatus*>(userp);
+    size_t room = size * nmemb;
+    
+    if(room < 1) return 0;
+
+    size_t to_copy = std::min(room, upload_ctx->length - upload_ctx->pos);
+    if(to_copy > 0) {
+        memcpy(ptr, upload_ctx->data + upload_ctx->pos, to_copy);
+        upload_ctx->pos += to_copy;
+    }
+    return to_copy;
+}
+
 void SendEmail(const std::string& toAddress, const std::string& subject, const std::string& body) 
 {
     try {
@@ -60,42 +80,47 @@ void SendEmail(const std::string& toAddress, const std::string& subject, const s
         
         std::string email = config["email"];
         std::string password = config["password"];
-        
-       vmime::platform::setHandler<vmime::platforms::posix::posixHandler>();
 
-        // // --- Build message ---
-        // vmime::messageBuilder builder;
-        // builder.setExpeditor(vmime::mailbox("Michael Coffey", email));
-        // builder.addRecipient(vmime::make_shared<vmime::mailbox>(toAddress));
-        // builder.setSubject(vmime::text("Hello from vmime"));
-        // builder.getTextPart()->setText(
-        //     vmime::make_shared<vmime::stringContentHandler>(
-        //         "This email was sent from C++ using vmime 🚀"
-        //     )
-        // );
+        std::string payload = 
+            "To: " + toAddress + "\r\n"
+            "From: " + email + "\r\n"
+            "Subject: " + subject + "\r\n"
+            "\r\n" + 
+            body;
 
-        // vmime::shared_ptr<vmime::message> msg = builder.construct();
+        UploadStatus upload_ctx;
+        upload_ctx.data = payload.c_str();
+        upload_ctx.length = payload.length();
+        upload_ctx.pos = 0;
 
-        // // --- SMTP session ---
-        // vmime::utility::url url("smtp://smtp.gmail.com:587");
-        // vmime::shared_ptr<vmime::net::session> session =
-        // vmime::net::session::create();
+        CURL *curl;
+        CURLcode res = CURLE_OK;
 
-        // vmime::shared_ptr<vmime::net::transport> transport =
-        // session->getTransport(url);
+        curl = curl_easy_init();
+        if(curl) {
+            curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
+            curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
+            curl_easy_setopt(curl, CURLOPT_USERNAME, email.c_str());
+            curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());
 
-        // // Auth
-        // transport->setProperty("connection.tls", true);
-        // transport->setProperty("auth", true);
-        // transport->setProperty("options.need-authentication", true);
+            curl_easy_setopt(curl, CURLOPT_MAIL_FROM, email.c_str());
+            
+            struct curl_slist *recipients = NULL;
+            recipients = curl_slist_append(recipients, toAddress.c_str());
+            curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
-        // transport->connect(
-        //     vmime::make_shared<vmime::net::authentication::basicAuthenticator>(email, password)
-        // );
+            curl_easy_setopt(curl, CURLOPT_READFUNCTION, payload_source);
+            curl_easy_setopt(curl, CURLOPT_READDATA, &upload_ctx);
+            curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-        // // --- Send ---
-        // transport->send(msg);
-        // transport->disconnect();
+            res = curl_easy_perform(curl);
+            if(res != CURLE_OK) {
+                std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+            }
+
+            curl_slist_free_all(recipients);
+            curl_easy_cleanup(curl);
+        }
     } catch (const std::exception &e) {
         std::cerr << "Email send error: " << e.what() << std::endl;
     }
@@ -178,6 +203,7 @@ int main(int argc, char** argv)
 {
     try
     {      
+        curl_global_init(CURL_GLOBAL_DEFAULT);
         // Simple command line parsing for now
         std::vector<std::string> mealNames;
         bool listMeals = false;
@@ -230,7 +256,8 @@ int main(int argc, char** argv)
         ConsolidateAllIngredients(allIngredients, mealRefs);
         SendEmail(allIngredients, mealRefs);
         PrintWeeklySchedule(allIngredients, mealRefs);
-
+        
+        curl_global_cleanup();
     }
     catch (const std::exception & e)
     {

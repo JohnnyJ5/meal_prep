@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     libssl-dev \
-    libboost-all-dev \
-    libvmime-dev \
+    libboost-dev \
+    libcurl4-openssl-dev \
     sudo \
     curl \
     && rm -rf /var/lib/apt/lists/*
