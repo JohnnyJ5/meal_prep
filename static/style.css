@@ -9,7 +9,7 @@
     --success-color: #238636;
     --error-color: #da3633;
     --border-color: rgba(240, 246, 252, 0.1);
-    
+
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Outfit', sans-serif;
 }
@@ -37,7 +37,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-image: 
+    background-image:
         radial-gradient(circle at 15% 50%, rgba(88, 166, 255, 0.08) 0%, transparent 50%),
         radial-gradient(circle at 85% 30%, rgba(35, 134, 54, 0.08) 0%, transparent 50%);
     z-index: -1;
@@ -113,6 +113,7 @@ header p {
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
+    padding-right: 2.5rem;
 }
 
 .meal-card .checkbox {
@@ -233,7 +234,8 @@ header p {
     animation: spin 1s linear infinite;
 }
 
-.loading-state, .error-state {
+.loading-state,
+.error-state {
     text-align: center;
     padding: 4rem 0;
     color: var(--text-secondary);
@@ -301,24 +303,47 @@ header p {
     display: none !important;
 }
 
-.mt-4 { margin-top: 1rem; }
+.mt-4 {
+    margin-top: 1rem;
+}
 
 /* Animations */
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translate(-50%, 20px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
