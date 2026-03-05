@@ -21,7 +21,8 @@
 // Helper function to read configuration from ~/.meal_prep.conf
 std::map<std::string, std::string> read_config() {
     std::map<std::string, std::string> config;
-    std::string config_path = "/home/johnnyj/.meal_prep.conf";
+    const char* homeDir = std::getenv("HOME");
+    std::string config_path = homeDir ? std::string(homeDir) + "/.meal_prep.conf" : "/home/johnnyj/.meal_prep.conf";
     
     std::ifstream config_file(config_path);
     if (!config_file.is_open()) {

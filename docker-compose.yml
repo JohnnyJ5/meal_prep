@@ -10,6 +10,7 @@ services:
       - "2222:22"
     volumes:
       - ./:/home/devuser/meal_prep
+      - ~/.meal_prep.conf:/home/devuser/.meal_prep.conf:ro
     environment:
       - TERM=xterm-256color
     restart: unless-stopped
