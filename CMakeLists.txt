@@ -11,7 +11,13 @@ include(FetchContent)
 # 1. Google Test
 FetchContent_Declare(googletest GIT_REPOSITORY https://github.com/google/googletest.git GIT_TAG v1.14.0)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest )
+FetchContent_MakeAvailable(googletest)
+
+# 2. Crow (Web Framework)
+FetchContent_Declare(Crow GIT_REPOSITORY https://github.com/CrowCpp/Crow.git GIT_TAG v1.2.0)
+set(CROW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CROW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(Crow)
 
 # 2. Find system dependencies (Boost & OpenSSL)
 # These must be installed in your Dockerfile (libboost-all-dev, libssl-dev)
@@ -52,6 +58,7 @@ target_link_libraries(meal_prep_lib
     OpenSSL::Crypto
     Threads::Threads
     ${CURL_LIBRARIES}
+    Crow::Crow
 )
 
 # --- Main Executable ---

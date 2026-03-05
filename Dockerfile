@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libboost-dev \
     libcurl4-openssl-dev \
+    libasio-dev \
     sudo \
     curl \
     && rm -rf /var/lib/apt/lists/*

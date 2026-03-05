@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Prep Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-mesh"></div>
+    
+    <main class="container">
+        <header>
+            <h1>Weekly Meal Prep</h1>
+            <p>Select your meals for the week below to generate your grocery list and schedule.</p>
+        </header>
+
+        <section id="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading available meals...</p>
+        </section>
+
+        <section id="error" class="error-state hidden">
+            <p id="error-message">Failed to load meals.</p>
+            <button onclick="fetchMeals()" class="btn btn-secondary">Retry</button>
+        </section>
+
+        <section class="meal-grid hidden" id="meal-grid">
+            <!-- Meal cards will be injected here by JS -->
+        </section>
+
+        <div class="action-bar hidden" id="action-bar">
+            <div class="selection-count">
+                <span id="selected-count">0</span> meals selected
+            </div>
+            <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
+                <span class="btn-text">Generate Plan & Send Email</span>
+                <div class="btn-loader hidden"></div>
+            </button>
+        </div>
+
+        <!-- Result Modal -->
+        <div id="result-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Success! ✨</h2>
+                <p>Your grocery list has been emailed to you. Here is your schedule:</p>
+                <pre id="schedule-output"></pre>
+                <button onclick="closeModal()" class="btn btn-secondary mt-4">Close</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

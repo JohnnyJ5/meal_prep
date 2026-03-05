@@ -11,6 +11,8 @@
 #include <functional>
 #include <sstream>
 
+#include <crow.h>
+
 #include <curl/curl.h>
 #include <cstring>
 #include <vector>
@@ -207,6 +209,7 @@ int main(int argc, char** argv)
         // Simple command line parsing for now
         std::vector<std::string> mealNames;
         bool listMeals = false;
+        bool serveWeb = false;
         
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -214,10 +217,98 @@ int main(int argc, char** argv)
                 listMeals = true;
             } else if ((arg == "--meal" || arg == "-m") && i + 1 < argc) {
                 mealNames.push_back(argv[++i]);
-            } 
+            } else if (arg == "--serve" || arg == "-s") {
+                serveWeb = true;
+            }
         }
 
         MealFactory factory;
+
+        if (serveWeb) {
+            crow::SimpleApp app;
+
+            // Route: Get all available meals
+            CROW_ROUTE(app, "/api/meals")([&factory]() {
+                std::vector<std::string> meals;
+                factory.getAvailableMeals(meals);
+                crow::json::wvalue res;
+                for (size_t i = 0; i < meals.size(); ++i) {
+                    res[i] = meals[i];
+                }
+                return res;
+            });
+
+            // Route: Plan selected meals and trigger email
+            CROW_ROUTE(app, "/api/plan").methods(crow::HTTPMethod::POST)([&factory](const crow::request& req) {
+                auto body = crow::json::load(req.body);
+                if (!body) return crow::response(400, "Invalid JSON");
+
+                std::vector<std::unique_ptr<Meal>> createdMeals;
+                std::vector<std::reference_wrapper<Meal>> mealRefs;
+                std::vector<std::string> failedMeals;
+
+                for (const auto& mealJson : body) {
+                    std::string mealName = mealJson.s();
+                    if (auto meal = factory.createMeal(mealName)) {
+                        createdMeals.push_back(std::move(meal));
+                    } else {
+                        failedMeals.push_back(mealName);
+                    }
+                }
+
+                if (createdMeals.empty()) {
+                    return crow::response(400, "No valid meals selected.");
+                }
+
+                for (auto& m : createdMeals) {
+                    mealRefs.push_back(*m);
+                }
+
+                std::map<std::string, Ingredient> allIngredients;
+                ConsolidateAllIngredients(allIngredients, mealRefs);
+
+                // Re-route console output to capture schedule response for frontend
+                std::stringstream scheduleOutput;
+                std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
+                std::cout.rdbuf(scheduleOutput.rdbuf());
+
+                PrintWeeklySchedule(allIngredients, mealRefs);
+
+                std::cout.rdbuf(oldCoutStreamBuf); // Restore standard output
+
+                // Send Email
+                SendEmail(allIngredients, mealRefs);
+
+                crow::json::wvalue res;
+                res["status"] = "success";
+                res["schedule"] = scheduleOutput.str();
+                if (!failedMeals.empty()) {
+                    for (size_t i = 0; i < failedMeals.size(); ++i) {
+                        res["failed_meals"][i] = failedMeals[i];
+                    }
+                }
+                return crow::response(std::move(res));
+            });
+
+            // Route: Serve index.html at root
+            CROW_ROUTE(app, "/")([]() {
+                crow::response res;
+                res.set_static_file_info("static/index.html");
+                return res;
+            });
+
+            // Route: Serve all other static files (CSS, JS)
+            CROW_ROUTE(app, "/<string>")([](std::string path) {
+                crow::response res;
+                res.set_static_file_info("static/" + path);
+                return res;
+            });
+
+            // Start the server
+            std::cout << "Starting Meal Prep API on http://0.0.0.0:8080" << std::endl;
+            app.port(8080).multithreaded().run();
+            return 0;
+        }
 
         if (listMeals) {
             std::cout << "Available meals:" << std::endl;
