@@ -8,6 +8,7 @@ services:
     container_name: meal_prep_dev
     ports:
       - "2222:22"
+      - "8080:8080"
     volumes:
       - ./:/home/devuser/meal_prep
       - ~/.meal_prep.conf:/home/devuser/.meal_prep.conf:ro
