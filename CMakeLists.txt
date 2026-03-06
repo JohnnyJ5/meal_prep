@@ -37,12 +37,12 @@ find_package(SQLite3 REQUIRED)
 # --- Source Files ---
 # Explicitly listing sources is preferred over file(GLOB ...)
 set(LIB_SOURCES
-    db_manager.cpp
-    meal_factory.cpp
+    src/db_manager.cpp
+    src/meal_factory.cpp
     # Add other library source files here
 )
 
-set(MAIN_SOURCE main.cpp)
+set(MAIN_SOURCE src/main.cpp)
 
 set(TEST_SOURCES
     tests/test_ingredient.cpp
@@ -58,6 +58,7 @@ set(TEST_SOURCES
 add_library(meal_prep_lib STATIC ${LIB_SOURCES})
 
 target_include_directories(meal_prep_lib PUBLIC 
+    src
     ${Boost_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
 )
