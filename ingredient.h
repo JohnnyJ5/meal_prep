@@ -29,6 +29,7 @@ public:
 
     std::string getName() const { return d_name; }
     Measurement getAmount() const { return d_measurement; }
+    std::string getPreparation() const { return d_preparation; }
 
     // Add two Ingredients of the same type
     Ingredient operator+(const Ingredient& other) const {

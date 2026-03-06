@@ -25,9 +25,11 @@ find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
+find_package(SQLite3 REQUIRED)
 # --- Source Files ---
 # Explicitly listing sources is preferred over file(GLOB ...)
 set(LIB_SOURCES
+    db_manager.cpp
     meal_factory.cpp
     # Add other library source files here
 )
@@ -58,6 +60,7 @@ target_link_libraries(meal_prep_lib
     OpenSSL::Crypto
     Threads::Threads
     ${CURL_LIBRARIES}
+    SQLite::SQLite3
     Crow::Crow
 )
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="background-mesh"></div>
-    
+
     <main class="container">
         <header>
-            <h1>Weekly Meal Prep</h1>
-            <p>Select your meals for the week below to generate your grocery list and schedule.</p>
+            <div class="header-content">
+                <div>
+                    <h1>Weekly Meal Prep</h1>
+                    <p>Select your meals for the week below to generate your grocery list and schedule.</p>
+                </div>
+                <button id="manage-btn" class="btn btn-secondary" onclick="openManageModal()">Manage Meals</button>
+            </div>
         </header>
 
         <section id="loading" class="loading-state">
@@ -26,8 +33,56 @@
             <button onclick="fetchMeals()" class="btn btn-secondary">Retry</button>
         </section>
 
-        <section class="meal-grid hidden" id="meal-grid">
-            <!-- Meal cards will be injected here by JS -->
+        <section class="planner-layout hidden" id="planner-layout">
+            <div class="sidebar-container">
+                <h2>Available Meals</h2>
+                <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1rem;">Drag meals below to plan your
+                    week.</p>
+                <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- Meal cards will be injected here by JS -->
+                </div>
+            </div>
+
+            <div class="calendar-container">
+                <h2>Weekly Schedule</h2>
+                <div class="calendar-grid">
+                    <div class="day-col" id="day-Monday" data-day="Monday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Monday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Tuesday" data-day="Tuesday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Tuesday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Wednesday" data-day="Wednesday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Wednesday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Thursday" data-day="Thursday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Thursday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Friday" data-day="Friday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Friday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Saturday" data-day="Saturday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Saturday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Sunday" data-day="Sunday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)">
+                        <h3>Sunday</h3>
+                        <div class="meal-slot"></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <div class="action-bar hidden" id="action-bar">
@@ -46,7 +101,46 @@
                 <h2>Success! ✨</h2>
                 <p>Your grocery list has been emailed to you. Here is your schedule:</p>
                 <pre id="schedule-output"></pre>
-                <button onclick="closeModal()" class="btn btn-secondary mt-4">Close</button>
+                <button onclick="closeModal('result-modal')" class="btn btn-secondary mt-4">Close</button>
+            </div>
+        </div>
+
+        <!-- Management Modal -->
+        <div id="manage-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2>Manage Meals</h2>
+                    <button onclick="closeModal('manage-modal')" class="btn-close">&times;</button>
+                </div>
+
+                <div id="manage-list-view">
+                    <button onclick="openEditView()" class="btn btn-primary mb-4">+ Add New Meal</button>
+                    <div id="manage-meal-list" class="manage-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div id="manage-edit-view" class="hidden">
+                    <h3 id="edit-view-title">Add Meal</h3>
+                    <form id="meal-form" onsubmit="saveMeal(event)">
+                        <div class="form-group">
+                            <label for="meal-name">Meal Name (e.g., spicy-chicken)</label>
+                            <input type="text" id="meal-name" required class="form-control">
+                        </div>
+
+                        <h4>Ingredients</h4>
+                        <div id="ingredients-list" class="ingredients-list">
+                            <!-- Populated by JS -->
+                        </div>
+                        <button type="button" onclick="addIngredientRow()" class="btn btn-secondary mt-2 mb-4 btn-sm">+
+                            Add Ingredient</button>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="closeEditView()" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Meal</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -54,4 +148,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

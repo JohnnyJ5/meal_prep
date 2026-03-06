@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libboost-dev \
     libcurl4-openssl-dev \
     libasio-dev \
+    libsqlite3-dev \
     sudo \
     curl \
     && rm -rf /var/lib/apt/lists/*

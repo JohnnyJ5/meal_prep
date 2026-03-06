@@ -8,12 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchMeals() {
     const loadingState = document.getElementById('loading');
     const errorState = document.getElementById('error');
-    const mealGrid = document.getElementById('meal-grid');
+    const plannerLayout = document.getElementById('planner-layout');
     const actionBar = document.getElementById('action-bar');
 
     loadingState.classList.remove('hidden');
     errorState.classList.add('hidden');
-    mealGrid.classList.add('hidden');
+    if (plannerLayout) plannerLayout.classList.add('hidden');
     actionBar.classList.add('hidden');
 
     try {
@@ -24,7 +24,7 @@ async function fetchMeals() {
         renderMeals(meals);
 
         loadingState.classList.add('hidden');
-        mealGrid.classList.remove('hidden');
+        document.getElementById('planner-layout').classList.remove('hidden');
         actionBar.classList.remove('hidden');
     } catch (error) {
         console.error('Error fetching meals:', error);
@@ -59,34 +59,69 @@ function renderMeals(meals) {
         if (mealId.includes('pancake')) emoji = '🥞';
 
         card.innerHTML = `
-            <h3>${emoji} ${formatName(mealId)}</h3>
-            <div class="checkbox"></div>
+            <div class="meal-card-header">
+                <h3>${emoji} ${formatName(mealId)}</h3>
+            </div>
         `;
+        card.id = `meal-${mealId}-${index}`;
+        card.setAttribute('data-meal-id', mealId);
+        card.setAttribute('draggable', 'true');
+        card.setAttribute('ondragstart', 'drag(event)');
 
-        card.addEventListener('click', () => toggleMeal(mealId, card));
         grid.appendChild(card);
     });
 }
 
-function toggleMeal(mealId, cardElement) {
-    if (isPlanning) return;
+// Add drag and drop functions
+function allowDrop(ev) {
+    ev.preventDefault();
+}
 
-    if (selectedMeals.has(mealId)) {
-        selectedMeals.delete(mealId);
-        cardElement.classList.remove('selected');
-    } else {
-        selectedMeals.add(mealId);
-        cardElement.classList.add('selected');
+function drag(ev) {
+    ev.dataTransfer.setData("text", ev.currentTarget.id);
+    ev.currentTarget.classList.add('dragging');
+}
+
+document.addEventListener('dragend', (ev) => {
+    document.querySelectorAll('.meal-card').forEach(c => c.classList.remove('dragging'));
+});
+
+function drop(ev) {
+    ev.preventDefault();
+    const data = ev.dataTransfer.getData("text");
+    const draggedElt = document.getElementById(data);
+
+    // Find the closest droppable container (meal-slot or meal-grid)
+    let dropTarget = ev.target;
+    if (!dropTarget.classList.contains('meal-slot') && !dropTarget.id.includes('meal-grid')) {
+        dropTarget = dropTarget.closest('.meal-slot') || dropTarget.closest('.meal-grid') || dropTarget.closest('.day-col')?.querySelector('.meal-slot');
     }
 
-    updateActionBar();
+    if (dropTarget && draggedElt) {
+        // If dropping a meal that was already somewhere else, just append it.
+        // It moves the DOM element automatically!
+        dropTarget.appendChild(draggedElt);
+
+        // Ensure it doesn't look "selected" since we use drag and drop now
+        draggedElt.classList.remove('selected');
+
+        updateActionBar();
+    }
 }
 
 function updateActionBar() {
     const countSpan = document.getElementById('selected-count');
     const planBtn = document.getElementById('plan-btn');
 
-    const count = selectedMeals.size;
+    let count = 0;
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    days.forEach(day => {
+        const slot = document.querySelector(`#day-${day} .meal-slot`);
+        if (slot) {
+            count += slot.querySelectorAll('.meal-card').length;
+        }
+    });
+
     countSpan.textContent = count;
 
     if (count > 0) {
@@ -97,7 +132,7 @@ function updateActionBar() {
 }
 
 async function planMeals() {
-    if (selectedMeals.size === 0 || isPlanning) return;
+    if (document.getElementById('selected-count').textContent === "0" || isPlanning) return;
 
     isPlanning = true;
     const btn = document.getElementById('plan-btn');
@@ -110,12 +145,25 @@ async function planMeals() {
     btnLoader.classList.remove('hidden');
 
     try {
+        const schedule = {};
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        days.forEach(day => {
+            schedule[day] = [];
+            const slot = document.querySelector(`#day-${day} .meal-slot`);
+            if (slot) {
+                const cards = slot.querySelectorAll('.meal-card');
+                cards.forEach(c => {
+                    schedule[day].push(c.getAttribute('data-meal-id'));
+                });
+            }
+        });
+
         const response = await fetch('/api/plan', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(Array.from(selectedMeals))
+            body: JSON.stringify(schedule)
         });
 
         const result = await response.json();
@@ -149,7 +197,218 @@ function showResultModal(scheduleText) {
     modal.classList.remove('hidden');
 }
 
-function closeModal() {
-    const modal = document.getElementById('result-modal');
-    modal.classList.add('hidden');
+function closeModal(modalId = 'result-modal') {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// --- Management Logic ---
+
+// Enum mapping for units
+const UnitEnum = {
+    0: 'Grams', 1: 'Ounces', 2: 'Cups', 3: 'Tablespoons',
+    4: 'Teaspoons', 5: 'Pounds', 6: 'Whole', 7: 'Half',
+    8: 'Small', 9: 'Cloves', 10: 'Heads'
+};
+
+async function openManageModal() {
+    document.getElementById('manage-modal').classList.remove('hidden');
+    document.getElementById('manage-list-view').classList.remove('hidden');
+    document.getElementById('manage-edit-view').classList.add('hidden');
+    await fetchManageMeals();
+}
+
+async function fetchManageMeals() {
+    const listContainer = document.getElementById('manage-meal-list');
+    listContainer.innerHTML = '<div class="spinner"></div>';
+
+    try {
+        const response = await fetch('/api/meals');
+        const meals = await response.json();
+
+        listContainer.innerHTML = '';
+        if (meals.length === 0) {
+            listContainer.innerHTML = '<p class="text-secondary">No meals found.</p>';
+            return;
+        }
+
+        meals.forEach(mealId => {
+            const item = document.createElement('div');
+            item.className = 'manage-item';
+
+            const formatName = str => str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+            item.innerHTML = `
+                <div class="manage-item-info">
+                    <strong>${formatName(mealId)}</strong>
+                    <br><small style="color: var(--text-secondary);">${mealId}</small>
+                </div>
+                <div class="manage-item-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editMeal('${mealId}')">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteMeal('${mealId}')">Delete</button>
+                </div>
+            `;
+            listContainer.appendChild(item);
+        });
+    } catch (e) {
+        listContainer.innerHTML = '<p style="color:var(--error-color)">Error loading meals.</p>';
+    }
+}
+
+let currentEditMeal = null;
+
+async function editMeal(mealId) {
+    document.getElementById('manage-list-view').classList.add('hidden');
+    document.getElementById('manage-edit-view').classList.remove('hidden');
+
+    const form = document.getElementById('meal-form');
+    form.reset();
+    document.getElementById('ingredients-list').innerHTML = '';
+
+    currentEditMeal = mealId;
+    document.getElementById('edit-view-title').textContent = 'Edit Meal: ' + mealId;
+    document.getElementById('meal-name').value = mealId;
+
+    // Fetch the meal details to populate the ingredients form
+    try {
+        // Since we don't have a GET /api/meals/<name> endpoint, we can find it by fetching the plan
+        // Actually, we DO need the ingredients. Looking at main.cpp, we didn't add a GET single meal endpoint!
+        // To work around this without adding another endpoint, we'll extract it by a dummy plan call with just this meal
+        const response = await fetch('/api/plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([mealId])
+        });
+
+        // This is hacky, but the result schedule contains the ingredients, or we can just add a new endpoint to C++ easily!
+        // It's better to add a GET /api/meals/<name> to main.cpp! I will do this next. But for now I'll write the JS expecting it:
+
+        const mealRes = await fetch(`/api/meals/${mealId}`);
+        if (mealRes.ok) {
+            const mealData = await mealRes.json();
+            mealData.ingredients.forEach(ing => {
+                addIngredientRow(ing.name, ing.amount, ing.unit);
+            });
+        } else {
+            addIngredientRow(); // Fallback to empty row
+        }
+    } catch (e) {
+        addIngredientRow();
+    }
+}
+
+function openEditView(mealId = null) {
+    if (mealId) {
+        editMeal(mealId);
+        return;
+    }
+    document.getElementById('manage-list-view').classList.add('hidden');
+    document.getElementById('manage-edit-view').classList.remove('hidden');
+
+    const form = document.getElementById('meal-form');
+    form.reset();
+    document.getElementById('ingredients-list').innerHTML = '';
+
+    currentEditMeal = null;
+    document.getElementById('edit-view-title').textContent = 'Add New Meal';
+    addIngredientRow();
+}
+
+function closeEditView() {
+    document.getElementById('manage-list-view').classList.remove('hidden');
+    document.getElementById('manage-edit-view').classList.add('hidden');
+}
+
+function addIngredientRow(name = "", amount = "", unit = 0) {
+    const container = document.getElementById('ingredients-list');
+    const row = document.createElement('div');
+    row.className = 'ingredient-row';
+
+    // Create unit options
+    let unitOptions = '';
+    for (const [val, label] of Object.entries(UnitEnum)) {
+        unitOptions += `<option value="${val}" ${parseInt(val) === unit ? 'selected' : ''}>${label}</option>`;
+    }
+
+    row.innerHTML = `
+        <input type="text" placeholder="Ingredient Name (e.g., Chicken Breast)" value="${name}" required class="form-control name-input">
+        <input type="number" step="0.01" placeholder="Amount" value="${amount}" required class="form-control amount-input">
+        <select class="form-control unit-input">
+            ${unitOptions}
+        </select>
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">X</button>
+    `;
+
+    container.appendChild(row);
+}
+
+async function saveMeal(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('meal-name').value.trim().toLowerCase().replace(/\s+/g, '-');
+    const ingredientRows = document.querySelectorAll('.ingredient-row');
+
+    if (ingredientRows.length === 0) {
+        alert("Please add at least one ingredient.");
+        return;
+    }
+
+    const ingredients = [];
+    ingredientRows.forEach(row => {
+        ingredients.push({
+            name: row.querySelector('.name-input').value,
+            amount: parseFloat(row.querySelector('.amount-input').value),
+            unit: parseInt(row.querySelector('.unit-input').value),
+            preparation: "None"
+        });
+    });
+
+    const payload = { name, ingredients };
+
+    try {
+        const method = currentEditMeal ? 'PUT' : 'POST';
+        const url = currentEditMeal ? `/api/meals/${currentEditMeal}` : '/api/meals/add';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            closeEditView();
+            fetchManageMeals(); // Refresh list
+            fetchMeals();       // Refresh main grid
+        } else {
+            alert("Failed to save meal.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error saving meal.");
+    }
+}
+
+async function deleteMeal(mealId) {
+    if (!confirm(`Are you sure you want to delete ${mealId}?`)) return;
+
+    try {
+        const response = await fetch(`/api/meals/${mealId}`, { method: 'DELETE' });
+        if (response.ok) {
+            fetchManageMeals(); // Refresh list
+            fetchMeals();       // Refresh main grid
+
+            // If they had it selected on the main screen, deselect it
+            if (selectedMeals.has(mealId)) {
+                selectedMeals.delete(mealId);
+                updateActionBar();
+            }
+        } else {
+            alert("Failed to delete meal.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error deleting meal.");
+    }
 }

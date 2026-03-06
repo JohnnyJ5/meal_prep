@@ -4,36 +4,21 @@
 #include <unordered_map>
 #include <vector>
 
-// // Factory function type
-// using MealFactory = std::function<std::unique_ptr<Meal>()>;
-
-MealFactory::MealFactory() {
-    d_mealFactories = {
-        {"turkey-burgers", []() { return std::make_unique<TurkeyBurgers>(); }},
-        {"turkey-meatballs", []() { return std::make_unique<TurkeyMeatballs>(); }},
-        {"creamy-garlic-chicken-penne-spinach", []() { return std::make_unique<CreamyGarlicChickenPenneSpinach>(); }},
-        {"creamy-garlic-chicken", []() { return std::make_unique<CreamyGarlicChicken>(); }},
-        {"baked-chicken-breast", []() { return std::make_unique<BakedChickenBreast>(); }},
-        {"cheesy-hamburger-pasta-skillet", []() { return std::make_unique<CheesyHamburgerPastaSkillet>(); }},
-        {"cottage-cheese-pancakes", []() { return std::make_unique<CottageCheesePancakes>(); }},
-        {"chicken-stir-fry", []() { return std::make_unique<ChickenStirFry>(); }}
-    };
-}
+// MealFactory constructor
+MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager) : d_dbManager(dbManager) {}
 
 // Meal factory function
 std::unique_ptr<Meal> MealFactory::createMeal(const std::string& mealName) {
-    auto it = d_mealFactories.find(mealName);
-    if (it != d_mealFactories.end()) {
-        return it->second();
+    if (d_dbManager) {
+        return d_dbManager->getMeal(mealName);
     }
-    return nullptr; // Meal not found
+    return nullptr;
 }
 
 // Function to get all available meal names
 void MealFactory::getAvailableMeals(std::vector<std::string> & meals)
 {
-    for (const auto& pair : d_mealFactories)
-    {
-        meals.push_back(pair.first);
+    if (d_dbManager) {
+        d_dbManager->getAllMeals(meals);
     }
 }

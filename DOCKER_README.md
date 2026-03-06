@@ -40,19 +40,33 @@ We use a Bind Mount to sync your local files with the container:
 | Check Status | `docker compose ps` |
 
 
-🛠 Compilation Workflow (Internal)
-Once inside the container (docker exec), use the standard CMake flow:
-```Bash
-# 1. Create build directory
+🛠 Compilation & Running Workflow
+We have provided a helper script that automatically builds and runs the application from the correct directory:
+
+```bash
+docker exec -it meal_prep_dev ./start_server.sh
+```
+
+*(Note: The server must be started from the project root so it can find the `static/` directory! The script handles this automatically.)*
+
+Alternatively, if you want to compile and run it manually inside the container:
+```bash
+# 1. Enter the container
+docker exec -it meal_prep_dev bash
+
+# 2. Create build directory
 mkdir -p build && cd build
 
-# 2. Configure project
+# 3. Configure and Compile
 cmake ..
+make -j
 
-# 3. Compile
-make
-
-# 4. Run
-./meal_prep_app
+# 4. Return to root and Run
+cd ..
+./build/meal_prep --serve
 ```
-👶 Tips for the Busy DeveloperInstant Access: Add alias work='docker exec -it meal_prep_dev bash' to your ~/.bashrc.Clean Up: If you're running low on disk space, run docker system prune to clear out old build layers.
+
+👶 Tips for the Busy Developer
+- **Instant Access:** Add `alias work='docker exec -it meal_prep_dev bash'` to your `~/.bashrc`.
+- **Instant Server:** Add `alias start_meal_server='docker exec -it meal_prep_dev ./start_server.sh'` to your `~/.bashrc`.
+- **Clean Up:** If you're running low on disk space, run `docker system prune` to clear out old build layers.
