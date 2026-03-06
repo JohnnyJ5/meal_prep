@@ -77,6 +77,25 @@ function allowDrop(ev) {
     ev.preventDefault();
 }
 
+function dragEnter(ev) {
+    ev.preventDefault();
+    const dayCol = ev.target.closest('.day-col');
+    if (dayCol) {
+        dayCol.classList.add('drag-over');
+    }
+}
+
+function dragLeave(ev) {
+    const dayCol = ev.target.closest('.day-col');
+    if (dayCol) {
+        // Only remove if we're actually leaving the day column, not entering a child
+        const rect = dayCol.getBoundingClientRect();
+        if (ev.clientX <= rect.left || ev.clientX >= rect.right || ev.clientY <= rect.top || ev.clientY >= rect.bottom) {
+            dayCol.classList.remove('drag-over');
+        }
+    }
+}
+
 function drag(ev) {
     ev.dataTransfer.setData("text", ev.currentTarget.id);
     ev.currentTarget.classList.add('dragging');
@@ -96,6 +115,9 @@ function drop(ev) {
     if (!dropTarget.classList.contains('meal-slot') && !dropTarget.id.includes('meal-grid')) {
         dropTarget = dropTarget.closest('.meal-slot') || dropTarget.closest('.meal-grid') || dropTarget.closest('.day-col')?.querySelector('.meal-slot');
     }
+
+    // Remove drag-over class from all columns
+    document.querySelectorAll('.day-col').forEach(col => col.classList.remove('drag-over'));
 
     if (dropTarget && draggedElt) {
         // If dropping a meal that was already somewhere else, just append it.
