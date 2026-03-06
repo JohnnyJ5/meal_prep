@@ -15,4 +15,4 @@ cd ..
 
 echo "Starting Meal Prep API on port 8080..."
 # Execute from the project root so it can find the static/ folder!
-./build/meal_prep --serve
+./build/meal_prep --serve &
