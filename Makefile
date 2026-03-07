@@ -9,6 +9,8 @@ build:
 	docker exec meal_prep_dev bash -c "mkdir -p build_docker && cd build_docker && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && make -j"
 
 start: build
+	@echo "Stopping any existing server instances..."
+	-docker exec meal_prep_dev pkill meal_prep || true
 	@echo "Starting Meal Prep API on port 8080 inside container..."
 	docker exec -d meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./build_docker/meal_prep --serve"
 
