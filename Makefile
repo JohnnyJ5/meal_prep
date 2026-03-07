@@ -10,7 +10,7 @@ all:
 	fi
 
 clean:
-	rm -rf build
+	rm -rf ./build ./build_docker
 
 run: all
 	./build/meal_prep
