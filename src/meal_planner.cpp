@@ -71,20 +71,21 @@ void SendPlanEmail(
 }
 
 void PrintWeeklySchedule(
+    std::ostream &os,
     const std::map<std::string, std::vector<std::string>> &schedule) {
-  std::cout << "\nWeekly Meal Prep Schedule:\n";
+  os << "\nWeekly Meal Prep Schedule:\n";
   std::vector<std::string> days = {"Monday",   "Tuesday", "Wednesday",
                                    "Thursday", "Friday",  "Saturday",
                                    "Sunday"};
   for (const auto &day : days) {
-    std::cout << day << ":\n";
+    os << day << ":\n";
     auto it = schedule.find(day);
     if (it != schedule.end() && !it->second.empty()) {
       for (const auto &m : it->second) {
-        std::cout << "  - " << m << "\n";
+        os << "  - " << m << "\n";
       }
     } else {
-      std::cout << "  - (Nothing planned)\n";
+      os << "  - (Nothing planned)\n";
     }
   }
 }

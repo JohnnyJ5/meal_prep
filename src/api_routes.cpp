@@ -164,14 +164,8 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
         std::map<std::string, Ingredient> allIngredients;
         ConsolidateAllIngredients(allIngredients, mealRefs);
 
-        // Re-route console output to capture schedule response for frontend
         std::stringstream scheduleOutput;
-        std::streambuf *oldCoutStreamBuf = std::cout.rdbuf();
-        std::cout.rdbuf(scheduleOutput.rdbuf());
-
-        PrintWeeklySchedule(schedule);
-
-        std::cout.rdbuf(oldCoutStreamBuf); // Restore standard output
+        PrintWeeklySchedule(scheduleOutput, schedule);
 
         // Send Email
         SendPlanEmail(allIngredients, schedule);

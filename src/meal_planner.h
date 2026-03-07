@@ -14,5 +14,8 @@ void SendPlanEmail(
     const std::map<std::string, Ingredient> &allIngredients,
     const std::map<std::string, std::vector<std::string>> &schedule);
 
+#include <ostream>
+
 void PrintWeeklySchedule(
+    std::ostream &os,
     const std::map<std::string, std::vector<std::string>> &schedule);

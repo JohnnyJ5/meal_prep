@@ -18,6 +18,10 @@ DBManager::~DBManager() {
 }
 
 bool DBManager::executeQuery(const std::string &query) {
+  if (!d_db) {
+    std::cerr << "Database connection is not initialized.\n";
+    return false;
+  }
   char *errMsg = nullptr;
   if (sqlite3_exec(d_db, query.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
     std::cerr << "SQL error: " << errMsg << "\n";
@@ -48,7 +52,8 @@ bool DBManager::initializeSchema() {
       ");";
 
   // Enable foreign keys
-  executeQuery("PRAGMA foreign_keys = ON;");
+  if (!executeQuery("PRAGMA foreign_keys = ON;"))
+    return false;
 
   if (!executeQuery(createMealsTable))
     return false;

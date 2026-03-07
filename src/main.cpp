@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     std::map<std::string, Ingredient> allIngredients;
     ConsolidateAllIngredients(allIngredients, mealRefs);
     SendPlanEmail(allIngredients, schedule);
-    PrintWeeklySchedule(schedule);
+    PrintWeeklySchedule(std::cout, schedule);
 
     curl_global_cleanup();
   } catch (const std::exception &e) {
