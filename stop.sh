@@ -1,4 +1,3 @@
 #!/bin/bash
-echo "Stopping Meal Prep environment..."
-docker compose down
-echo "Environment stopped."
+# Pass through to the new Docker-native Makefile
+make stop
