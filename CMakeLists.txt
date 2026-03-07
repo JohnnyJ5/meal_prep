@@ -39,6 +39,9 @@ find_package(SQLite3 REQUIRED)
 set(LIB_SOURCES
     src/db_manager.cpp
     src/meal_factory.cpp
+    src/email_service.cpp
+    src/meal_planner.cpp
+    src/api_routes.cpp
     # Add other library source files here
 )
 
