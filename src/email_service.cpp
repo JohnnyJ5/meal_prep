@@ -8,39 +8,6 @@
 
 namespace {
 // Helper function to read configuration from ~/.meal_prep.conf
-std::map<std::string, std::string> read_config() {
-  std::map<std::string, std::string> config;
-  const char *homeDir = std::getenv("HOME");
-  std::string config_path = homeDir ? std::string(homeDir) + "/.meal_prep.conf"
-                                    : "/home/johnnyj/.meal_prep.conf";
-
-  std::ifstream config_file(config_path);
-  if (!config_file.is_open()) {
-    std::cerr << "Warning: Config file not found at " << config_path
-              << std::endl;
-    std::cerr << "Create ~/.meal_prep.conf with contents:" << std::endl;
-    std::cerr << "  email=your-email@gmail.com" << std::endl;
-    std::cerr << "  password=your-app-password" << std::endl;
-    return config;
-  }
-
-  std::string line;
-  while (std::getline(config_file, line)) {
-    // Skip empty lines and comments
-    if (line.empty() || line[0] == '#')
-      continue;
-
-    size_t delimiter = line.find('=');
-    if (delimiter != std::string::npos) {
-      std::string key = line.substr(0, delimiter);
-      std::string value = line.substr(delimiter + 1);
-      config[key] = value;
-    }
-  }
-
-  config_file.close();
-  return config;
-}
 
 struct UploadStatus {
   const char *data;
@@ -65,26 +32,14 @@ size_t payload_source(char *ptr, size_t size, size_t nmemb, void *userp) {
 } // namespace
 
 void SendEmail(const std::string &toAddress, const std::string &subject,
-               const std::string &body) {
+               const std::string &body, const std::string &senderEmail,
+               const std::string &senderPassword) {
   try {
-    // Read credentials from config file
-    auto config = read_config();
-
-    if (config.find("email") == config.end() ||
-        config.find("password") == config.end()) {
-      std::cerr
-          << "Error: 'email' and 'password' not found in ~/.meal_prep.conf"
-          << std::endl;
-      return;
-    }
-
-    std::string email = config["email"];
-    std::string password = config["password"];
 
     std::string payload = "To: " + toAddress +
                           "\r\n"
                           "From: " +
-                          email +
+                          senderEmail +
                           "\r\n"
                           "Subject: " +
                           subject +
@@ -104,10 +59,10 @@ void SendEmail(const std::string &toAddress, const std::string &subject,
     if (curl) {
       curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
       curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
-      curl_easy_setopt(curl, CURLOPT_USERNAME, email.c_str());
-      curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());
+      curl_easy_setopt(curl, CURLOPT_USERNAME, senderEmail.c_str());
+      curl_easy_setopt(curl, CURLOPT_PASSWORD, senderPassword.c_str());
 
-      curl_easy_setopt(curl, CURLOPT_MAIL_FROM, email.c_str());
+      curl_easy_setopt(curl, CURLOPT_MAIL_FROM, senderEmail.c_str());
 
       struct curl_slist *recipients = NULL;
       recipients = curl_slist_append(recipients, toAddress.c_str());

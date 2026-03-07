@@ -42,6 +42,7 @@ set(LIB_SOURCES
     src/email_service.cpp
     src/meal_planner.cpp
     src/api_routes.cpp
+    src/config_parser.cpp
     # Add other library source files here
 )
 

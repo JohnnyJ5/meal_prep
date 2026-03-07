@@ -22,7 +22,8 @@ void ConsolidateAllIngredients(
 
 void SendPlanEmail(
     const std::map<std::string, Ingredient> &allIngredients,
-    const std::map<std::string, std::vector<std::string>> &schedule) {
+    const std::map<std::string, std::vector<std::string>> &schedule,
+    const Config &config) {
   std::stringstream ss;
   ss << "Weekly Meal Schedule:\n";
   std::vector<std::string> days = {"Monday",   "Tuesday", "Wednesday",
@@ -54,16 +55,17 @@ void SendPlanEmail(
       crlf += c;
   }
   try {
-    std::vector<std::pair<std::string, std::string>> recipients = {
-        {"Michael Coffey", "michaelcoffey5@gmail.com"},
-        // {"Suzanne Coffey", "suzcoffey22@gmail.com"}
-    };
-    std::for_each(
-        recipients.begin(), recipients.end(),
-        [&](const std::pair<std::string, std::string> &addr) {
-          std::cout << "Sending email to: " << addr.second << std::endl;
-          SendEmail(addr.second, "Weekly Meal Prep Ingredients", crlf);
-        });
+    if (config.email_recipients.empty()) {
+      std::cerr << "No email recipients configured." << std::endl;
+      return;
+    }
+
+    std::for_each(config.email_recipients.begin(),
+                  config.email_recipients.end(), [&](const std::string &addr) {
+                    std::cout << "Sending email to: " << addr << std::endl;
+                    SendEmail(addr, "Weekly Meal Prep Ingredients", crlf,
+                              config.sender_email, config.sender_password);
+                  });
 
   } catch (const std::exception &e) {
     std::cerr << "Email error: " << e.what() << std::endl;

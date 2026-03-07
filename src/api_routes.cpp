@@ -3,7 +3,7 @@
 #include <iostream>
 
 void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
-                 MealFactory &factory) {
+                 MealFactory &factory, const Config &config) {
   // Route: Get all available meals
   CROW_ROUTE(app, "/api/meals")([&factory]() {
     std::vector<std::string> meals;
@@ -126,60 +126,61 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
 
   // Route: Plan selected meals and trigger email
   CROW_ROUTE(app, "/api/plan")
-      .methods(crow::HTTPMethod::POST)([&factory](const crow::request &req) {
-        auto body = crow::json::load(req.body);
-        if (!body)
-          return crow::response(400, "Invalid JSON");
+      .methods(crow::HTTPMethod::POST)(
+          [&factory, &config](const crow::request &req) {
+            auto body = crow::json::load(req.body);
+            if (!body)
+              return crow::response(400, "Invalid JSON");
 
-        std::vector<std::unique_ptr<Meal>> createdMeals;
-        std::vector<std::reference_wrapper<Meal>> mealRefs;
-        std::vector<std::string> failedMeals;
-        std::map<std::string, std::vector<std::string>> schedule;
+            std::vector<std::unique_ptr<Meal>> createdMeals;
+            std::vector<std::reference_wrapper<Meal>> mealRefs;
+            std::vector<std::string> failedMeals;
+            std::map<std::string, std::vector<std::string>> schedule;
 
-        std::vector<std::string> days = {"Monday",   "Tuesday", "Wednesday",
-                                         "Thursday", "Friday",  "Saturday",
-                                         "Sunday"};
-        for (const auto &day : days) {
-          if (body.has(day)) {
-            for (const auto &mealJson : body[day]) {
-              std::string mealName = mealJson.s();
-              schedule[day].push_back(mealName);
-              if (auto meal = factory.createMeal(mealName)) {
-                createdMeals.push_back(std::move(meal));
-              } else {
-                failedMeals.push_back(mealName);
+            std::vector<std::string> days = {"Monday",   "Tuesday", "Wednesday",
+                                             "Thursday", "Friday",  "Saturday",
+                                             "Sunday"};
+            for (const auto &day : days) {
+              if (body.has(day)) {
+                for (const auto &mealJson : body[day]) {
+                  std::string mealName = mealJson.s();
+                  schedule[day].push_back(mealName);
+                  if (auto meal = factory.createMeal(mealName)) {
+                    createdMeals.push_back(std::move(meal));
+                  } else {
+                    failedMeals.push_back(mealName);
+                  }
+                }
               }
             }
-          }
-        }
 
-        if (createdMeals.empty()) {
-          return crow::response(400, "No valid meals selected.");
-        }
+            if (createdMeals.empty()) {
+              return crow::response(400, "No valid meals selected.");
+            }
 
-        for (auto &m : createdMeals) {
-          mealRefs.push_back(*m);
-        }
+            for (auto &m : createdMeals) {
+              mealRefs.push_back(*m);
+            }
 
-        std::map<std::string, Ingredient> allIngredients;
-        ConsolidateAllIngredients(allIngredients, mealRefs);
+            std::map<std::string, Ingredient> allIngredients;
+            ConsolidateAllIngredients(allIngredients, mealRefs);
 
-        std::stringstream scheduleOutput;
-        PrintWeeklySchedule(scheduleOutput, schedule);
+            std::stringstream scheduleOutput;
+            PrintWeeklySchedule(scheduleOutput, schedule);
 
-        // Send Email
-        SendPlanEmail(allIngredients, schedule);
+            // Send Email
+            SendPlanEmail(allIngredients, schedule, config);
 
-        crow::json::wvalue res;
-        res["status"] = "success";
-        res["schedule"] = scheduleOutput.str();
-        if (!failedMeals.empty()) {
-          for (size_t i = 0; i < failedMeals.size(); ++i) {
-            res["failed_meals"][i] = failedMeals[i];
-          }
-        }
-        return crow::response(std::move(res));
-      });
+            crow::json::wvalue res;
+            res["status"] = "success";
+            res["schedule"] = scheduleOutput.str();
+            if (!failedMeals.empty()) {
+              for (size_t i = 0; i < failedMeals.size(); ++i) {
+                res["failed_meals"][i] = failedMeals[i];
+              }
+            }
+            return crow::response(std::move(res));
+          });
 
   // Route: Serve index.html at root
   CROW_ROUTE(app, "/")([]() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config_parser.h"
 #include "ingredient.h"
 #include "meal.h"
 #include <map>
@@ -12,7 +13,8 @@ void ConsolidateAllIngredients(
 
 void SendPlanEmail(
     const std::map<std::string, Ingredient> &allIngredients,
-    const std::map<std::string, std::vector<std::string>> &schedule);
+    const std::map<std::string, std::vector<std::string>> &schedule,
+    const Config &config);
 
 #include <ostream>
 

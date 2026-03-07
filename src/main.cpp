@@ -1,4 +1,5 @@
 #include "api_routes.h"
+#include "config_parser.h"
 #include "db_manager.h"
 #include "meal_factory.h"
 #include "meal_planner.h"
@@ -39,13 +40,16 @@ int main(int argc, char **argv) {
 
     MealFactory factory(dbManager);
 
+    Config config = loadConfig("meal_prep.conf.json");
+
     if (serveWeb) {
       crow::SimpleApp app;
-      setupRoutes(app, dbManager, factory);
+      setupRoutes(app, dbManager, factory, config);
 
       // Start the server
-      std::cout << "Starting Meal Prep API on http://0.0.0.0:8080" << std::endl;
-      app.port(8080).multithreaded().run();
+      std::cout << "Starting Meal Prep API on http://0.0.0.0:" << config.port
+                << std::endl;
+      app.port(config.port).multithreaded().run();
       return 0;
     }
 
@@ -86,7 +90,7 @@ int main(int argc, char **argv) {
 
     std::map<std::string, Ingredient> allIngredients;
     ConsolidateAllIngredients(allIngredients, mealRefs);
-    SendPlanEmail(allIngredients, schedule);
+    SendPlanEmail(allIngredients, schedule, config);
     PrintWeeklySchedule(std::cout, schedule);
 
     curl_global_cleanup();
