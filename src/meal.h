@@ -5,8 +5,16 @@
 #include <string>
 #include <vector>
 
+/**
+ * @brief Represents a meal and its required ingredients.
+ */
 class Meal {
 public:
+  /**
+   * @brief Constructs a Meal.
+   * @param name The name of the meal.
+   * @param ingredients The list of ingredients required.
+   */
   Meal(const std::string &name, const std::vector<Ingredient> &ingredients)
       : d_name(name), d_ingredients(ingredients) {}
 
