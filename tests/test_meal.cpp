@@ -16,9 +16,10 @@ TEST_F(MealTest, MealConstructorAndGetters) {
       Ingredient(IngredientNames::SALT,
                  Measurement(1.0, MeasurementUnit::TEASPOON))};
 
-  Meal meal("Test Meal", ingredients);
+  Meal meal("Test Meal", ingredients, "Dinner");
 
   EXPECT_EQ(meal.getName(), "Test Meal");
+  EXPECT_EQ(meal.getCategory(), "Dinner");
   EXPECT_EQ(meal.getIngredients().size(), 2);
   EXPECT_EQ(meal.getIngredients()[0].getName(), IngredientNames::SPINACH);
   EXPECT_EQ(meal.getIngredients()[1].getName(), IngredientNames::SALT);

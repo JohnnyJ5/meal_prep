@@ -89,7 +89,8 @@
             <div class="selection-count">
                 <span id="selected-count">0</span> meals selected
             </div>
-            <button id="view-ingredients-btn" class="btn btn-secondary" onclick="viewIngredients()" style="margin-left: auto; margin-right: 1rem;">
+            <button id="view-ingredients-btn" class="btn btn-secondary" onclick="viewIngredients()"
+                style="margin-left: auto; margin-right: 1rem;">
                 View Ingredients
             </button>
             <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
@@ -115,7 +116,7 @@
                     <h2>Ingredients</h2>
                     <button onclick="closeModal('ingredients-modal')" class="btn-close">&times;</button>
                 </div>
-                
+
                 <div class="ingredients-layout">
                     <div class="per-meal-section">
                         <h3>Per Meal</h3>
@@ -123,7 +124,7 @@
                             <!-- Populated by JS -->
                         </div>
                     </div>
-                    
+
                     <div class="consolidated-section">
                         <h3>Consolidated List</h3>
                         <div id="consolidated-list" class="scroll-list">
@@ -156,6 +157,11 @@
                         <div class="form-group">
                             <label for="meal-name">Meal Name (e.g., spicy-chicken)</label>
                             <input type="text" id="meal-name" required class="form-control">
+                        </div>
+                        <div class="form-group mt-2">
+                            <label for="meal-category">Category</label>
+                            <input type="text" id="meal-category" class="form-control"
+                                placeholder="e.g., Poultry, Breakfast" value="Uncategorized">
                         </div>
 
                         <h4>Ingredients</h4>

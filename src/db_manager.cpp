@@ -37,7 +37,8 @@ bool DBManager::initializeSchema() {
 
   std::string createMealsTable = "CREATE TABLE IF NOT EXISTS meals ("
                                  "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                                 "name TEXT UNIQUE NOT NULL"
+                                 "name TEXT UNIQUE NOT NULL, "
+                                 "category TEXT DEFAULT 'Uncategorized'"
                                  ");";
 
   std::string createIngredientsTable =
@@ -57,6 +58,12 @@ bool DBManager::initializeSchema() {
 
   if (!executeQuery(createMealsTable))
     return false;
+
+  // Add category column to existing databases (ignore errors if it already
+  // exists)
+  executeQuery(
+      "ALTER TABLE meals ADD COLUMN category TEXT DEFAULT 'Uncategorized';");
+
   if (!executeQuery(createIngredientsTable))
     return false;
 
@@ -90,7 +97,7 @@ bool DBManager::addMeal(const Meal &meal) {
   // Begin transaction
   executeQuery("BEGIN TRANSACTION;");
 
-  std::string insertMeal = "INSERT INTO meals (name) VALUES (?);";
+  std::string insertMeal = "INSERT INTO meals (name, category) VALUES (?, ?);";
   sqlite3_stmt *stmtMeal;
   if (sqlite3_prepare_v2(d_db, insertMeal.c_str(), -1, &stmtMeal, nullptr) !=
       SQLITE_OK) {
@@ -99,6 +106,8 @@ bool DBManager::addMeal(const Meal &meal) {
   }
 
   sqlite3_bind_text(stmtMeal, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmtMeal, 2, meal.getCategory().c_str(), -1,
+                    SQLITE_TRANSIENT);
   if (sqlite3_step(stmtMeal) != SQLITE_DONE) {
     sqlite3_finalize(stmtMeal);
     executeQuery("ROLLBACK;");
@@ -207,6 +216,21 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
   if (mealId == -1)
     return nullptr;
 
+  std::string getCategoryQuery = "SELECT category FROM meals WHERE id = ?;";
+  sqlite3_stmt *stmtCat;
+  std::string category = "Uncategorized";
+  if (sqlite3_prepare_v2(d_db, getCategoryQuery.c_str(), -1, &stmtCat,
+                         nullptr) == SQLITE_OK) {
+    sqlite3_bind_int(stmtCat, 1, mealId);
+    if (sqlite3_step(stmtCat) == SQLITE_ROW) {
+      if (const char *catText =
+              reinterpret_cast<const char *>(sqlite3_column_text(stmtCat, 0))) {
+        category = catText;
+      }
+    }
+  }
+  sqlite3_finalize(stmtCat);
+
   std::string query = "SELECT name, amount, unit, preparation FROM ingredients "
                       "WHERE meal_id = ?;";
   sqlite3_stmt *stmt;
@@ -235,21 +259,28 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
   if (ingredients.empty())
     return nullptr;
 
-  return std::make_unique<Meal>(mealName, ingredients);
+  return std::make_unique<Meal>(mealName, ingredients, category);
 }
 
-bool DBManager::getAllMeals(std::vector<std::string> &meals) {
+bool DBManager::getAllMeals(
+    std::vector<std::pair<std::string, std::string>> &meals) {
   if (!d_db)
     return false;
 
-  std::string query = "SELECT name FROM meals ORDER BY name ASC;";
+  std::string query = "SELECT name, category FROM meals ORDER BY name ASC;";
   sqlite3_stmt *stmt;
 
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
       SQLITE_OK) {
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-      meals.push_back(
-          reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+      std::string name =
+          reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+      std::string category = "Uncategorized";
+      if (const char *catText =
+              reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
+        category = catText;
+      }
+      meals.push_back({name, category});
     }
   }
   sqlite3_finalize(stmt);
@@ -258,7 +289,7 @@ bool DBManager::getAllMeals(std::vector<std::string> &meals) {
 
 bool DBManager::seedDefaultMeals() {
   // This will seed the database with the initial hardcoded values if empty.
-  std::vector<std::string> existing;
+  std::vector<std::pair<std::string, std::string>> existing;
   getAllMeals(existing);
   if (!existing.empty())
     return true; // Already seeded
@@ -284,7 +315,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::ITALIAN_SEASONING,
                        Measurement(1.0, MeasurementUnit::TEASPOON)),
             Ingredient(IngredientNames::OLIVE_OIL,
-                       Measurement(1.0, MeasurementUnit::TABLESPOON))}),
+                       Measurement(1.0, MeasurementUnit::TABLESPOON))},
+           "Poultry"),
       Meal("turkey-meatballs",
            {Ingredient(IngredientNames::GROUND_TURKEY,
                        Measurement(1.0, MeasurementUnit::POUND)),
@@ -303,7 +335,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::SALT,
                        Measurement(0.5, MeasurementUnit::TEASPOON)),
             Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.25, MeasurementUnit::TEASPOON))}),
+                       Measurement(0.25, MeasurementUnit::TEASPOON))},
+           "Poultry"),
       Meal("creamy-garlic-chicken-penne-spinach",
            {Ingredient(IngredientNames::CHICKEN_BREAST,
                        Measurement(2.0, MeasurementUnit::WHOLE), "Strips"),
@@ -326,7 +359,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::HEAVY_CREAM,
                        Measurement(1.0, MeasurementUnit::CUP)),
             Ingredient(IngredientNames::PARMESAN_CHEESE,
-                       Measurement(0.5, MeasurementUnit::CUP), "Grated")}),
+                       Measurement(0.5, MeasurementUnit::CUP), "Grated")},
+           "Poultry"),
       Meal("creamy-garlic-chicken",
            {Ingredient(IngredientNames::CHICKEN_BREAST,
                        Measurement(4.0, MeasurementUnit::WHOLE), "Thin Sliced"),
@@ -343,7 +377,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::HEAVY_CREAM,
                        Measurement(1.0, MeasurementUnit::CUP)),
             Ingredient(IngredientNames::SPINACH,
-                       Measurement(2.0, MeasurementUnit::CUP))}),
+                       Measurement(2.0, MeasurementUnit::CUP))},
+           "Poultry"),
       Meal("baked-chicken-breast",
            {Ingredient(IngredientNames::CHICKEN_BREAST,
                        Measurement(4.0, MeasurementUnit::WHOLE)),
@@ -358,7 +393,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::SALT,
                        Measurement(0.5, MeasurementUnit::TEASPOON)),
             Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.25, MeasurementUnit::TEASPOON))}),
+                       Measurement(0.25, MeasurementUnit::TEASPOON))},
+           "Poultry"),
       Meal("cheesy-hamburger-pasta-skillet",
            {Ingredient(IngredientNames::OLIVE_OIL,
                        Measurement(1.0, MeasurementUnit::TABLESPOON)),
@@ -375,7 +411,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::SHARP_CHEDDAR_CHEESE,
                        Measurement(2.0, MeasurementUnit::CUP)),
             Ingredient(IngredientNames::HEAVY_CREAM,
-                       Measurement(0.5, MeasurementUnit::CUP))}),
+                       Measurement(0.5, MeasurementUnit::CUP))},
+           "Beef"),
       Meal("cottage-cheese-pancakes",
            {Ingredient(IngredientNames::EGGS,
                        Measurement(4.0, MeasurementUnit::WHOLE)),
@@ -390,7 +427,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::BAKING_POWDER,
                        Measurement(0.5, MeasurementUnit::TABLESPOON)),
             Ingredient(IngredientNames::FRUIT_OF_CHOICE,
-                       Measurement(1.0, MeasurementUnit::CUP))}),
+                       Measurement(1.0, MeasurementUnit::CUP))},
+           "Breakfast"),
       Meal("chicken-stir-fry",
            {Ingredient(IngredientNames::CHICKEN_BREAST,
                        Measurement(3.0, MeasurementUnit::WHOLE)),
@@ -421,7 +459,8 @@ bool DBManager::seedDefaultMeals() {
             Ingredient(IngredientNames::SOY_SAUCE,
                        Measurement(0.25, MeasurementUnit::CUP)),
             Ingredient(IngredientNames::HONEY,
-                       Measurement(2.0, MeasurementUnit::TABLESPOON))})};
+                       Measurement(2.0, MeasurementUnit::TABLESPOON))},
+           "Poultry")};
 
   bool allSuccess = true;
   for (const auto &meal : defaultMeals) {

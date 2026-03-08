@@ -29,10 +29,12 @@ public:
   std::unique_ptr<Meal> createMeal(const std::string &mealName);
 
   /**
-   * @brief Populates a vector with the names of all available meals.
+   * @brief Populates a vector with the names and categories of all available
+   * meals.
    * @param meals The vector to populate.
    */
-  void getAvailableMeals(std::vector<std::string> &meals);
+  void
+  getAvailableMeals(std::vector<std::pair<std::string, std::string>> &meals);
 
 private:
   std::shared_ptr<DBManager> d_dbManager;

@@ -65,11 +65,12 @@ public:
   std::unique_ptr<Meal> getMeal(const std::string &mealName);
 
   /**
-   * @brief Retrieves a list of all available meal names from the database.
-   * @param meals Vector to populate with meal names.
+   * @brief Retrieves a list of all available meal names and categories from the
+   * database.
+   * @param meals Vector to populate with pairs of meal names and categories.
    * @return true if successful, false otherwise.
    */
-  bool getAllMeals(std::vector<std::string> &meals);
+  bool getAllMeals(std::vector<std::pair<std::string, std::string>> &meals);
 
   // Provide raw connection if occasionally needed (e.g. testing)
   sqlite3 *getConnection() const { return d_db; }

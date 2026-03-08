@@ -55,10 +55,11 @@ int main(int argc, char **argv) {
 
     if (listMeals) {
       std::cout << "Available meals:" << std::endl;
-      std::vector<std::string> meals;
+      std::vector<std::pair<std::string, std::string>> meals;
       factory.getAvailableMeals(meals);
-      for (const auto &mealName : meals) {
-        std::cout << "-m " << mealName << std::endl;
+      for (const auto &mealPair : meals) {
+        std::cout << "-m " << mealPair.first << " [" << mealPair.second << "]"
+                  << std::endl;
       }
       return 0;
     }

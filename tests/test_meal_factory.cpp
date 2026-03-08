@@ -46,7 +46,7 @@ TEST_F(MealFactoryTest, CaseSensitivity) {
 
 // Test getAvailableMeals
 TEST_F(MealFactoryTest, GetAvailableMeals) {
-  std::vector<std::string> meals;
+  std::vector<std::pair<std::string, std::string>> meals;
   factory->getAvailableMeals(meals);
 
   EXPECT_GT(meals.size(), 0);
@@ -55,11 +55,11 @@ TEST_F(MealFactoryTest, GetAvailableMeals) {
   bool hasTurkeyBurgers = false;
   bool hasChickenStirFry = false;
 
-  for (const auto &mealName : meals) {
-    if (mealName == "turkey-burgers") {
+  for (const auto &mealPair : meals) {
+    if (mealPair.first == "turkey-burgers") {
       hasTurkeyBurgers = true;
     }
-    if (mealName == "chicken-stir-fry") {
+    if (mealPair.first == "chicken-stir-fry") {
       hasChickenStirFry = true;
     }
   }
@@ -68,16 +68,17 @@ TEST_F(MealFactoryTest, GetAvailableMeals) {
   EXPECT_TRUE(hasChickenStirFry);
 }
 
-// Test that all available meals can be created
+// Test that all available meals can be creatable
 TEST_F(MealFactoryTest, AllAvailableMealsAreCreatable) {
-  std::vector<std::string> mealNames;
-  factory->getAvailableMeals(mealNames);
+  std::vector<std::pair<std::string, std::string>> meals;
+  factory->getAvailableMeals(meals);
 
-  for (const auto &mealName : mealNames) {
-    auto meal = factory->createMeal(mealName);
-    EXPECT_NE(meal, nullptr) << "Failed to create meal: " << mealName;
+  for (const auto &mealPair : meals) {
+    auto meal = factory->createMeal(mealPair.first);
+    EXPECT_NE(meal, nullptr) << "Failed to create meal: " << mealPair.first;
     if (meal) {
       EXPECT_FALSE(meal->getName().empty());
+      EXPECT_FALSE(meal->getCategory().empty());
       EXPECT_GT(meal->getIngredients().size(), 0);
     }
   }

@@ -45,46 +45,68 @@ function renderMeals(meals) {
             .join(' ');
     };
 
-    meals.forEach((mealId, index) => {
-        const card = document.createElement('div');
-        card.className = 'meal-card';
-        card.style.animationDelay = `${index * 0.05}s`;
-
-        // Add emoji based on name just for visual flair
-        let emoji = '🍲';
-        if (mealId.includes('chicken')) emoji = '🍗';
-        if (mealId.includes('turkey')) emoji = '🦃';
-        if (mealId.includes('pasta') || mealId.includes('penne')) emoji = '🍝';
-        if (mealId.includes('burger') || mealId.includes('hamburger')) emoji = '🍔';
-        if (mealId.includes('pancake')) emoji = '🥞';
-
-        card.innerHTML = `
-            <div class="meal-card-header">
-                <h3>${emoji} ${formatName(mealId)}</h3>
-            </div>
-        `;
-        card.id = `meal-${mealId}-${index}`;
-        card.setAttribute('data-meal-id', mealId);
-        card.setAttribute('draggable', 'true');
-        card.setAttribute('ondragstart', 'drag(event)');
-
-        // Add click listener for selection
-        card.addEventListener('click', (e) => {
-            // Prevent triggering if dragging
-            if (card.classList.contains('dragging')) return;
-
-            if (selectedMeals.has(mealId)) {
-                selectedMeals.delete(mealId);
-                card.classList.remove('selected');
-            } else {
-                selectedMeals.add(mealId);
-                card.classList.add('selected');
-            }
-            updateActionBar();
-        });
-
-        grid.appendChild(card);
+    const grouped = {};
+    meals.forEach(meal => {
+        const cat = meal.category || 'Uncategorized';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(meal.name);
     });
+
+    let index = 0;
+    for (const [category, mealNames] of Object.entries(grouped)) {
+        const header = document.createElement('h3');
+        header.className = 'category-header';
+        header.textContent = category;
+        header.style.width = '100%';
+        header.style.marginTop = '1rem';
+        header.style.marginBottom = '0.5rem';
+        header.style.color = 'var(--primary-color)';
+        header.style.borderBottom = '1px solid var(--border-color)';
+        header.style.paddingBottom = '0.5rem';
+        grid.appendChild(header);
+
+        mealNames.forEach((mealId) => {
+            const card = document.createElement('div');
+            card.className = 'meal-card';
+            card.style.animationDelay = `${index * 0.05}s`;
+            index++;
+
+            // Add emoji based on name just for visual flair
+            let emoji = '🍲';
+            if (mealId.includes('chicken')) emoji = '🍗';
+            if (mealId.includes('turkey')) emoji = '🦃';
+            if (mealId.includes('pasta') || mealId.includes('penne')) emoji = '🍝';
+            if (mealId.includes('burger') || mealId.includes('hamburger')) emoji = '🍔';
+            if (mealId.includes('pancake')) emoji = '🥞';
+
+            card.innerHTML = `
+                <div class="meal-card-header">
+                    <h3>${emoji} ${formatName(mealId)}</h3>
+                </div>
+            `;
+            card.id = `meal-${mealId}-${index}`;
+            card.setAttribute('data-meal-id', mealId);
+            card.setAttribute('draggable', 'true');
+            card.setAttribute('ondragstart', 'drag(event)');
+
+            // Add click listener for selection
+            card.addEventListener('click', (e) => {
+                // Prevent triggering if dragging
+                if (card.classList.contains('dragging')) return;
+
+                if (selectedMeals.has(mealId)) {
+                    selectedMeals.delete(mealId);
+                    card.classList.remove('selected');
+                } else {
+                    selectedMeals.add(mealId);
+                    card.classList.add('selected');
+                }
+                updateActionBar();
+            });
+
+            grid.appendChild(card);
+        });
+    }
 }
 
 // Add drag and drop functions
@@ -366,7 +388,8 @@ async function fetchManageMeals() {
             return;
         }
 
-        meals.forEach(mealId => {
+        meals.forEach(meal => {
+            const mealId = meal.name;
             const item = document.createElement('div');
             item.className = 'manage-item';
 
@@ -375,6 +398,7 @@ async function fetchManageMeals() {
             item.innerHTML = `
                 <div class="manage-item-info">
                     <strong>${formatName(mealId)}</strong>
+                    <span class="badge" style="margin-left:8px; font-size:0.8rem; background:var(--primary-color); padding:2px 6px; border-radius:4px; color:white;">${meal.category}</span>
                     <br><small style="color: var(--text-secondary);">${mealId}</small>
                 </div>
                 <div class="manage-item-actions">
@@ -403,23 +427,11 @@ async function editMeal(mealId) {
     document.getElementById('edit-view-title').textContent = 'Edit Meal: ' + mealId;
     document.getElementById('meal-name').value = mealId;
 
-    // Fetch the meal details to populate the ingredients form
     try {
-        // Since we don't have a GET /api/meals/<name> endpoint, we can find it by fetching the plan
-        // Actually, we DO need the ingredients. Looking at main.cpp, we didn't add a GET single meal endpoint!
-        // To work around this without adding another endpoint, we'll extract it by a dummy plan call with just this meal
-        const response = await fetch('/api/plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify([mealId])
-        });
-
-        // This is hacky, but the result schedule contains the ingredients, or we can just add a new endpoint to C++ easily!
-        // It's better to add a GET /api/meals/<name> to main.cpp! I will do this next. But for now I'll write the JS expecting it:
-
         const mealRes = await fetch(`/api/meals/${mealId}`);
         if (mealRes.ok) {
             const mealData = await mealRes.json();
+            document.getElementById('meal-category').value = mealData.category || "Uncategorized";
             mealData.ingredients.forEach(ing => {
                 addIngredientRow(ing.name, ing.amount, ing.unit);
             });
@@ -445,6 +457,7 @@ function openEditView(mealId = null) {
 
     currentEditMeal = null;
     document.getElementById('edit-view-title').textContent = 'Add New Meal';
+    document.getElementById('meal-category').value = "Uncategorized";
     addIngredientRow();
 }
 
@@ -480,6 +493,7 @@ async function saveMeal(e) {
     e.preventDefault();
 
     const name = document.getElementById('meal-name').value.trim().toLowerCase().replace(/\s+/g, '-');
+    const category = document.getElementById('meal-category').value.trim() || 'Uncategorized';
     const ingredientRows = document.querySelectorAll('.ingredient-row');
 
     if (ingredientRows.length === 0) {
@@ -497,7 +511,7 @@ async function saveMeal(e) {
         });
     });
 
-    const payload = { name, ingredients };
+    const payload = { name, category, ingredients };
 
     try {
         const method = currentEditMeal ? 'PUT' : 'POST';

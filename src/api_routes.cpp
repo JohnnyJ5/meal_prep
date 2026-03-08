@@ -6,11 +6,12 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
                  MealFactory &factory, const Config &config) {
   // Route: Get all available meals
   CROW_ROUTE(app, "/api/meals")([&factory]() {
-    std::vector<std::string> meals;
+    std::vector<std::pair<std::string, std::string>> meals;
     factory.getAvailableMeals(meals);
     crow::json::wvalue res;
     for (size_t i = 0; i < meals.size(); ++i) {
-      res[i] = meals[i];
+      res[i]["name"] = meals[i].first;
+      res[i]["category"] = meals[i].second;
     }
     return res;
   });
@@ -41,7 +42,12 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
                 Measurement(amount, static_cast<MeasurementUnit>(unit)), prep));
           }
 
-          Meal newMeal(mealName, ingredients);
+          std::string category = "Uncategorized";
+          if (body.has("category")) {
+            category = body["category"].s();
+          }
+
+          Meal newMeal(mealName, ingredients, category);
           if (dbManager->addMeal(newMeal)) {
             return crow::response(200, "Meal added successfully");
           } else {
@@ -81,8 +87,13 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
                 Measurement(amount, static_cast<MeasurementUnit>(unit)), prep));
           }
 
+          std::string category = "Uncategorized";
+          if (body.has("category")) {
+            category = body["category"].s();
+          }
+
           // Name from URL is used
-          Meal updatedMeal(mealName, ingredients);
+          Meal updatedMeal(mealName, ingredients, category);
           if (dbManager->updateMeal(updatedMeal)) {
             return crow::response(200, "Meal updated successfully");
           } else {
@@ -110,6 +121,7 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
         if (meal) {
           crow::json::wvalue res;
           res["name"] = meal->getName();
+          res["category"] = meal->getCategory();
           for (size_t i = 0; i < meal->getIngredients().size(); ++i) {
             const auto &ing = meal->getIngredients()[i];
             res["ingredients"][i]["name"] = ing.getName();
