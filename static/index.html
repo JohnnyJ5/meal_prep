@@ -89,6 +89,9 @@
             <div class="selection-count">
                 <span id="selected-count">0</span> meals selected
             </div>
+            <button id="view-ingredients-btn" class="btn btn-secondary" onclick="viewIngredients()" style="margin-left: auto; margin-right: 1rem;">
+                View Ingredients
+            </button>
             <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
                 <span class="btn-text">Generate Plan & Send Email</span>
                 <div class="btn-loader hidden"></div>
@@ -104,6 +107,33 @@
                 <button onclick="closeModal('result-modal')" class="btn btn-secondary mt-4">Close</button>
             </div>
         </div>
+
+        <!-- Ingredients Modal -->
+        <div id="ingredients-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2>Ingredients</h2>
+                    <button onclick="closeModal('ingredients-modal')" class="btn-close">&times;</button>
+                </div>
+                
+                <div class="ingredients-layout">
+                    <div class="per-meal-section">
+                        <h3>Per Meal</h3>
+                        <div id="per-meal-list" class="scroll-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="consolidated-section">
+                        <h3>Consolidated List</h3>
+                        <div id="consolidated-list" class="scroll-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <!-- Management Modal -->
         <div id="manage-modal" class="modal hidden">

@@ -68,6 +68,21 @@ function renderMeals(meals) {
         card.setAttribute('draggable', 'true');
         card.setAttribute('ondragstart', 'drag(event)');
 
+        // Add click listener for selection
+        card.addEventListener('click', (e) => {
+            // Prevent triggering if dragging
+            if (card.classList.contains('dragging')) return;
+
+            if (selectedMeals.has(mealId)) {
+                selectedMeals.delete(mealId);
+                card.classList.remove('selected');
+            } else {
+                selectedMeals.add(mealId);
+                card.classList.add('selected');
+            }
+            updateActionBar();
+        });
+
         grid.appendChild(card);
     });
 }
@@ -134,6 +149,7 @@ function drop(ev) {
 function updateActionBar() {
     const countSpan = document.getElementById('selected-count');
     const planBtn = document.getElementById('plan-btn');
+    const viewBtn = document.getElementById('view-ingredients-btn');
 
     let count = 0;
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -144,12 +160,19 @@ function updateActionBar() {
         }
     });
 
-    countSpan.textContent = count;
+    const totalSelected = count + selectedMeals.size;
+    countSpan.textContent = totalSelected;
 
-    if (count > 0) {
+    if (totalSelected > 0) {
         planBtn.removeAttribute('disabled');
+        if (selectedMeals.size > 0) {
+            viewBtn.removeAttribute('disabled');
+        } else {
+            viewBtn.setAttribute('disabled', 'true');
+        }
     } else {
         planBtn.setAttribute('disabled', 'true');
+        viewBtn.setAttribute('disabled', 'true');
     }
 }
 
@@ -234,6 +257,81 @@ const UnitEnum = {
     4: 'Teaspoons', 5: 'Pounds', 6: 'Whole', 7: 'Half',
     8: 'Small', 9: 'Cloves', 10: 'Heads'
 };
+
+async function viewIngredients() {
+    if (selectedMeals.size === 0) return;
+
+    const perMealList = document.getElementById('per-meal-list');
+    const consolidatedList = document.getElementById('consolidated-list');
+
+    perMealList.innerHTML = '<div class="spinner"></div>';
+    consolidatedList.innerHTML = '';
+
+    document.getElementById('ingredients-modal').classList.remove('hidden');
+
+    try {
+        const fetchPromises = Array.from(selectedMeals).map(mealId =>
+            fetch(`/api/meals/${mealId}`).then(res => res.json())
+        );
+
+        const mealsData = await Promise.all(fetchPromises);
+
+        // 1. Render Per Meal
+        perMealList.innerHTML = '';
+        const consolidated = {};
+
+        mealsData.forEach(meal => {
+            if (!meal || !meal.name) return;
+
+            const group = document.createElement('div');
+            group.className = 'meal-ing-group';
+
+            const formatName = meal.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+            let html = `<h4>${formatName}</h4><ul>`;
+
+            meal.ingredients.forEach(ing => {
+                const unitStr = UnitEnum[ing.unit] || '';
+                const amountStr = Number.isInteger(ing.amount) ? ing.amount : ing.amount.toFixed(2);
+                html += `<li>${ing.name}: ${amountStr} ${unitStr} ${ing.preparation !== 'None' ? `(${ing.preparation})` : ''}</li>`;
+
+                // Build consolidated
+                const key = `${ing.name.toLowerCase()}_${ing.unit}`;
+                if (!consolidated[key]) {
+                    consolidated[key] = {
+                        name: ing.name,
+                        amount: 0,
+                        unitStr: unitStr
+                    };
+                }
+                consolidated[key].amount += ing.amount;
+            });
+
+            html += '</ul>';
+            group.innerHTML = html;
+            perMealList.appendChild(group);
+        });
+
+        // 2. Render Consolidated
+        let consHtml = '<ul>';
+        for (const key in consolidated) {
+            const item = consolidated[key];
+            const amountStr = Number.isInteger(item.amount) ? item.amount : item.amount.toFixed(2);
+            consHtml += `<li><strong>${item.name}</strong>: ${amountStr} ${item.unitStr}</li>`;
+        }
+        consHtml += '</ul>';
+
+        if (Object.keys(consolidated).length === 0) {
+            consHtml = '<p class="text-secondary">No ingredients found.</p>';
+        }
+
+        consolidatedList.innerHTML = consHtml;
+
+    } catch (error) {
+        console.error("Error fetching ingredients:", error);
+        perMealList.innerHTML = '<p class="text-error">Failed to load ingredients.</p>';
+        consolidatedList.innerHTML = '';
+    }
+}
 
 async function openManageModal() {
     document.getElementById('manage-modal').classList.remove('hidden');
