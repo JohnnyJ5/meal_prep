@@ -135,12 +135,24 @@ function drop(ev) {
     document.querySelectorAll('.day-col').forEach(col => col.classList.remove('drag-over'));
 
     if (dropTarget && draggedElt) {
-        // If dropping a meal that was already somewhere else, just append it.
-        // It moves the DOM element automatically!
-        dropTarget.appendChild(draggedElt);
+        const fromGrid = draggedElt.parentElement && draggedElt.parentElement.id === 'meal-grid';
+        const toGrid = dropTarget.id === 'meal-grid';
+        const toSlot = dropTarget.classList.contains('meal-slot');
 
-        // Ensure it doesn't look "selected" since we use drag and drop now
-        draggedElt.classList.remove('selected');
+        if (fromGrid && toSlot) {
+            // Clone when moving from grid to a slot so it remains available
+            const clone = draggedElt.cloneNode(true);
+            clone.id = draggedElt.id + '-clone-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            clone.classList.remove('selected', 'dragging');
+            dropTarget.appendChild(clone);
+        } else if (!fromGrid && toGrid) {
+            // If dragging from a slot back to the grid, just remove it from the planner
+            draggedElt.remove();
+        } else if (toSlot && !fromGrid) {
+            // Moving from slot to slot
+            dropTarget.appendChild(draggedElt);
+            draggedElt.classList.remove('selected');
+        }
 
         updateActionBar();
     }
