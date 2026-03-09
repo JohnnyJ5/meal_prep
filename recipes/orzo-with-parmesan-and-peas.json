@@ -1,0 +1,66 @@
+{
+    "name": "orzo-with-parmesan-and-peas",
+    "category": "Pasta",
+    "ingredients": [
+        {
+            "name": "Butter",
+            "amount": 2.0,
+            "unit": 3,
+            "preparation": "None"
+        },
+        {
+            "name": "Olive Oil",
+            "amount": 2.0,
+            "unit": 3,
+            "preparation": "None"
+        },
+        {
+            "name": "Yellow Onion",
+            "amount": 0.5,
+            "unit": 6,
+            "preparation": "Chopped"
+        },
+        {
+            "name": "Garlic",
+            "amount": 3.0,
+            "unit": 9,
+            "preparation": "Minced"
+        },
+        {
+            "name": "Orzo",
+            "amount": 16.0,
+            "unit": 1,
+            "preparation": "None"
+        },
+        {
+            "name": "Chicken Stock",
+            "amount": 32.0,
+            "unit": 1,
+            "preparation": "None"
+        },
+        {
+            "name": "Salt",
+            "amount": 1.0,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Pepper",
+            "amount": 0.5,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Frozen Peas",
+            "amount": 2.0,
+            "unit": 2,
+            "preparation": "Thawed"
+        },
+        {
+            "name": "Parmesan Cheese",
+            "amount": 1.0,
+            "unit": 2,
+            "preparation": "Grated"
+        }
+    ]
+}
