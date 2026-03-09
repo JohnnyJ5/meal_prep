@@ -6,3 +6,4 @@ cd "$(dirname "$(readlink -f "$0")")"
 
 # Pass through to the new Docker-native Makefile
 make start
+echo "Go to http://localhost:8080 in your browser"

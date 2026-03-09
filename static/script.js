@@ -516,7 +516,25 @@ function addIngredientRow(name = "", amount = "", unit = 0) {
     `;
 
     container.appendChild(row);
-    row.querySelector('.name-input').focus();
+    const nameInput = row.querySelector('.name-input');
+    const amountInput = row.querySelector('.amount-input');
+
+    nameInput.focus();
+
+    // Auto-focus amount when ingredient is selected or Enter is pressed
+    nameInput.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (availableIngredients.some(ing => ing.name === val)) {
+            setTimeout(() => amountInput.focus(), 10);
+        }
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setTimeout(() => amountInput.focus(), 10);
+        }
+    });
 }
 
 async function saveMeal(e) {
@@ -618,6 +636,12 @@ async function createNewIngredient(e) {
             await fetchIngredients(); // Refresh list
             if (lastActiveInput) {
                 lastActiveInput.value = name;
+                // Focus the amount input in the same row
+                const row = lastActiveInput.closest('.ingredient-row');
+                if (row) {
+                    const amountInput = row.querySelector('.amount-input');
+                    if (amountInput) setTimeout(() => amountInput.focus(), 10);
+                }
             }
             document.getElementById('new-ingredient-form').reset();
         } else {
