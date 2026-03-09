@@ -516,6 +516,7 @@ function addIngredientRow(name = "", amount = "", unit = 0) {
     `;
 
     container.appendChild(row);
+    row.querySelector('.name-input').focus();
 }
 
 async function saveMeal(e) {
@@ -595,6 +596,7 @@ function openAddIngredientModal(btn) {
     const currentVal = lastActiveInput.value.trim();
     document.getElementById('new-ing-name').value = currentVal;
     document.getElementById('add-ingredient-modal').classList.remove('hidden');
+    document.getElementById('new-ing-name').focus();
 }
 
 async function createNewIngredient(e) {
