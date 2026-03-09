@@ -1,5 +1,4 @@
 #include "db_manager.h"
-#include "ingredient_names.h"
 #include "measurement.h"
 #include <iostream>
 
@@ -52,6 +51,13 @@ bool DBManager::initializeSchema() {
       "FOREIGN KEY(meal_id) REFERENCES meals(id) ON DELETE CASCADE"
       ");";
 
+  std::string createAvailableIngredientsTable =
+      "CREATE TABLE IF NOT EXISTS available_ingredients ("
+      "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+      "name TEXT UNIQUE NOT NULL, "
+      "category TEXT DEFAULT 'Uncategorized'"
+      ");";
+
   // Enable foreign keys
   if (!executeQuery("PRAGMA foreign_keys = ON;"))
     return false;
@@ -65,6 +71,9 @@ bool DBManager::initializeSchema() {
       "ALTER TABLE meals ADD COLUMN category TEXT DEFAULT 'Uncategorized';");
 
   if (!executeQuery(createIngredientsTable))
+    return false;
+
+  if (!executeQuery(createAvailableIngredientsTable))
     return false;
 
   return true;
@@ -287,6 +296,139 @@ bool DBManager::getAllMeals(
   return true;
 }
 
+bool DBManager::getAllIngredients(
+    std::vector<std::pair<std::string, std::string>> &ingredients) {
+  if (!d_db)
+    return false;
+
+  std::string query =
+      "SELECT name, category FROM available_ingredients ORDER BY name ASC;";
+  sqlite3_stmt *stmt;
+
+  if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
+      SQLITE_OK) {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      std::string name =
+          reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+      std::string category = "Uncategorized";
+      if (const char *catText =
+              reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
+        category = catText;
+      }
+      ingredients.push_back({name, category});
+    }
+  }
+  sqlite3_finalize(stmt);
+  return true;
+}
+
+bool DBManager::addIngredient(const std::string &name,
+                              const std::string &category) {
+  if (!d_db)
+    return false;
+
+  std::string insertIngredient =
+      "INSERT INTO available_ingredients (name, category) VALUES (?, ?);";
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmt, nullptr) !=
+      SQLITE_OK) {
+    return false;
+  }
+
+  sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, category.c_str(), -1, SQLITE_TRANSIENT);
+
+  bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+  sqlite3_finalize(stmt);
+  return success;
+}
+
+bool DBManager::seedDefaultIngredients() {
+  std::vector<std::pair<std::string, std::string>> existing;
+  getAllIngredients(existing);
+  if (!existing.empty())
+    return true; // Already seeded
+
+  std::vector<std::pair<std::string, std::string>> defaultIngredients = {
+      // Vegetables
+      {"Spinach", "Vegetables"},
+      {"Broccoli", "Vegetables"},
+      {"Onion", "Vegetables"},
+      {"Carrots", "Vegetables"},
+      {"Yellow Bell Pepper", "Vegetables"},
+      {"Red Bell Pepper", "Vegetables"},
+
+      // Proteins
+      {"Chicken Breast", "Proteins"},
+      {"Ground Turkey", "Proteins"},
+      {"Ground Beef", "Proteins"},
+      {"Eggs", "Proteins"},
+      {"Egg", "Proteins"},
+      {"Cottage Cheese", "Proteins"},
+
+      // Dairy
+      {"Feta", "Dairy"},
+      {"Parmesan Cheese", "Dairy"},
+      {"Sharp Cheddar Cheese", "Dairy"},
+      {"Milk", "Dairy"},
+      {"Heavy Cream", "Dairy"},
+      {"Butter", "Dairy"},
+
+      // Pantry Staples
+      {"Salt", "Pantry Staples"},
+      {"Pepper", "Pantry Staples"},
+      {"Olive Oil", "Pantry Staples"},
+      {"Flour", "Pantry Staples"},
+      {"All-Purpose Flour", "Pantry Staples"},
+      {"Corn Starch", "Pantry Staples"},
+      {"Baking Powder", "Pantry Staples"},
+      {"Breadcrumbs", "Pantry Staples"},
+
+      // Seasonings & Spices
+      {"Garlic Powder", "Seasonings & Spices"},
+      {"Onion Powder", "Seasonings & Spices"},
+      {"Italian Seasoning", "Seasonings & Spices"},
+      {"Paprika", "Seasonings & Spices"},
+      {"Ginger", "Seasonings & Spices"},
+      {"Vanilla Extract", "Seasonings & Spices"},
+
+      // Produce
+      {"Garlic", "Produce"},
+      {"Crushed Tomatoes", "Produce"},
+
+      // Grains & Pasta
+      {"Penne Pasta", "Grains & Pasta"},
+      {"Pasta", "Grains & Pasta"},
+
+      // Broths & Sauces
+      {"Chicken Broth", "Broths & Sauces"},
+      {"Beef Broth", "Broths & Sauces"},
+      {"Soy Sauce", "Broths & Sauces"},
+
+      // Sweeteners
+      {"Maple Syrup", "Sweeteners"},
+      {"Honey", "Sweeteners"},
+
+      // Other
+      {"Sesame Seeds", "Other"},
+      {"Fruit of Choice", "Other"}};
+
+  bool allSuccess = true;
+  executeQuery("BEGIN TRANSACTION;");
+  for (const auto &ing : defaultIngredients) {
+    if (!addIngredient(ing.first, ing.second)) {
+      allSuccess = false;
+    }
+  }
+  if (allSuccess) {
+    executeQuery("COMMIT;");
+  } else {
+    executeQuery("ROLLBACK;");
+  }
+
+  return allSuccess;
+}
+
 bool DBManager::seedDefaultMeals() {
   // This will seed the database with the initial hardcoded values if empty.
   std::vector<std::pair<std::string, std::string>> existing;
@@ -296,171 +438,133 @@ bool DBManager::seedDefaultMeals() {
 
   std::vector<Meal> defaultMeals = {
       Meal("turkey-burgers",
-           {Ingredient(IngredientNames::SPINACH,
-                       Measurement(2.0, MeasurementUnit::CUP), "Chopped"),
-            Ingredient(IngredientNames::FETA,
-                       Measurement(4.0, MeasurementUnit::OUNCE)),
-            Ingredient(IngredientNames::BREADCRUMBS,
-                       Measurement(0.25, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::GROUND_TURKEY,
+           {Ingredient("Spinach", Measurement(2.0, MeasurementUnit::CUP),
+                       "Chopped"),
+            Ingredient("Feta", Measurement(4.0, MeasurementUnit::OUNCE)),
+            Ingredient("Breadcrumbs", Measurement(0.25, MeasurementUnit::CUP)),
+            Ingredient("Ground Turkey",
                        Measurement(1.0, MeasurementUnit::POUND)),
-            Ingredient(IngredientNames::SALT,
+            Ingredient("Salt", Measurement(1.0, MeasurementUnit::TEASPOON)),
+            Ingredient("Pepper", Measurement(0.5, MeasurementUnit::TEASPOON)),
+            Ingredient("Garlic Powder",
                        Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PEPPER,
+            Ingredient("Onion Powder",
                        Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::GARLIC_POWDER,
+            Ingredient("Italian Seasoning",
                        Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::ONION_POWDER,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::ITALIAN_SEASONING,
-                       Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::OLIVE_OIL,
+            Ingredient("Olive Oil",
                        Measurement(1.0, MeasurementUnit::TABLESPOON))},
            "Poultry"),
       Meal("turkey-meatballs",
-           {Ingredient(IngredientNames::GROUND_TURKEY,
+           {Ingredient("Ground Turkey",
                        Measurement(1.0, MeasurementUnit::POUND)),
-            Ingredient(IngredientNames::BREADCRUMBS,
-                       Measurement(1.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::ITALIAN_SEASONING,
+            Ingredient("Breadcrumbs", Measurement(1.0, MeasurementUnit::CUP)),
+            Ingredient("Italian Seasoning",
                        Measurement(1.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::ONION,
-                       Measurement(1.0, MeasurementUnit::SMALL), "Diced"),
-            Ingredient(IngredientNames::GARLIC,
-                       Measurement(3.0, MeasurementUnit::CLOVE), "Minced"),
-            Ingredient(IngredientNames::EGG,
-                       Measurement(2.0, MeasurementUnit::WHOLE)),
-            Ingredient(IngredientNames::MILK,
-                       Measurement(0.25, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::SALT,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.25, MeasurementUnit::TEASPOON))},
+            Ingredient("Onion", Measurement(1.0, MeasurementUnit::SMALL),
+                       "Diced"),
+            Ingredient("Garlic", Measurement(3.0, MeasurementUnit::CLOVE),
+                       "Minced"),
+            Ingredient("Egg", Measurement(2.0, MeasurementUnit::WHOLE)),
+            Ingredient("Milk", Measurement(0.25, MeasurementUnit::CUP)),
+            Ingredient("Salt", Measurement(0.5, MeasurementUnit::TEASPOON)),
+            Ingredient("Pepper", Measurement(0.25, MeasurementUnit::TEASPOON))},
            "Poultry"),
       Meal("creamy-garlic-chicken-penne-spinach",
-           {Ingredient(IngredientNames::CHICKEN_BREAST,
+           {Ingredient("Chicken Breast",
                        Measurement(2.0, MeasurementUnit::WHOLE), "Strips"),
-            Ingredient(IngredientNames::PENNE_PASTA,
-                       Measurement(2.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::BROCCOLI,
-                       Measurement(1.5, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::SPINACH,
-                       Measurement(1.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::OLIVE_OIL,
+            Ingredient("Penne Pasta", Measurement(2.0, MeasurementUnit::CUP)),
+            Ingredient("Broccoli", Measurement(1.5, MeasurementUnit::CUP)),
+            Ingredient("Spinach", Measurement(1.0, MeasurementUnit::CUP)),
+            Ingredient("Olive Oil",
                        Measurement(2.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::SALT,
-                       Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PAPRIKA,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::GARLIC,
-                       Measurement(3.0, MeasurementUnit::CLOVE), "Minced"),
-            Ingredient(IngredientNames::HEAVY_CREAM,
-                       Measurement(1.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::PARMESAN_CHEESE,
+            Ingredient("Salt", Measurement(1.0, MeasurementUnit::TEASPOON)),
+            Ingredient("Pepper", Measurement(0.5, MeasurementUnit::TEASPOON)),
+            Ingredient("Paprika", Measurement(0.5, MeasurementUnit::TEASPOON)),
+            Ingredient("Garlic", Measurement(3.0, MeasurementUnit::CLOVE),
+                       "Minced"),
+            Ingredient("Heavy Cream", Measurement(1.0, MeasurementUnit::CUP)),
+            Ingredient("Parmesan Cheese",
                        Measurement(0.5, MeasurementUnit::CUP), "Grated")},
            "Poultry"),
       Meal("creamy-garlic-chicken",
-           {Ingredient(IngredientNames::CHICKEN_BREAST,
+           {Ingredient("Chicken Breast",
                        Measurement(4.0, MeasurementUnit::WHOLE), "Thin Sliced"),
-            Ingredient(IngredientNames::FLOUR,
-                       Measurement(0.25, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::BUTTER,
-                       Measurement(1.5, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::OLIVE_OIL,
+            Ingredient("Flour", Measurement(0.25, MeasurementUnit::CUP)),
+            Ingredient("Butter", Measurement(1.5, MeasurementUnit::TABLESPOON)),
+            Ingredient("Olive Oil",
                        Measurement(1.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::GARLIC,
-                       Measurement(1.0, MeasurementUnit::HEAD), "Peeled"),
-            Ingredient(IngredientNames::CHICKEN_BROTH,
-                       Measurement(0.5, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::HEAVY_CREAM,
-                       Measurement(1.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::SPINACH,
-                       Measurement(2.0, MeasurementUnit::CUP))},
+            Ingredient("Garlic", Measurement(1.0, MeasurementUnit::HEAD),
+                       "Peeled"),
+            Ingredient("Chicken Broth", Measurement(0.5, MeasurementUnit::CUP)),
+            Ingredient("Heavy Cream", Measurement(1.0, MeasurementUnit::CUP)),
+            Ingredient("Spinach", Measurement(2.0, MeasurementUnit::CUP))},
            "Poultry"),
       Meal("baked-chicken-breast",
-           {Ingredient(IngredientNames::CHICKEN_BREAST,
+           {Ingredient("Chicken Breast",
                        Measurement(4.0, MeasurementUnit::WHOLE)),
-            Ingredient(IngredientNames::OLIVE_OIL,
+            Ingredient("Olive Oil",
                        Measurement(1.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::PAPRIKA,
-                       Measurement(2.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::ITALIAN_SEASONING,
+            Ingredient("Paprika", Measurement(2.0, MeasurementUnit::TEASPOON)),
+            Ingredient("Italian Seasoning",
                        Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::GARLIC_POWDER,
+            Ingredient("Garlic Powder",
                        Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::SALT,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.25, MeasurementUnit::TEASPOON))},
+            Ingredient("Salt", Measurement(0.5, MeasurementUnit::TEASPOON)),
+            Ingredient("Pepper", Measurement(0.25, MeasurementUnit::TEASPOON))},
            "Poultry"),
       Meal("cheesy-hamburger-pasta-skillet",
-           {Ingredient(IngredientNames::OLIVE_OIL,
+           {Ingredient("Olive Oil",
                        Measurement(1.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::GROUND_BEEF,
-                       Measurement(1.0, MeasurementUnit::POUND)),
-            Ingredient(IngredientNames::SALT,
-                       Measurement(2.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::BEEF_BROTH,
-                       Measurement(1.5, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::PASTA,
-                       Measurement(8.0, MeasurementUnit::OUNCE)),
-            Ingredient(IngredientNames::CRUSHED_TOMATOES,
+            Ingredient("Ground Beef", Measurement(1.0, MeasurementUnit::POUND)),
+            Ingredient("Salt", Measurement(2.0, MeasurementUnit::TEASPOON)),
+            Ingredient("Beef Broth", Measurement(1.5, MeasurementUnit::CUP)),
+            Ingredient("Pasta", Measurement(8.0, MeasurementUnit::OUNCE)),
+            Ingredient("Crushed Tomatoes",
                        Measurement(14.5, MeasurementUnit::OUNCE)),
-            Ingredient(IngredientNames::SHARP_CHEDDAR_CHEESE,
+            Ingredient("Sharp Cheddar Cheese",
                        Measurement(2.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::HEAVY_CREAM,
-                       Measurement(0.5, MeasurementUnit::CUP))},
+            Ingredient("Heavy Cream", Measurement(0.5, MeasurementUnit::CUP))},
            "Beef"),
-      Meal("cottage-cheese-pancakes",
-           {Ingredient(IngredientNames::EGGS,
-                       Measurement(4.0, MeasurementUnit::WHOLE)),
-            Ingredient(IngredientNames::COTTAGE_CHEESE,
-                       Measurement(1.5, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::MAPLE_SYRUP,
-                       Measurement(3.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::VANILLA_EXTRACT,
-                       Measurement(1.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::ALL_PURPOSE_FLOUR,
-                       Measurement(1.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::BAKING_POWDER,
-                       Measurement(0.5, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::FRUIT_OF_CHOICE,
-                       Measurement(1.0, MeasurementUnit::CUP))},
-           "Breakfast"),
-      Meal("chicken-stir-fry",
-           {Ingredient(IngredientNames::CHICKEN_BREAST,
-                       Measurement(3.0, MeasurementUnit::WHOLE)),
-            Ingredient(IngredientNames::SALT,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::PEPPER,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::OLIVE_OIL,
-                       Measurement(2.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::BROCCOLI,
-                       Measurement(2.0, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::YELLOW_BELL_PEPPER,
-                       Measurement(1.0, MeasurementUnit::HALF)),
-            Ingredient(IngredientNames::RED_BELL_PEPPER,
-                       Measurement(1.0, MeasurementUnit::HALF)),
-            Ingredient(IngredientNames::CARROTS,
-                       Measurement(0.5, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::GINGER,
-                       Measurement(0.5, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::GARLIC,
-                       Measurement(2.0, MeasurementUnit::TEASPOON)),
-            Ingredient(IngredientNames::SESAME_SEEDS,
-                       Measurement(2.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::CORN_STARCH,
-                       Measurement(1.0, MeasurementUnit::TABLESPOON)),
-            Ingredient(IngredientNames::CHICKEN_BROTH,
-                       Measurement(0.25, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::SOY_SAUCE,
-                       Measurement(0.25, MeasurementUnit::CUP)),
-            Ingredient(IngredientNames::HONEY,
-                       Measurement(2.0, MeasurementUnit::TABLESPOON))},
-           "Poultry")};
+      Meal(
+          "cottage-cheese-pancakes",
+          {Ingredient("Eggs", Measurement(4.0, MeasurementUnit::WHOLE)),
+           Ingredient("Cottage Cheese", Measurement(1.5, MeasurementUnit::CUP)),
+           Ingredient("Maple Syrup",
+                      Measurement(3.0, MeasurementUnit::TABLESPOON)),
+           Ingredient("Vanilla Extract",
+                      Measurement(1.0, MeasurementUnit::TEASPOON)),
+           Ingredient("All-Purpose Flour",
+                      Measurement(1.0, MeasurementUnit::CUP)),
+           Ingredient("Baking Powder",
+                      Measurement(0.5, MeasurementUnit::TABLESPOON)),
+           Ingredient("Fruit of Choice",
+                      Measurement(1.0, MeasurementUnit::CUP))},
+          "Breakfast"),
+      Meal(
+          "chicken-stir-fry",
+          {Ingredient("Chicken Breast",
+                      Measurement(3.0, MeasurementUnit::WHOLE)),
+           Ingredient("Salt", Measurement(0.5, MeasurementUnit::TEASPOON)),
+           Ingredient("Pepper", Measurement(0.5, MeasurementUnit::TEASPOON)),
+           Ingredient("Olive Oil",
+                      Measurement(2.0, MeasurementUnit::TABLESPOON)),
+           Ingredient("Broccoli", Measurement(2.0, MeasurementUnit::CUP)),
+           Ingredient("Yellow Bell Pepper",
+                      Measurement(1.0, MeasurementUnit::HALF)),
+           Ingredient("Red Bell Pepper",
+                      Measurement(1.0, MeasurementUnit::HALF)),
+           Ingredient("Carrots", Measurement(0.5, MeasurementUnit::CUP)),
+           Ingredient("Ginger", Measurement(0.5, MeasurementUnit::TEASPOON)),
+           Ingredient("Garlic", Measurement(2.0, MeasurementUnit::TEASPOON)),
+           Ingredient("Sesame Seeds",
+                      Measurement(2.0, MeasurementUnit::TABLESPOON)),
+           Ingredient("Corn Starch",
+                      Measurement(1.0, MeasurementUnit::TABLESPOON)),
+           Ingredient("Chicken Broth", Measurement(0.25, MeasurementUnit::CUP)),
+           Ingredient("Soy Sauce", Measurement(0.25, MeasurementUnit::CUP)),
+           Ingredient("Honey", Measurement(2.0, MeasurementUnit::TABLESPOON))},
+          "Poultry")};
 
   bool allSuccess = true;
   for (const auto &meal : defaultMeals) {

@@ -1,4 +1,3 @@
-#include "../src/ingredient_names.h"
 #include "../src/meal.h"
 #include <gtest/gtest.h>
 
@@ -11,9 +10,9 @@ protected:
 // Test Meal base class
 TEST_F(MealTest, MealConstructorAndGetters) {
   std::vector<Ingredient> ingredients = {
-      Ingredient(IngredientNames::SPINACH,
+      Ingredient("Spinach",
                  Measurement(2.0, MeasurementUnit::CUP)),
-      Ingredient(IngredientNames::SALT,
+      Ingredient("Salt",
                  Measurement(1.0, MeasurementUnit::TEASPOON))};
 
   Meal meal("Test Meal", ingredients, "Dinner");
@@ -21,14 +20,14 @@ TEST_F(MealTest, MealConstructorAndGetters) {
   EXPECT_EQ(meal.getName(), "Test Meal");
   EXPECT_EQ(meal.getCategory(), "Dinner");
   EXPECT_EQ(meal.getIngredients().size(), 2);
-  EXPECT_EQ(meal.getIngredients()[0].getName(), IngredientNames::SPINACH);
-  EXPECT_EQ(meal.getIngredients()[1].getName(), IngredientNames::SALT);
+  EXPECT_EQ(meal.getIngredients()[0].getName(), "Spinach");
+  EXPECT_EQ(meal.getIngredients()[1].getName(), "Salt");
 }
 
 // Test that ingredients are immutable through getter
 TEST_F(MealTest, IngredientsImmutability) {
   std::vector<Ingredient> ingredients = {Ingredient(
-      IngredientNames::GROUND_BEEF, Measurement(1.0, MeasurementUnit::POUND))};
+      "Ground Beef", Measurement(1.0, MeasurementUnit::POUND))};
   Meal meal("Immutability Test", ingredients);
   const auto &fetchedIngredients = meal.getIngredients();
 

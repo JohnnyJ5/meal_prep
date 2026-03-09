@@ -180,6 +180,48 @@
             </div>
         </div>
 
+        <!-- Add Ingredient Modal -->
+        <div id="add-ingredient-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Ingredient</h2>
+                    <button onclick="closeModal('add-ingredient-modal')" class="btn-close">&times;</button>
+                </div>
+                <form id="new-ingredient-form" onsubmit="createNewIngredient(event)">
+                    <div class="form-group">
+                        <label for="new-ing-name">Ingredient Name</label>
+                        <input type="text" id="new-ing-name" required class="form-control" placeholder="e.g., Kale">
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="new-ing-category">Category</label>
+                        <input type="text" id="new-ing-category" required class="form-control"
+                            placeholder="e.g., Vegetables" list="category-list">
+                        <datalist id="category-list">
+                            <option value="Vegetables">
+                            <option value="Proteins">
+                            <option value="Dairy">
+                            <option value="Pantry Staples">
+                            <option value="Seasonings & Spices">
+                            <option value="Produce">
+                            <option value="Grains & Pasta">
+                            <option value="Broths & Sauces">
+                            <option value="Sweeteners">
+                            <option value="Other">
+                        </datalist>
+                    </div>
+                    <div class="form-actions mt-4">
+                        <button type="button" onclick="closeModal('add-ingredient-modal')"
+                            class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Ingredient</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <datalist id="available-ingredients">
+            <!-- Populated by JS -->
+        </datalist>
+
     </main>
 
     <script src="script.js"></script>

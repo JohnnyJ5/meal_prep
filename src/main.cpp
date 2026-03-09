@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     dbManager->seedDefaultMeals();
+    dbManager->seedDefaultIngredients();
 
     MealFactory factory(dbManager);
 

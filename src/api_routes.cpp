@@ -1,6 +1,5 @@
 #include "api_routes.h"
 #include "meal_planner.h"
-#include <iostream>
 
 void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
                  MealFactory &factory, const Config &config) {
@@ -15,6 +14,39 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
     }
     return res;
   });
+
+  // Route: Get all available ingredients
+  CROW_ROUTE(app, "/api/ingredients")([&dbManager]() {
+    std::vector<std::pair<std::string, std::string>> ingredients;
+    dbManager->getAllIngredients(ingredients);
+    crow::json::wvalue res;
+    for (size_t i = 0; i < ingredients.size(); ++i) {
+      res[i]["name"] = ingredients[i].first;
+      res[i]["category"] = ingredients[i].second;
+    }
+    return res;
+  });
+
+  // Route: Add a new ingredient
+  CROW_ROUTE(app, "/api/ingredients/add")
+      .methods(crow::HTTPMethod::POST)([&dbManager](const crow::request &req) {
+        auto body = crow::json::load(req.body);
+        if (!body)
+          return crow::response(400, "Invalid JSON");
+
+        if (!body.has("name") || !body.has("category")) {
+          return crow::response(400, "Missing name or category");
+        }
+
+        std::string name = body["name"].s();
+        std::string category = body["category"].s();
+
+        if (dbManager->addIngredient(name, category)) {
+          return crow::response(200, "Ingredient added successfully");
+        } else {
+          return crow::response(500, "Failed to add ingredient");
+        }
+      });
 
   // Route: Add a new meal
   CROW_ROUTE(app, "/api/meals/add")

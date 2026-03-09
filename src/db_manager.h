@@ -34,7 +34,30 @@ public:
    */
   bool seedDefaultMeals();
 
+  /**
+   * @brief Seeds the database with default available ingredients if empty.
+   * @return true if successful, false otherwise.
+   */
+  bool seedDefaultIngredients();
+
   // CRUD Operations
+
+  /**
+   * @brief Adds a new available ingredient to the database.
+   * @param name The name of the ingredient.
+   * @param category The category of the ingredient.
+   * @return true if added successfully, false otherwise.
+   */
+  bool addIngredient(const std::string &name, const std::string &category);
+
+  /**
+   * @brief Retrieves a list of all available ingredients from the database.
+   * @param ingredients Vector to populate with pairs of ingredient names and
+   * categories.
+   * @return true if successful, false otherwise.
+   */
+  bool getAllIngredients(
+      std::vector<std::pair<std::string, std::string>> &ingredients);
 
   /**
    * @brief Adds a new meal to the database.

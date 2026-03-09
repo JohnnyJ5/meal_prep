@@ -3,7 +3,33 @@ let isPlanning = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchMeals();
+    fetchIngredients();
 });
+
+let availableIngredients = [];
+
+async function fetchIngredients() {
+    try {
+        const response = await fetch('/api/ingredients');
+        if (response.ok) {
+            availableIngredients = await response.json();
+            updateIngredientsDatalist();
+        }
+    } catch (e) {
+        console.error("Error fetching ingredients:", e);
+    }
+}
+
+function updateIngredientsDatalist() {
+    const datalist = document.getElementById('available-ingredients');
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    availableIngredients.forEach(ing => {
+        const option = document.createElement('option');
+        option.value = ing.name;
+        datalist.appendChild(option);
+    });
+}
 
 async function fetchMeals() {
     const loadingState = document.getElementById('loading');
@@ -478,7 +504,10 @@ function addIngredientRow(name = "", amount = "", unit = 0) {
     }
 
     row.innerHTML = `
-        <input type="text" placeholder="Ingredient Name (e.g., Chicken Breast)" value="${name}" required class="form-control name-input">
+        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+            <input type="text" list="available-ingredients" placeholder="Ingredient Name (e.g., Chicken Breast)" value="${name}" required class="form-control name-input" style="flex: 1;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openAddIngredientModal(this)" title="New Ingredient">+</button>
+        </div>
         <input type="number" step="0.01" placeholder="Amount" value="${amount}" required class="form-control amount-input">
         <select class="form-control unit-input">
             ${unitOptions}
@@ -556,5 +585,44 @@ async function deleteMeal(mealId) {
     } catch (err) {
         console.error(err);
         alert("Error deleting meal.");
+    }
+}
+
+let lastActiveInput = null;
+
+function openAddIngredientModal(btn) {
+    lastActiveInput = btn.previousElementSibling;
+    const currentVal = lastActiveInput.value.trim();
+    document.getElementById('new-ing-name').value = currentVal;
+    document.getElementById('add-ingredient-modal').classList.remove('hidden');
+}
+
+async function createNewIngredient(e) {
+    e.preventDefault();
+    const name = document.getElementById('new-ing-name').value.trim();
+    const category = document.getElementById('new-ing-category').value.trim();
+
+    if (!name || !category) return;
+
+    try {
+        const response = await fetch('/api/ingredients/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, category })
+        });
+
+        if (response.ok) {
+            closeModal('add-ingredient-modal');
+            await fetchIngredients(); // Refresh list
+            if (lastActiveInput) {
+                lastActiveInput.value = name;
+            }
+            document.getElementById('new-ingredient-form').reset();
+        } else {
+            alert("Failed to add ingredient. It might already exist.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error saving ingredient.");
     }
 }
