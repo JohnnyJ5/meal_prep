@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
       // Start the server
       std::cout << "Starting Meal Prep API on http://0.0.0.0:" << config.port
                 << std::endl;
-      app.port(config.port).multithreaded().run();
+      app.bindaddr("0.0.0.0").port(config.port).multithreaded().run();
       return 0;
     }
 

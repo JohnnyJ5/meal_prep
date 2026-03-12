@@ -12,7 +12,7 @@ start: build
 	@echo "Stopping any existing server instances..."
 	-docker exec meal_prep_dev pkill meal_prep || true
 	@echo "Starting Meal Prep API on port 8080 inside container..."
-	docker exec -d meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./build_docker/meal_prep --serve"
+	docker exec -d meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./build_docker/meal_prep --serve > server.log 2>&1"
 
 stop:
 	@echo "Stopping Meal Prep environment..."

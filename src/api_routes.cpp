@@ -1,5 +1,6 @@
 #include "api_routes.h"
 #include "meal_planner.h"
+#include <iostream>
 
 void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
                  MealFactory &factory, const Config &config) {
@@ -226,6 +227,11 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
             return crow::response(std::move(res));
           });
 
+  // Route: Health check
+  CROW_ROUTE(app, "/api/health")([]() {
+    return "OK";
+  });
+
   // Route: Serve index.html at root
   CROW_ROUTE(app, "/")([]() {
     crow::response res;
@@ -237,6 +243,9 @@ void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
   CROW_ROUTE(app, "/<string>")([](std::string path) {
     crow::response res;
     res.set_static_file_info("static/" + path);
+    if (res.code == 404) {
+      std::cerr << "Static file not found: static/" << path << std::endl;
+    }
     return res;
   });
 }
