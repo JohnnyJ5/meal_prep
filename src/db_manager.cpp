@@ -65,10 +65,24 @@ bool DBManager::initializeSchema() {
   if (!executeQuery(createMealsTable))
     return false;
 
-  // Add category column to existing databases (ignore errors if it already
-  // exists)
-  executeQuery(
-      "ALTER TABLE meals ADD COLUMN category TEXT DEFAULT 'Uncategorized';");
+  // Add category column to existing databases if it doesn't exist
+  bool columnExists = false;
+  sqlite3_stmt *stmt;
+  const std::string checkColumn = "PRAGMA table_info(meals);";
+  if (sqlite3_prepare_v2(d_db, checkColumn.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      const char *colName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+      if (colName && std::string(colName) == "category") {
+        columnExists = true;
+        break;
+      }
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  if (!columnExists) {
+    executeQuery("ALTER TABLE meals ADD COLUMN category TEXT DEFAULT 'Uncategorized';");
+  }
 
   if (!executeQuery(createIngredientsTable))
     return false;
@@ -154,11 +168,8 @@ bool DBManager::addMeal(const Meal &meal) {
     // process: I will use a dummy "None" for now and update `ingredient.h`
     // shortly.
 
-    // sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1,
-    // SQLITE_TRANSIENT);
-    sqlite3_bind_text(
-        stmtIngred, 5, "None", -1,
-        SQLITE_TRANSIENT); // Temporary until ingredient.h is checked
+    sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1,
+                      SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
       sqlite3_finalize(stmtIngred);

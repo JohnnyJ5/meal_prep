@@ -61,8 +61,10 @@ Config loadConfig(const std::string &configFilePath) {
     // Check if the credentials file exists
     std::ifstream credFile(credPath);
     if (!credFile.is_open()) {
-      std::cerr << "Warning: Could not open credentials file at " << credPath
-                << ". Checking /secrets/credentials.json as fallback...\n";
+      if (!config.email_recipients.empty()) {
+        std::cerr << "Warning: Could not open credentials file at " << credPath
+                  << ". Checking /secrets/credentials.json as fallback...\n";
+      }
       
       // Fallback for Secret Manager mount
       credPath = "/secrets/credentials.json";
@@ -84,7 +86,7 @@ Config loadConfig(const std::string &configFilePath) {
       } else {
         std::cerr << "Warning: Failed to parse JSON in " << credPath << "\n";
       }
-    } else {
+    } else if (!config.email_recipients.empty()) {
       std::cerr << "Warning: Could not open credentials file at " << credPath << "\n";
     }
   }
