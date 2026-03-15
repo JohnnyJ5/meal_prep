@@ -17,14 +17,16 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/meal-prep'
       - '--region'
-      - 'us-central1' # Change to your preferred region
+      - 'us-central1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
       - '--update-env-vars'
       - 'DB_PATH=/mnt/db/meals.db'
-      # This assumes you have already created the bucket and will mount it manually or via gcloud
-      # Note: Mounting GCS volumes in Cloud Run is currently done via --add-volume and --add-volume-mount
+      - '--add-volume'
+      - 'name=db-volume,type=cloud-storage,bucket=meal-prep-db-bucket'
+      - '--add-volume-mount'
+      - 'volume=db-volume,mount-path=/mnt/db'
 
 images:
   - 'gcr.io/$PROJECT_ID/meal-prep'
