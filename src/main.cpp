@@ -30,8 +30,10 @@ int main(int argc, char **argv) {
       }
     }
 
+    Config config = loadConfig("meal_prep.conf.json");
+
     // Initialize Database
-    auto dbManager = std::make_shared<DBManager>("meals.db");
+    auto dbManager = std::make_shared<DBManager>(config.db_path);
     if (!dbManager->initializeSchema()) {
       std::cerr << "Failed to initialize database schema" << std::endl;
       return 1;
@@ -40,9 +42,7 @@ int main(int argc, char **argv) {
     dbManager->seedDefaultIngredients();
 
     MealFactory factory(dbManager);
-
-    Config config = loadConfig("meal_prep.conf.json");
-
+    
     if (serveWeb) {
       crow::SimpleApp app;
       setupRoutes(app, dbManager, factory, config);

@@ -12,6 +12,7 @@ struct Config {
   std::vector<std::string> email_recipients;
   std::string sender_email;
   std::string sender_password;
+  std::string db_path;
 };
 
 /**

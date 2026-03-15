@@ -24,9 +24,20 @@ RUN useradd -m -s /bin/bash -G sudo devuser && \
 WORKDIR /home/devuser/meal_prep
 RUN chown -R devuser:devuser /home/devuser/meal_prep
 
+# Copy project files
+COPY --chown=devuser:devuser . .
+
+# Build the application
+RUN mkdir -p build_docker && \
+    cd build_docker && \
+    cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && \
+    make -j$(nproc)
+
 USER devuser
 
-# Expose the port your server will listen on
+# Expose the port (GCP Cloud Run uses PORT env var, but defaults to 8080)
 EXPOSE 8080
 
-CMD ["tail", "-f", "/dev/null"]
+# Command to run the server
+# --serve starts the web UI
+CMD ["./build_docker/meal_prep", "--serve"]
