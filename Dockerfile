@@ -28,8 +28,6 @@ RUN chown -R devuser:devuser .
 USER devuser
 RUN make internal-build
 
-CMD ["tail", "-f", "/dev/null"]
-
 # --- Stage 2: Production Environment ---
 FROM ubuntu:22.04 AS prod-env
 
@@ -50,12 +48,10 @@ WORKDIR /home/appuser/app
 # Copy binary from build stage
 COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/build_docker/meal_prep .
 COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/static ./static
+COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/meal_prep.conf.json .
 
 USER appuser
 
 EXPOSE 8080
 
 CMD ["./meal_prep", "--serve"]
-
-# Default to the build-env stage for local dev
-FROM build-env
