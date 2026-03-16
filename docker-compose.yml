@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: build-env
     container_name: meal_prep_dev
     ports:
       - "2222:22"

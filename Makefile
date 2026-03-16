@@ -3,8 +3,9 @@
 all: build
 
 build:
-	@echo "Ensuring Docker environment is up..."
-	docker compose up -d
+	@echo "Ensuring Docker environment is up (Development stage)..."
+	docker compose build meal_prep_dev
+	docker compose up -d meal_prep_dev
 	@echo "Building the project inside the container..."
 	docker exec meal_prep_dev bash -c "mkdir -p build_docker && cd build_docker && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && make -j"
 

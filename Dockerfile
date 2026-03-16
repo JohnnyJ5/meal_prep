@@ -1,8 +1,8 @@
-FROM ubuntu:22.04
+# --- Stage 1: Build Environment ---
+FROM ubuntu:22.04 AS build-env
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Added libasio-dev for networking
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -16,28 +16,49 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# devuser for local development
 RUN useradd -m -s /bin/bash -G sudo devuser && \
     echo "devuser:devuser" | chpasswd && \
     echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Create work directory
 WORKDIR /home/devuser/meal_prep
-RUN chown -R devuser:devuser /home/devuser/meal_prep
-
-# Copy project files
-COPY --chown=devuser:devuser . .
-
-# Build the application
-RUN mkdir -p build_docker && \
-    cd build_docker && \
-    cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && \
-    make -j$(nproc)
+COPY . .
+RUN chown -R devuser:devuser .
 
 USER devuser
+RUN mkdir -p build_docker && \
+    cd build_docker && \
+    cmake .. && \
+    make -j$(nproc)
 
-# Expose the port (GCP Cloud Run uses PORT env var, but defaults to 8080)
+CMD ["tail", "-f", "/dev/null"]
+
+# --- Stage 2: Production Environment ---
+FROM ubuntu:22.04 AS prod-env
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Only install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libcurl4 \
+    libsqlite3-0 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# appuser for production (limited scope)
+RUN useradd -m -s /bin/bash appuser
+WORKDIR /home/appuser/app
+
+# Copy binary from build stage
+COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/build_docker/meal_prep .
+COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/static ./static
+
+USER appuser
+
 EXPOSE 8080
 
-# Command to run the server
-# --serve starts the web UI
-CMD ["./build_docker/meal_prep", "--serve"]
+CMD ["./meal_prep", "--serve"]
+
+# Default to the build-env stage for local dev
+FROM build-env
