@@ -26,10 +26,7 @@ COPY . .
 RUN chown -R devuser:devuser .
 
 USER devuser
-RUN mkdir -p build_docker && \
-    cd build_docker && \
-    cmake .. && \
-    make -j$(nproc)
+RUN make internal-build
 
 CMD ["tail", "-f", "/dev/null"]
 
