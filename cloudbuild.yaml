@@ -27,10 +27,8 @@ steps:
       - 'name=db-volume,type=cloud-storage,bucket=meal-prep-db-bucket'
       - '--add-volume-mount'
       - 'volume=db-volume,mount-path=/mnt/db'
-      - '--add-volume'
-      - 'name=secret-volume,type=secret,secret-name=email-credentials,items=latest:credentials.json'
-      - '--add-volume-mount'
-      - 'volume=secret-volume,mount-path=/secrets'
+      - '--update-secrets'
+      - '/secrets/credentials.json=email-credentials:latest'
 
 images:
   - 'gcr.io/$PROJECT_ID/meal-prep'
