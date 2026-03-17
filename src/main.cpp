@@ -3,6 +3,7 @@
 #include "db_manager.h"
 #include "meal_factory.h"
 #include "meal_planner.h"
+#include "middleware.h"
 #include <crow.h>
 #include <curl/curl.h>
 #include <iostream>
@@ -44,7 +45,7 @@ int main(int argc, char **argv) {
     MealFactory factory(dbManager);
     
     if (serveWeb) {
-      crow::SimpleApp app;
+      crow::App<RequestTimerMiddleware> app;
       setupRoutes(app, dbManager, factory, config);
 
       // Start the server

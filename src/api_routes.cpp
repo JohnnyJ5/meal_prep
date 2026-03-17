@@ -2,8 +2,9 @@
 #include "meal_planner.h"
 #include <iostream>
 
-void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
-                 MealFactory &factory, const Config &config) {
+void setupRoutes(crow::App<RequestTimerMiddleware> &app,
+                 std::shared_ptr<DBManager> dbManager, MealFactory &factory,
+                 const Config &config) {
   // Route: Get all available meals
   CROW_ROUTE(app, "/api/meals")([&factory]() {
     std::vector<std::pair<std::string, std::string>> meals;

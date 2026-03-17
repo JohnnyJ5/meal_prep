@@ -3,6 +3,7 @@
 #include "config_parser.h"
 #include "db_manager.h"
 #include "meal_factory.h"
+#include "middleware.h"
 #include <crow.h>
 #include <memory>
 
@@ -20,5 +21,6 @@
  * @param config The application configuration containing settings such as email
  * credentials.
  */
-void setupRoutes(crow::SimpleApp &app, std::shared_ptr<DBManager> dbManager,
-                 MealFactory &factory, const Config &config);
+void setupRoutes(crow::App<RequestTimerMiddleware> &app,
+                 std::shared_ptr<DBManager> dbManager, MealFactory &factory,
+                 const Config &config);
