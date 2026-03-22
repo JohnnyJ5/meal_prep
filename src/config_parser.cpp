@@ -99,8 +99,8 @@ Config loadConfig(const std::string &configFilePath) {
         
         if (!credFile.is_open()) {
           std::cerr << "Warning: Could not open calendar credentials file at "
-                    << credPath << ". Checking /secrets/calendar_credentials.json as fallback...\n";
-          credPath = "/secrets/calendar_credentials.json";
+                    << credPath << ". Checking /secrets_calendar/calendar_credentials.json as fallback...\n";
+          credPath = "/secrets_calendar/calendar_credentials.json";
           credFile.open(credPath);
         }
 
