@@ -13,6 +13,10 @@ struct Config {
   std::string sender_email;
   std::string sender_password;
   std::string db_path;
+  // Google OAuth2
+  std::string google_client_id;
+  std::string google_client_secret;
+  std::string google_redirect_uri;
 };
 
 /**

@@ -4,6 +4,8 @@
 #include "meal_factory.h"
 #include "meal_planner.h"
 #include "middleware.h"
+#include "google_oauth.h"
+#include "calendar_service.h"
 #include <crow.h>
 #include <curl/curl.h>
 #include <iostream>
@@ -45,8 +47,11 @@ int main(int argc, char **argv) {
     MealFactory factory(dbManager);
     
     if (serveWeb) {
+      auto googleOAuth = std::make_shared<GoogleOAuth>(config, dbManager);
+      auto calendarService = std::make_shared<CalendarService>(*googleOAuth);
+
       crow::App<RequestTimerMiddleware> app;
-      setupRoutes(app, dbManager, factory, config);
+      setupRoutes(app, dbManager, factory, config, googleOAuth, calendarService);
 
       // Start the server
       std::cout << "Starting Meal Prep API on http://0.0.0.0:" << config.port

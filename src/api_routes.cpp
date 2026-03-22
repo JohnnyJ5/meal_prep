@@ -4,7 +4,8 @@
 
 void setupRoutes(crow::App<RequestTimerMiddleware> &app,
                  std::shared_ptr<DBManager> dbManager, MealFactory &factory,
-                 const Config &config) {
+                 const Config &config, std::shared_ptr<GoogleOAuth> googleOAuth,
+                 std::shared_ptr<CalendarService> calendarService) {
   // Route: Get all available meals
   CROW_ROUTE(app, "/api/meals")([&factory]() {
     std::vector<std::pair<std::string, std::string>> meals;
@@ -249,4 +250,63 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
     }
     return res;
   });
+
+  // --- Google OAuth2 Routes ---
+
+  // Route: Redirect to Google OAuth2 consent screen
+  CROW_ROUTE(app, "/auth/google")([googleOAuth]() {
+    auto url = googleOAuth->getAuthUrl();
+    crow::response res;
+    res.redirect(url);
+    return res;
+  });
+
+  // Route: Handle the callback from Google
+  CROW_ROUTE(app, "/auth/google/callback")
+  ([googleOAuth](const crow::request &req) {
+    auto code = req.url_params.get("code");
+    if (!code) {
+      return crow::response(400, "Authorization code not found");
+    }
+
+    if (googleOAuth->exchangeCodeForTokens(code)) {
+      crow::response res;
+      res.redirect("/");
+      return res;
+    } else {
+      return crow::response(500, "Failed to exchange authorization code");
+    }
+  });
+
+  // --- Google Calendar Routes ---
+
+  // Route: List upcoming events from Google Calendar
+  CROW_ROUTE(app, "/api/calendar/events")([calendarService]() {
+    auto events = calendarService->listEvents();
+    if (events.empty()) {
+      return crow::response(401, "Google account not linked or error fetching events");
+    }
+    crow::response res(events);
+    res.add_header("Content-Type", "application/json");
+    return res;
+  });
+
+  // Route: Add a meal plan to Google Calendar
+  CROW_ROUTE(app, "/api/calendar/sync")
+      .methods(crow::HTTPMethod::POST)(
+          [calendarService](const crow::request &req) {
+            auto body = crow::json::load(req.body);
+            if (!body) return crow::response(400, "Invalid JSON");
+            
+            std::string summary = "Meal Plan Synced";
+            if (body.has("summary")) summary = body["summary"].s();
+            
+            // Dummy date logic for now: Use tomorrow at 6 PM
+            // In a better implementation, this would parse the specific schedule
+            if (calendarService->createEvent(summary, "Meal planned via app", "2026-03-23T18:00:00Z", "2026-03-23T19:00:00Z")) {
+                return crow::response(200, "Synced to Google Calendar");
+            } else {
+                return crow::response(500, "Failed to sync to Google Calendar. Check server logs.");
+            }
+          });
 }

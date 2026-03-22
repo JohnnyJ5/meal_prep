@@ -263,6 +263,37 @@ header p {
     background: rgba(255, 255, 255, 0.05);
 }
 
+.btn-google {
+    background: #fff;
+    color: #3c4043;
+    border: 1px solid #dadce0;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.btn-google:hover {
+    background: #f8f9fa;
+    border-color: #d2e3fc;
+    box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+#sync-calendar-btn {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+#sync-calendar-btn:hover {
+    background: rgba(88, 166, 255, 0.1);
+}
+
 /* Loading States */
 .spinner {
     width: 40px;

@@ -209,6 +209,7 @@ function drop(ev) {
 function updateActionBar() {
     const countSpan = document.getElementById('selected-count');
     const planBtn = document.getElementById('plan-btn');
+    const syncBtn = document.getElementById('sync-calendar-btn');
     const viewBtn = document.getElementById('view-ingredients-btn');
 
     let count = 0;
@@ -225,6 +226,7 @@ function updateActionBar() {
 
     if (totalSelected > 0) {
         planBtn.removeAttribute('disabled');
+        syncBtn.classList.remove('hidden');
         if (selectedMeals.size > 0) {
             viewBtn.removeAttribute('disabled');
         } else {
@@ -232,6 +234,7 @@ function updateActionBar() {
         }
     } else {
         planBtn.setAttribute('disabled', 'true');
+        syncBtn.classList.add('hidden');
         viewBtn.setAttribute('disabled', 'true');
     }
 }
@@ -300,6 +303,52 @@ function showResultModal(scheduleText) {
 
     output.textContent = scheduleText;
     modal.classList.remove('hidden');
+}
+
+async function syncCalendar() {
+    const syncBtn = document.getElementById('sync-calendar-btn');
+    const originalText = syncBtn.textContent;
+    syncBtn.setAttribute('disabled', 'true');
+    syncBtn.textContent = 'Syncing...';
+
+    try {
+        const schedule = {};
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        days.forEach(day => {
+            schedule[day] = [];
+            const slot = document.querySelector(`#day-${day} .meal-slot`);
+            if (slot) {
+                const cards = slot.querySelectorAll('.meal-card');
+                cards.forEach(c => {
+                    schedule[day].push(c.getAttribute('data-meal-id'));
+                });
+            }
+        });
+
+        const response = await fetch('/api/calendar/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(schedule)
+        });
+
+        if (response.ok) {
+            alert("Successfully synced to Google Calendar! ✨");
+        } else {
+            const result = await response.text();
+            if (response.status === 401) {
+                alert("Please link your Google account first.");
+                window.location.href = "/auth/google";
+            } else {
+                alert("Failed to sync: " + result);
+            }
+        }
+    } catch (e) {
+        console.error("Sync error:", e);
+        alert("An error occurred during sync.");
+    } finally {
+        syncBtn.removeAttribute('disabled');
+        syncBtn.textContent = originalText;
+    }
 }
 
 function closeModal(modalId = 'result-modal') {

@@ -4,6 +4,8 @@
 #include "db_manager.h"
 #include "meal_factory.h"
 #include "middleware.h"
+#include "google_oauth.h"
+#include "calendar_service.h"
 #include <crow.h>
 #include <memory>
 
@@ -23,4 +25,5 @@
  */
 void setupRoutes(crow::App<RequestTimerMiddleware> &app,
                  std::shared_ptr<DBManager> dbManager, MealFactory &factory,
-                 const Config &config);
+                 const Config &config, std::shared_ptr<GoogleOAuth> googleOAuth,
+                 std::shared_ptr<CalendarService> calendarService);

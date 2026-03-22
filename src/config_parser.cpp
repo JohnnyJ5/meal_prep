@@ -41,14 +41,14 @@ Config loadConfig(const std::string &configFilePath) {
         }
       }
 
-      if (jsonBody.has("credentials_file")) {
-        std::string credPath = jsonBody["credentials_file"].s();
+      if (jsonBody.has("email_credentials_file") || jsonBody.has("credentials_file")) {
+        std::string credPath = jsonBody.has("email_credentials_file") ? jsonBody["email_credentials_file"].s() : jsonBody["credentials_file"].s();
         
         // Check if the credentials file exists
         std::ifstream credFile(credPath);
         if (!credFile.is_open()) {
           if (!config.email_recipients.empty()) {
-            std::cerr << "Warning: Could not open credentials file at " << credPath
+            std::cerr << "Warning: Could not open email credentials file at " << credPath
                       << ". Checking /secrets/credentials.json as fallback...\n";
           }
           
@@ -72,9 +72,39 @@ Config loadConfig(const std::string &configFilePath) {
           } else {
             std::cerr << "Warning: Failed to parse JSON in " << credPath << "\n";
           }
-        } else if (!config.email_recipients.empty()) {
-          std::cerr << "Warning: Could not open credentials file at " << credPath << "\n";
         }
+      }
+
+      if (jsonBody.has("gmail_calendar_credentials_file")) {
+        std::string credPath = jsonBody["gmail_calendar_credentials_file"].s();
+        std::ifstream credFile(credPath);
+        if (credFile.is_open()) {
+          std::stringstream credBuffer;
+          credBuffer << credFile.rdbuf();
+          auto credJson = crow::json::load(credBuffer.str());
+
+          if (credJson) {
+            if (credJson.has("client_id")) {
+              config.google_client_id = credJson["client_id"].s();
+            }
+            if (credJson.has("client_secret")) {
+              config.google_client_secret = credJson["client_secret"].s();
+            }
+            if (credJson.has("redirect_uri")) {
+              config.google_redirect_uri = credJson["redirect_uri"].s();
+            }
+          }
+        } else {
+          std::cerr << "Warning: Could not open calendar credentials file at " << credPath << "\n";
+        }
+      }
+
+      if (jsonBody.has("google_redirect_uri")) {
+        config.google_redirect_uri = jsonBody["google_redirect_uri"].s();
+      }
+
+      if (config.google_redirect_uri.empty()) {
+          config.google_redirect_uri = "http://localhost:8080/auth/google/callback";
       }
     }
   }

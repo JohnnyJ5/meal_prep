@@ -2,6 +2,7 @@
 #define DB_MANAGER_H
 
 #include "meal.h"
+#include <cstdint>
 #include <memory>
 #include <sqlite3.h>
 #include <string>
@@ -97,6 +98,26 @@ public:
 
   // Provide raw connection if occasionally needed (e.g. testing)
   sqlite3 *getConnection() const { return d_db; }
+
+  /**
+   * @brief Saves Google OAuth2 tokens to the database.
+   * @param accessToken The access token.
+   * @param refreshToken The refresh token.
+   * @param expiryTime The timestamp when the access token expires.
+   * @return true if successful, false otherwise.
+   */
+  bool saveGoogleTokens(const std::string &accessToken,
+                        const std::string &refreshToken, int64_t expiryTime);
+
+  /**
+   * @brief Retrieves Google OAuth2 tokens from the database.
+   * @param accessToken String to populate with the access token.
+   * @param refreshToken String to populate with the refresh token.
+   * @param expiryTime Pointer to populate with the expiry timestamp.
+   * @return true if tokens were found, false otherwise.
+   */
+  bool getGoogleTokens(std::string &accessToken, std::string &refreshToken,
+                       int64_t &expiryTime);
 
 private:
   sqlite3 *d_db;

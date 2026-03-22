@@ -3,5 +3,6 @@
     "email_recipients": [
         "michaelcoffey5@gmail.com"
     ],
-    "credentials_file": "/home/devuser/.meal_prep_credentials.conf.json"
+    "email_credentials_file": "/home/devuser/.meal_prep/email_credentials.json",
+    "gmail_calendar_credentials_file": "/home/devuser/.meal_prep/gmail_calendar_credentials.json"
 }

@@ -43,6 +43,8 @@ set(LIB_SOURCES
     src/meal_planner.cpp
     src/api_routes.cpp
     src/config_parser.cpp
+    src/google_oauth.cpp
+    src/calendar_service.cpp
     # Add other library source files here
 )
 

@@ -58,6 +58,14 @@ bool DBManager::initializeSchema() {
       "category TEXT DEFAULT 'Uncategorized'"
       ");";
 
+  std::string createGoogleTokensTable =
+      "CREATE TABLE IF NOT EXISTS google_tokens ("
+      "id INTEGER PRIMARY KEY CHECK (id = 1), "
+      "access_token TEXT NOT NULL, "
+      "refresh_token TEXT, "
+      "expiry_time INTEGER NOT NULL"
+      ");";
+
   // Enable foreign keys
   if (!executeQuery("PRAGMA foreign_keys = ON;"))
     return false;
@@ -88,6 +96,9 @@ bool DBManager::initializeSchema() {
     return false;
 
   if (!executeQuery(createAvailableIngredientsTable))
+    return false;
+
+  if (!executeQuery(createGoogleTokensTable))
     return false;
 
   return true;
@@ -585,4 +596,58 @@ bool DBManager::seedDefaultMeals() {
   }
 
   return allSuccess;
+}
+bool DBManager::saveGoogleTokens(const std::string &accessToken,
+                                 const std::string &refreshToken,
+                                 int64_t expiryTime) {
+  if (!d_db)
+    return false;
+  std::string query =
+      "INSERT OR REPLACE INTO google_tokens (id, access_token, refresh_token, "
+      "expiry_time) "
+      "VALUES (1, ?, ?, ?);";
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+    return false;
+  sqlite3_bind_text(stmt, 1, accessToken.c_str(), -1, SQLITE_TRANSIENT);
+  if (refreshToken.empty()) {
+    sqlite3_bind_null(stmt, 2);
+  } else {
+    sqlite3_bind_text(stmt, 2, refreshToken.c_str(), -1, SQLITE_TRANSIENT);
+  }
+  sqlite3_bind_int64(stmt, 3, expiryTime);
+  bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+  sqlite3_finalize(stmt);
+  return success;
+}
+
+bool DBManager::getGoogleTokens(std::string &accessToken,
+                                std::string &refreshToken,
+                                int64_t &expiryTime) {
+  if (!d_db)
+    return false;
+  std::string query = "SELECT access_token, refresh_token, expiry_time FROM "
+                      "google_tokens WHERE id = 1;";
+  sqlite3_stmt *stmt;
+  if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+    return false;
+  bool found = false;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    const char *access =
+        reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+    if (access) {
+      accessToken = access;
+    }
+    const char *refresh =
+        reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
+    if (refresh) {
+      refreshToken = refresh;
+    } else {
+      refreshToken = "";
+    }
+    expiryTime = sqlite3_column_int64(stmt, 2);
+    found = true;
+  }
+  sqlite3_finalize(stmt);
+  return found;
 }

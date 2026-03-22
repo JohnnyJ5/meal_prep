@@ -19,7 +19,13 @@
                     <h1>Weekly Meal Prep</h1>
                     <p>Select your meals for the week below to generate your grocery list and schedule.</p>
                 </div>
-                <button id="manage-btn" class="btn btn-secondary" onclick="openManageModal()">Manage Meals</button>
+                <div class="auth-buttons">
+                    <button id="manage-btn" class="btn btn-secondary" onclick="openManageModal()">Manage Meals</button>
+                    <a href="/auth/google" class="btn btn-google">
+                        <img src="https://www.google.com/favicon.ico" width="16" height="16" alt="Google">
+                        Link Calendar
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -92,6 +98,9 @@
             <button id="view-ingredients-btn" class="btn btn-secondary" onclick="viewIngredients()"
                 style="margin-left: auto; margin-right: 1rem;">
                 View Ingredients
+            </button>
+            <button id="sync-calendar-btn" class="btn btn-secondary hidden" onclick="syncCalendar()">
+                Sync to Calendar
             </button>
             <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
                 <span class="btn-text">Generate Plan & Send Email</span>
