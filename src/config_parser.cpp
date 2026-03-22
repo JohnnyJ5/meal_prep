@@ -96,6 +96,14 @@ Config loadConfig(const std::string &configFilePath) {
       if (jsonBody.has("gmail_calendar_credentials_file")) {
         std::string credPath = jsonBody["gmail_calendar_credentials_file"].s();
         std::ifstream credFile(credPath);
+        
+        if (!credFile.is_open()) {
+          std::cerr << "Warning: Could not open calendar credentials file at "
+                    << credPath << ". Checking /secrets/calendar_credentials.json as fallback...\n";
+          credPath = "/secrets/calendar_credentials.json";
+          credFile.open(credPath);
+        }
+
         if (credFile.is_open()) {
           std::stringstream credBuffer;
           credBuffer << credFile.rdbuf();
