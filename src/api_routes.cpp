@@ -260,7 +260,23 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   });
 
   // Route: Serve index.html at root
-  CROW_ROUTE(app, "/")([]() {
+  CROW_ROUTE(app, "/")([googleOAuth](const crow::request &req) {
+    if (auto code = req.url_params.get("code")) {
+      CROW_LOG_INFO << "Received OAuth code at root route. Exchanging...";
+      if (googleOAuth->exchangeCodeForTokens(code)) {
+        CROW_LOG_INFO << "Successfully exchanged authorization code for tokens";
+      } else {
+        CROW_LOG_ERROR << "Failed to exchange authorization code";
+      }
+      crow::response res;
+      res.redirect("/");
+      return res;
+    }
+    
+    if (auto error = req.url_params.get("error")) {
+      CROW_LOG_ERROR << "OAuth Error received at root: " << error;
+    }
+    
     crow::response res;
     res.set_static_file_info("static/index.html");
     return res;

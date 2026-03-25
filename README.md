@@ -95,6 +95,7 @@ The project follows a streamlined development-to-deployment workflow:
     - Changes are pushed to production via `gcloud builds submit`, which triggers the configuration in `cloudbuild.yaml`.
     - The application is containerized and deployed to Google Cloud Run.
     - Persistence is maintained by syncing the SQLite `meals.db` with GCS before and after service execution.
+    - To verify the deployment status and get the live URL, run: `gcloud run services describe meal-prep --region us-central1`
 
 ## Project Structure
 
