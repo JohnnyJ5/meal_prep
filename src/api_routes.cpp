@@ -15,6 +15,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       res[i]["name"] = meals[i].first;
       res[i]["category"] = meals[i].second;
     }
+    CROW_LOG_INFO << "Successfully retrieved " << meals.size() << " available meals";
     return res;
   });
 
@@ -27,6 +28,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       res[i]["name"] = ingredients[i].first;
       res[i]["category"] = ingredients[i].second;
     }
+    CROW_LOG_INFO << "Successfully retrieved " << ingredients.size() << " available ingredients";
     return res;
   });
 
@@ -34,10 +36,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   CROW_ROUTE(app, "/api/ingredients/add")
       .methods(crow::HTTPMethod::POST)([&dbManager](const crow::request &req) {
         auto body = crow::json::load(req.body);
-        if (!body)
+        if (!body) {
+          CROW_LOG_ERROR << "Invalid JSON for /api/ingredients/add POST";
           return crow::response(400, "Invalid JSON");
+        }
 
         if (!body.has("name") || !body.has("category")) {
+          CROW_LOG_ERROR << "Missing name or category for /api/ingredients/add POST";
           return crow::response(400, "Missing name or category");
         }
 
@@ -45,8 +50,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
         std::string category = body["category"].s();
 
         if (dbManager->addIngredient(name, category)) {
+          CROW_LOG_INFO << "Successfully added ingredient: " << name;
           return crow::response(200, "Ingredient added successfully");
         } else {
+          CROW_LOG_ERROR << "Failed to add ingredient: " << name;
           return crow::response(500, "Failed to add ingredient");
         }
       });
@@ -55,8 +62,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   CROW_ROUTE(app, "/api/meals/add")
       .methods(crow::HTTPMethod::POST)([&dbManager](const crow::request &req) {
         auto body = crow::json::load(req.body);
-        if (!body)
+        if (!body) {
+          CROW_LOG_ERROR << "Invalid JSON for /api/meals/add POST";
           return crow::response(400, "Invalid JSON");
+        }
 
         try {
           std::string mealName = body["name"].s();
@@ -84,12 +93,15 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
 
           Meal newMeal(mealName, ingredients, category);
           if (dbManager->addMeal(newMeal)) {
+            CROW_LOG_INFO << "Successfully added meal: " << mealName;
             return crow::response(200, "Meal added successfully");
           } else {
+            CROW_LOG_ERROR << "Failed to add meal: " << mealName << " (might already exist)";
             return crow::response(500, "Failed to add meal to database. "
                                        "Name might already exist.");
           }
         } catch (const std::exception &e) {
+          CROW_LOG_ERROR << "Invalid meal data format in /api/meals/add POST: " << e.what();
           return crow::response(400, "Invalid meal data format");
         }
       });
@@ -99,8 +111,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       .methods(crow::HTTPMethod::PUT)([&dbManager](const crow::request &req,
                                                    std::string mealName) {
         auto body = crow::json::load(req.body);
-        if (!body)
+        if (!body) {
+          CROW_LOG_ERROR << "Invalid JSON for /api/meals/" << mealName << " PUT";
           return crow::response(400, "Invalid JSON");
+        }
 
         try {
           // We expect the body to contain the new ingredients (and
@@ -130,11 +144,14 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
           // Name from URL is used
           Meal updatedMeal(mealName, ingredients, category);
           if (dbManager->updateMeal(updatedMeal)) {
+            CROW_LOG_INFO << "Successfully updated meal: " << mealName;
             return crow::response(200, "Meal updated successfully");
           } else {
+            CROW_LOG_ERROR << "Failed to update meal: " << mealName;
             return crow::response(500, "Failed to update meal in database.");
           }
         } catch (const std::exception &e) {
+          CROW_LOG_ERROR << "Invalid meal data format in /api/meals/" << mealName << " PUT: " << e.what();
           return crow::response(400, "Invalid meal data format");
         }
       });
@@ -143,8 +160,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   CROW_ROUTE(app, "/api/meals/<string>")
       .methods(crow::HTTPMethod::DELETE)([&dbManager](std::string mealName) {
         if (dbManager->deleteMeal(mealName)) {
+          CROW_LOG_INFO << "Successfully deleted meal: " << mealName;
           return crow::response(200, "Meal deleted successfully");
         } else {
+          CROW_LOG_ERROR << "Failed to delete meal: " << mealName << " (not found or error)";
           return crow::response(404, "Meal not found or could not be deleted");
         }
       });
@@ -154,6 +173,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       .methods(crow::HTTPMethod::GET)([&dbManager](std::string mealName) {
         auto meal = dbManager->getMeal(mealName);
         if (meal) {
+          CROW_LOG_INFO << "Successfully retrieved meal: " << mealName;
           crow::json::wvalue res;
           res["name"] = meal->getName();
           res["category"] = meal->getCategory();
@@ -167,6 +187,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
           }
           return crow::response(std::move(res));
         } else {
+          CROW_LOG_WARNING << "Meal not found: " << mealName;
           return crow::response(404, "Meal not found");
         }
       });
@@ -176,8 +197,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       .methods(crow::HTTPMethod::POST)(
           [&factory, &config](const crow::request &req) {
             auto body = crow::json::load(req.body);
-            if (!body)
+            if (!body) {
+              CROW_LOG_ERROR << "Invalid JSON for /api/plan POST";
               return crow::response(400, "Invalid JSON");
+            }
 
             std::vector<std::unique_ptr<Meal>> createdMeals;
             std::vector<std::reference_wrapper<Meal>> mealRefs;
@@ -202,6 +225,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             }
 
             if (createdMeals.empty()) {
+              CROW_LOG_WARNING << "No valid meals selected for plan";
               return crow::response(400, "No valid meals selected.");
             }
 
@@ -218,6 +242,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             // Send Email
             SendPlanEmail(allIngredients, schedule, config);
 
+            CROW_LOG_INFO << "Successfully planned meals, failed subset size: " << failedMeals.size();
             crow::json::wvalue res;
             res["status"] = "success";
             res["schedule"] = scheduleOutput.str();
@@ -266,14 +291,17 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   ([googleOAuth](const crow::request &req) {
     auto code = req.url_params.get("code");
     if (!code) {
+      CROW_LOG_ERROR << "Authorization code not found in /auth/google/callback";
       return crow::response(400, "Authorization code not found");
     }
 
     if (googleOAuth->exchangeCodeForTokens(code)) {
+      CROW_LOG_INFO << "Successfully exchanged authorization code for tokens";
       crow::response res;
       res.redirect("/");
       return res;
     } else {
+      CROW_LOG_ERROR << "Failed to exchange authorization code";
       return crow::response(500, "Failed to exchange authorization code");
     }
   });
@@ -284,8 +312,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   CROW_ROUTE(app, "/api/calendar/events")([calendarService]() {
     auto events = calendarService->listEvents();
     if (events.empty()) {
+      CROW_LOG_WARNING << "Failed to fetch events or no events found";
       return crow::response(401, "Google account not linked or error fetching events");
     }
+    CROW_LOG_INFO << "Successfully fetched " << events.size() << " events from Calendar";
     crow::response res(events);
     res.add_header("Content-Type", "application/json");
     return res;
@@ -296,7 +326,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
       .methods(crow::HTTPMethod::POST)(
           [calendarService](const crow::request &req) {
             auto body = crow::json::load(req.body);
-            if (!body) return crow::response(400, "Invalid JSON");
+            if (!body) {
+                CROW_LOG_ERROR << "Invalid JSON for /api/calendar/sync POST";
+                return crow::response(400, "Invalid JSON");
+            }
             
             std::string summary = "Meal Plan Synced";
             if (body.has("summary")) summary = body["summary"].s();
@@ -304,8 +337,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             // Dummy date logic for now: Use tomorrow at 6 PM
             // In a better implementation, this would parse the specific schedule
             if (calendarService->createEvent(summary, "Meal planned via app", "2026-03-23T18:00:00Z", "2026-03-23T19:00:00Z")) {
+                CROW_LOG_INFO << "Successfully synced meal plan to Google Calendar: " << summary;
                 return crow::response(200, "Synced to Google Calendar");
             } else {
+                CROW_LOG_ERROR << "Failed to sync meal plan to Google Calendar: " << summary;
                 return crow::response(500, "Failed to sync to Google Calendar. Check server logs.");
             }
           });
