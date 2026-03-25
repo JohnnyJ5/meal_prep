@@ -14,6 +14,11 @@ echo "----------------------------------------"
 docker build -t ${IMAGE_URL} -f Dockerfile.job .
 
 echo "----------------------------------------"
+echo "Configuring Docker authentication..."
+echo "----------------------------------------"
+gcloud auth configure-docker gcr.io --quiet
+
+echo "----------------------------------------"
 echo "Pushing Docker image to Google Container Registry..."
 echo "----------------------------------------"
 docker push ${IMAGE_URL}
