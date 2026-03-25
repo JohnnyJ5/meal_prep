@@ -2,6 +2,8 @@
 #include <crow.h>
 #include <curl/curl.h>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 namespace {
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -40,11 +42,33 @@ bool CalendarService::createEvent(const std::string &summary,
   return false;
 }
 
-std::string CalendarService::listEvents(int maxResults) {
+std::string url_encode(const std::string &value) {
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex;
+    for (char c : value) {
+        if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            escaped << c;
+        } else {
+            escaped << std::uppercase << '%' << std::setw(2) << int((unsigned char)c);
+        }
+    }
+    return escaped.str();
+}
+
+std::string CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
   std::string url =
       "https://www.googleapis.com/calendar/v3/calendars/primary/"
-      "events?maxResults=" +
+      "events?singleEvents=true&orderBy=startTime&maxResults=" +
       std::to_string(maxResults);
+      
+  if (!timeMin.empty()) {
+      url += "&timeMin=" + url_encode(timeMin);
+  }
+  if (!timeMax.empty()) {
+      url += "&timeMax=" + url_encode(timeMax);
+  }
+      
   return makeAuthorizedRequest(url);
 }
 

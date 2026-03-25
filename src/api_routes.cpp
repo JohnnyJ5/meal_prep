@@ -325,8 +325,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   // --- Google Calendar Routes ---
 
   // Route: List upcoming events from Google Calendar
-  CROW_ROUTE(app, "/api/calendar/events")([calendarService]() {
-    auto events = calendarService->listEvents();
+  CROW_ROUTE(app, "/api/calendar/events")([calendarService](const crow::request &req) {
+    std::string timeMin = "";
+    std::string timeMax = "";
+    if (req.url_params.get("timeMin")) timeMin = req.url_params.get("timeMin");
+    if (req.url_params.get("timeMax")) timeMax = req.url_params.get("timeMax");
+
+    auto events = calendarService->listEvents(timeMin, timeMax);
     if (events.empty()) {
       CROW_LOG_WARNING << "Failed to fetch events or no events found";
       return crow::response(401, "Google account not linked or error fetching events");

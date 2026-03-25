@@ -1,0 +1,84 @@
+{
+    "name": "greek-lemon-chicken-and-potatoes",
+    "category": "Slow Cooker",
+    "ingredients": [
+        {
+            "name": "Yellow Potatoes",
+            "amount": 2.0,
+            "unit": 5,
+            "preparation": "Cut Into Large Chunks"
+        },
+        {
+            "name": "Yellow Onion",
+            "amount": 0.5,
+            "unit": 6,
+            "preparation": "Cut Into Chunks"
+        },
+        {
+            "name": "Garlic",
+            "amount": 5.0,
+            "unit": 9,
+            "preparation": "Minced"
+        },
+        {
+            "name": "Oregano",
+            "amount": 2.5,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Basil",
+            "amount": 1.0,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Salt",
+            "amount": 1.0,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Pepper",
+            "amount": 1.0,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Rosemary",
+            "amount": 1.0,
+            "unit": 4,
+            "preparation": "Crushed"
+        },
+        {
+            "name": "Chicken Thighs",
+            "amount": 3.0,
+            "unit": 5,
+            "preparation": "Bone-In, Skin-On"
+        },
+        {
+            "name": "Olive Oil",
+            "amount": 1.5,
+            "unit": 3,
+            "preparation": "None"
+        },
+        {
+            "name": "Chicken Broth",
+            "amount": 0.5,
+            "unit": 2,
+            "preparation": "None"
+        },
+        {
+            "name": "Lemon Zest",
+            "amount": 2.0,
+            "unit": 4,
+            "preparation": "None"
+        },
+        {
+            "name": "Parsley",
+            "amount": 3.0,
+            "unit": 3,
+            "preparation": "Chopped"
+        }
+    ]
+}

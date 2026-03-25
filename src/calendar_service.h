@@ -24,10 +24,12 @@ public:
 
   /**
    * @brief Lists upcoming events from the user's primary calendar.
+   * @param timeMin Optional ISO 8601 string for start date constraint
+   * @param timeMax Optional ISO 8601 string for end date constraint
    * @param maxResults Maximum number of results to return.
    * @return JSON string of events (or empty string on failure).
    */
-  std::string listEvents(int maxResults = 10);
+  std::string listEvents(const std::string &timeMin = "", const std::string &timeMax = "", int maxResults = 100);
 
 private:
   GoogleOAuth &d_oauth;

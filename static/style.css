@@ -45,9 +45,9 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 95%;
     margin: 0 auto;
-    padding: 4rem 2rem;
+    padding: 2rem 2rem;
 }
 
 header {
@@ -609,4 +609,43 @@ header p {
     margin-top: 2rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border-color);
+}
+
+/* Calendar Events */
+.date-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 0.2rem;
+    font-weight: normal;
+}
+
+.events-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.event-card {
+    background: rgba(88, 166, 255, 0.1);
+    border-left: 3px solid var(--accent-color);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.event-card-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-card-time {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
 }

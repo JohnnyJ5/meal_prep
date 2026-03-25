@@ -2,8 +2,10 @@ let selectedMeals = new Set();
 let isPlanning = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeWeekDates();
     fetchMeals();
     fetchIngredients();
+    fetchCalendarEventsForWeek();
 });
 
 let availableIngredients = [];
@@ -700,4 +702,96 @@ async function createNewIngredient(e) {
         console.error(err);
         alert("Error saving ingredient.");
     }
+}
+
+// --- Specific Weekly Google Calendar Logic ---
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function getMondayOfCurrentWeek() {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+}
+
+function initializeWeekDates() {
+    const monday = getMondayOfCurrentWeek();
+    
+    daysOfWeek.forEach((dayName, index) => {
+        const currentDate = new Date(monday);
+        currentDate.setDate(monday.getDate() + index);
+        
+        const dayCol = document.getElementById(`day-${dayName}`);
+        if (dayCol) {
+            const dateLabel = dayCol.querySelector('.date-label');
+            if (dateLabel) {
+                dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            dayCol.dataset.date = currentDate.toISOString();
+        }
+    });
+}
+
+async function fetchCalendarEventsForWeek() {
+    const monday = getMondayOfCurrentWeek();
+    
+    const nextMonday = new Date(monday);
+    nextMonday.setDate(monday.getDate() + 7);
+    
+    try {
+        const url = `/api/calendar/events?timeMin=${encodeURIComponent(monday.toISOString())}&timeMax=${encodeURIComponent(nextMonday.toISOString())}`;
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            let eventsText = await response.text();
+            if (!eventsText) return; 
+            try {
+                const eventsData = JSON.parse(eventsText);
+                if (eventsData.items) {
+                    renderCalendarEvents(eventsData.items);
+                }
+            } catch (e) {
+                console.error("Failed to parse calendar events JSON:", e);
+            }
+        } else if (response.status === 401) {
+            console.log("Not linked to Google Calendar or token expired.");
+        }
+    } catch (e) {
+        console.error("Error fetching calendar events:", e);
+    }
+}
+
+function renderCalendarEvents(events) {
+    daysOfWeek.forEach(dayName => {
+        const slot = document.querySelector(`#day-${dayName} .events-slot`);
+        if (slot) slot.innerHTML = '';
+    });
+
+    events.forEach(event => {
+        const startStr = event.start.dateTime || event.start.date;
+        if (!startStr) return;
+        
+        const startDate = new Date(startStr);
+        let dayIdx = startDate.getDay() - 1;
+        if (dayIdx === -1) dayIdx = 6; 
+        
+        const dayName = daysOfWeek[dayIdx];
+        const slot = document.querySelector(`#day-${dayName} .events-slot`);
+        
+        if (slot) {
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            
+            const timeStr = event.start.dateTime ? 
+                startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'All Day';
+                
+            card.innerHTML = `
+                <div class="event-card-title" title="${event.summary}">📅 ${event.summary}</div>
+                <div class="event-card-time">${timeStr}</div>
+            `;
+            slot.appendChild(card);
+        }
+    });
 }
