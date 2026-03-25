@@ -341,7 +341,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
                 return crow::response(200, "Synced to Google Calendar");
             } else {
                 CROW_LOG_ERROR << "Failed to sync meal plan to Google Calendar: " << summary;
-                return crow::response(500, "Failed to sync to Google Calendar. Check server logs.");
+                return crow::response(401, "Google account not linked or authorization failed. Please re-link your account.");
             }
           });
 }
