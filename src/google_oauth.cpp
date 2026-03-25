@@ -50,8 +50,19 @@ bool GoogleOAuth::exchangeCodeForTokens(const std::string &code) {
     auto now = std::chrono::system_clock::now();
     auto expiry = std::chrono::system_clock::to_time_t(
         now + std::chrono::seconds(response.expires_in));
+
+    std::string existingAccessToken, existingRefreshToken;
+    int64_t existingExpiry;
+    std::string newRefreshToken = response.refresh_token;
+
+    if (newRefreshToken.empty() &&
+        d_dbManager->getGoogleTokens(existingAccessToken, existingRefreshToken,
+                                     existingExpiry)) {
+      newRefreshToken = existingRefreshToken;
+    }
+
     return d_dbManager->saveGoogleTokens(response.access_token,
-                                          response.refresh_token,
+                                          newRefreshToken,
                                           static_cast<int64_t>(expiry));
   }
   return false;

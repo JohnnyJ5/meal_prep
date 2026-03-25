@@ -2,6 +2,22 @@
 
 This guide provides targeted `gcloud` and `gsutil` commands for the Meal Prep application.
 
+## Development & OAuth
+
+### Fixing "Error 403: access_denied" (OAuth Testing Mode)
+If you encounter `Error 403: access_denied` with the message "The app is currently being tested, and can only be accessed by developer-approved testers" when testing Google login, it means your GCP project's OAuth Consent Screen is in "Testing" mode, and the email you are trying to log in with is not authorized.
+
+**To fix this via the Google Cloud Console:**
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Select your project.
+3. Navigate to **APIs & Services > OAuth consent screen**.
+4. Scroll down to the **Test users** section.
+5. Click **+ ADD USERS**.
+6. Enter the email address you are using to sign in.
+7. Click **SAVE**.
+
+Alternatively, if your app is ready to be used by anyone, you can click **PUBLISH APP** on the OAuth consent screen to move its status from "Testing" to "In production", which removes the requirement to manually add test users.
+
 ## Deployment
 
 ### Submit a Cloud Build
@@ -36,6 +52,14 @@ gcloud run services describe meal-prep --region=us-central1
 ```
 
 ## Security
+
+### Grant Secret Access to Cloud Run
+Allow the default compute service account to access a specific secret.
+```bash
+gcloud secrets add-iam-policy-binding [SECRET_NAME] \
+    --member="serviceAccount:[PROJECT_NUMBER]-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+```
 
 ### Make Service Private
 Remove public access to the API.
@@ -77,4 +101,30 @@ gsutil cp gs://[YOUR_BUCKET_NAME]/meals.db ./meals.db_backup
 ### Restore/Upload Database
 ```bash
 gsutil cp ./meals.db gs://[YOUR_BUCKET_NAME]/meals.db
+```
+
+## Database Admin Job
+
+### Deploy Database Dump Job
+Builds and deploys the Cloud Run Job `db-dump-job` to run `dump_db.py`.
+```bash
+./deploy_db_job.sh
+```
+
+### Run Database Dump Job (List Tables)
+Runs the `db-dump-job` to output the list of tables to Cloud Run logs.
+```bash
+gcloud run jobs execute db-dump-job --region=us-central1 --args="/mnt/db/meals.db,-l"
+```
+
+### Run Database Dump Job (Dump Table)
+Runs the job to dump the contents of a specific table, e.g. `meals`.
+```bash
+gcloud run jobs execute db-dump-job --region=us-central1 --args="/mnt/db/meals.db,-d,meals"
+```
+
+### View Job Logs
+Watch the logs of the executed job.
+```bash
+gcloud run jobs logs tail db-dump-job --region=us-central1
 ```
