@@ -5,11 +5,12 @@ A C++ based meal preparation and planning application. It allows you to manage r
 ## Features
 
 - **Store Meals:** Create, read, update, and delete meals and their ingredients in a local SQLite database.
-- **Weekly Schedule:** Plan your meals for each day of the week.
+- **Weekly Schedule:** Plan your meals for each day of the week with drag-and-drop scheduling.
 - **Grocery List Generation:** Automatically consolidate ingredients from selected meals into a single, unified grocery list.
 - **Email Notifications:** Send the final grocery list directly to your email using SMTP.
-- **Web Interface:** A simple interactive web UI to plan your meals visually.
-- **REST API:** A robust API backing the web interface for meal management and planning.
+- **Google Calendar Integration:** Sync your weekly meal plan to Google Calendar and create grocery order reminders.
+- **Web Interface:** A responsive single-page application for visual meal planning.
+- **REST API:** A robust API backing the web interface for meal management, planning, and calendar sync.
 
 ## Prerequisites
 
@@ -65,21 +66,31 @@ graph TD
         WebUI --> API["C++ Crow API Server"]
         API --> DB[("SQLite Database")]
         API --> SMTP["SMTP Server (Email)"]
+        API --> OAuth["GoogleOAuth (token exchange)"]
+        OAuth --> DB
+        API --> Cal["CalendarService (REST)"]
+    end
+
+    subgraph "Google APIs"
+        OAuth --> GAuth["Google OAuth 2.0"]
+        Cal --> GCal["Google Calendar API"]
     end
 
     subgraph "Google Cloud Platform"
         CB["Cloud Build"] --> GCR["Container Registry"]
         GCR --> CR["Cloud Run (Serverless)"]
         CR --> GCS[("Cloud Storage (Persistent DB)")]
+        CR --> SM["Secrets Manager"]
     end
 
     API -.->|Deployment| CB
 ```
 
 ### Components
-- **Backend (C++):** Built using the Crow web framework. It handles RESTful requests, manages the SQLite database, and interacts with SMTP for emails.
-- **Frontend:** A simple, responsive single-page application served statically by the C++ backend.
-- **Database:** SQLite is used for local storage of recipes and schedules. In production, this is synced with Google Cloud Storage.
+- **Backend (C++):** Built using the Crow web framework. It handles RESTful requests, manages the SQLite database, interacts with SMTP for emails, and integrates with Google Calendar.
+- **Frontend:** A responsive single-page application with drag-and-drop scheduling, served statically by the C++ backend.
+- **Database:** SQLite stores recipes, schedules, and encrypted OAuth tokens. In production, the database file is persisted on Google Cloud Storage via FUSE mount.
+- **Google Integration:** OAuth 2.0 Authorization Code Flow for Google Calendar access. Tokens are stored in the database encrypted with AES-256-GCM (requires `MEAL_PREP_TOKEN_KEY` env var).
 - **Infrastructure:** Dockerized for local development and deployed to Google Cloud Run for scalability.
 
 ## Workflow

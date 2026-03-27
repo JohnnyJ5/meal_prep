@@ -14,7 +14,7 @@ Most commands are wrapped in the `Makefile` and should be run using `make`.
 | `make test` | Runs the automated test suite inside the container. |
 | `make clean` | Removes build artifacts and temporary files. |
 
-## manual Docker Commands
+## Manual Docker Commands
 
 If you need to interact with Docker directly:
 
@@ -25,12 +25,12 @@ docker ps
 
 ### View Container Logs
 ```bash
-docker-compose logs -f app
+docker-compose logs -f meal_prep_dev
 ```
 
 ### Execute Shell inside Container
 ```bash
-docker-compose exec app /bin/bash
+docker-compose exec meal_prep_dev /bin/bash
 ```
 
 ### Rebuild without Cache

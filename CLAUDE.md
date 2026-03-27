@@ -29,12 +29,13 @@ C++ backend (Crow web framework) + single-page HTML/JS frontend + SQLite databas
 **Request flow:** Browser → Crow HTTP server (`src/api_routes.cpp`) → Service layer → `DBManager` (SQLite)
 
 **Key service classes:**
-- `DBManager` — all SQLite operations; tables: `meals`, `ingredients`, `available_ingredients`, `oauth_tokens`
+- `DBManager` — all SQLite operations; tables: `meals`, `ingredients`, `available_ingredients`, `google_tokens`
 - `MealFactory` — constructs `Meal` objects from DB rows
 - `MealPlanner` — consolidates ingredients across a meal plan, formats output for email
 - `EmailService` — sends grocery lists via SMTP using libcurl
 - `GoogleOAuth` — Authorization Code Flow, token exchange and refresh, stores tokens in DB
-- `CalendarService` — creates/lists Google Calendar events via REST API
+- `CalendarService` — creates/lists/deletes Google Calendar events via REST API
+- `TokenEncryption` (`src/token_encryption.h`) — AES-256-GCM encryption for OAuth tokens stored in SQLite; reads key from `MEAL_PREP_TOKEN_KEY` env var (64 hex chars). Falls back to plaintext with a warning if unset.
 - `RequestTimerMiddleware` (`src/middleware.h`) — logs request duration, applied to all Crow routes
 
 **Domain models:** `Meal` → has many `Ingredient`s, each with a `Measurement`. `Measurement` handles unit conversions (cups, tbsp, grams, etc.).
@@ -53,7 +54,11 @@ Runtime config is loaded from `meal_prep.conf.json` (project root):
 }
 ```
 
-Credential files are stored in `~/.meal_prep/` on the host and mounted read-only into the container. `GOOGLE_REDIRECT_URI` is set via docker-compose env.
+Credential files are stored in `~/.meal_prep/` on the host and mounted read-only into the container.
+
+Environment variables (set in `docker-compose.yml` or Cloud Run):
+- `GOOGLE_REDIRECT_URI` — OAuth callback URL (e.g. `http://localhost:8080/auth/google/callback`)
+- `MEAL_PREP_TOKEN_KEY` — 64 hex char (256-bit) key for AES-256-GCM token encryption. Generate with: `openssl rand -hex 32`
 
 Database path: `meals.db` locally; `/mnt/db/meals.db` on GCP (GCS bucket mount).
 

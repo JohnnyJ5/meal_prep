@@ -53,6 +53,22 @@ gcloud run services describe meal-prep --region=us-central1
 
 ## Security
 
+### Set Up Token Encryption Key
+The `MEAL_PREP_TOKEN_KEY` environment variable is required for AES-256-GCM encryption of stored OAuth tokens. Generate and store it as a Cloud Secret:
+```bash
+# Generate a 256-bit key
+openssl rand -hex 32
+
+# Create the secret in Secret Manager
+echo -n "YOUR_64_HEX_CHARS" | gcloud secrets create meal-prep-token-key --data-file=-
+
+# Grant Cloud Run service account access
+gcloud secrets add-iam-policy-binding meal-prep-token-key \
+    --member="serviceAccount:[PROJECT_NUMBER]-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+```
+Then mount the secret as an env var in `cloudbuild.yaml` / Cloud Run configuration as `MEAL_PREP_TOKEN_KEY`.
+
 ### Grant Secret Access to Cloud Run
 Allow the default compute service account to access a specific secret.
 ```bash
