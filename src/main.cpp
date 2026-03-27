@@ -98,7 +98,6 @@ int main(int argc, char **argv) {
 
     std::map<std::string, Ingredient> allIngredients;
     ConsolidateAllIngredients(allIngredients, mealRefs);
-    SendPlanEmail(allIngredients, schedule, config);
     PrintWeeklySchedule(std::cout, schedule);
 
     curl_global_cleanup();

@@ -194,12 +194,16 @@ function drop(ev) {
             const clone = draggedElt.cloneNode(true);
             clone.id = draggedElt.id + '-clone-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
             clone.classList.remove('selected', 'dragging');
+            const dayCol = dropTarget.closest('.day-col');
+            if (dayCol) clone.dataset.placedDate = dayCol.dataset.date;
             dropTarget.appendChild(clone);
         } else if (!fromGrid && toGrid) {
             // If dragging from a slot back to the grid, just remove it from the planner
             draggedElt.remove();
         } else if (toSlot && !fromGrid) {
-            // Moving from slot to slot
+            // Moving from slot to slot — update the placed date
+            const dayCol = dropTarget.closest('.day-col');
+            if (dayCol) draggedElt.dataset.placedDate = dayCol.dataset.date;
             dropTarget.appendChild(draggedElt);
             draggedElt.classList.remove('selected');
         }
@@ -211,7 +215,6 @@ function drop(ev) {
 function updateActionBar() {
     const countSpan = document.getElementById('selected-count');
     const planBtn = document.getElementById('plan-btn');
-    const syncBtn = document.getElementById('sync-calendar-btn');
     const viewBtn = document.getElementById('view-ingredients-btn');
 
     let count = 0;
@@ -228,7 +231,6 @@ function updateActionBar() {
 
     if (totalSelected > 0) {
         planBtn.removeAttribute('disabled');
-        syncBtn.classList.remove('hidden');
         if (selectedMeals.size > 0) {
             viewBtn.removeAttribute('disabled');
         } else {
@@ -236,7 +238,6 @@ function updateActionBar() {
         }
     } else {
         planBtn.setAttribute('disabled', 'true');
-        syncBtn.classList.add('hidden');
         viewBtn.setAttribute('disabled', 'true');
     }
 }
@@ -279,79 +280,70 @@ async function planMeals() {
         const result = await response.json();
 
         if (response.ok) {
-            showResultModal(result.schedule);
-            // Optionally clear selections after success
-            // selectedMeals.clear();
-            // document.querySelectorAll('.meal-card').forEach(c => c.classList.remove('selected'));
-            // updateActionBar();
+            window._lastIngredientsText = result.ingredients_text || '';
+            window._lastSyncedEventIds = [];
+            try {
+                const eventIds = await doCalendarSync();
+                window._lastSyncedEventIds = eventIds;
+                await fetchCalendarEventsForWeek();
+                // Remove dragged meal cards from calendar slots, leaving only Google Calendar event cards
+                const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                days.forEach(day => {
+                    const slot = document.querySelector(`#day-${day} .meal-slot`);
+                    if (slot) slot.innerHTML = '';
+                });
+                selectedMeals.clear();
+                document.querySelectorAll('.meal-card').forEach(c => c.classList.remove('selected'));
+                updateActionBar();
+            } catch (e) {
+                if (e.message === 'not_linked') {
+                    showToast('Please link your Google account to sync meals to the calendar.', false);
+                    setTimeout(() => { window.location.href = '/auth/google'; }, 2000);
+                    return;
+                }
+                console.error('Pre-sync error:', e);
+            }
+            openOrderModal();
         } else {
             throw new Error(result.error || 'Failed to generate plan');
         }
     } catch (error) {
         console.error('Error starting plan:', error);
-        alert('An error occurred while generating the plan. Check console for details.');
+        showToast('An error occurred while generating the plan.', false);
     } finally {
         isPlanning = false;
         btn.removeAttribute('disabled');
-        btnText.textContent = 'Generate Plan & Send Email';
+        btnText.textContent = 'Generate Plan';
         btnLoader.classList.add('hidden');
         updateActionBar(); // Re-evaluates disabled state based on selection count
     }
 }
 
-function showResultModal(scheduleText) {
-    const modal = document.getElementById('result-modal');
-    const output = document.getElementById('schedule-output');
 
-    output.textContent = scheduleText;
-    modal.classList.remove('hidden');
-}
-
-async function syncCalendar() {
-    const syncBtn = document.getElementById('sync-calendar-btn');
-    const originalText = syncBtn.textContent;
-    syncBtn.setAttribute('disabled', 'true');
-    syncBtn.textContent = 'Syncing...';
-
-    try {
-        const schedule = {};
-        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        days.forEach(day => {
-            const dayCol = document.getElementById(`day-${day}`);
-            const meals = [];
-            const slot = document.querySelector(`#day-${day} .meal-slot`);
-            if (slot) {
-                slot.querySelectorAll('.meal-card').forEach(c => {
-                    meals.push(c.getAttribute('data-meal-id'));
-                });
-            }
-            schedule[day] = { date: dayCol ? dayCol.dataset.date : null, meals };
-        });
-
-        const response = await fetch('/api/calendar/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(schedule)
-        });
-
-        if (response.ok) {
-            alert("Successfully synced to Google Calendar! ✨");
-        } else {
-            const result = await response.text();
-            if (response.status === 403) {
-                alert("Please link your Google account first.");
-                window.location.href = "/auth/google";
-            } else {
-                alert("Failed to sync: " + result);
-            }
+async function doCalendarSync() {
+    const schedule = {};
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    days.forEach(day => {
+        const dayCol = document.getElementById(`day-${day}`);
+        const meals = [];
+        const slot = document.querySelector(`#day-${day} .meal-slot`);
+        if (slot) {
+            slot.querySelectorAll('.meal-card').forEach(c => {
+                meals.push(c.getAttribute('data-meal-id'));
+            });
         }
-    } catch (e) {
-        console.error("Sync error:", e);
-        alert("An error occurred during sync.");
-    } finally {
-        syncBtn.removeAttribute('disabled');
-        syncBtn.textContent = originalText;
-    }
+        schedule[day] = { date: dayCol ? dayCol.dataset.date : null, meals };
+    });
+
+    const response = await fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schedule)
+    });
+
+    if (response.status === 403) throw new Error('not_linked');
+    const data = await response.json();
+    return data.event_ids || [];
 }
 
 function closeModal(modalId = 'result-modal') {
@@ -360,6 +352,105 @@ function closeModal(modalId = 'result-modal') {
         modal.classList.add('hidden');
     }
 }
+
+function openOrderModal() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+    const localISO = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}T${pad(tomorrow.getHours())}:${pad(tomorrow.getMinutes())}`;
+    document.getElementById('order-datetime').value = localISO;
+    document.getElementById('order-ingredients').textContent = window._lastIngredientsText || '';
+    document.getElementById('order-modal').classList.remove('hidden');
+}
+
+function skipOrderModal() {
+    closeModal('order-modal');
+    showToast('Meals synced to Google Calendar!');
+}
+
+async function cancelPlan() {
+    closeModal('order-modal');
+    const ids = window._lastSyncedEventIds || [];
+    if (ids.length === 0) return;
+    try {
+        await fetch('/api/calendar/delete-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_ids: ids })
+        });
+        window._lastSyncedEventIds = [];
+        _calendarCache.clear();
+        await fetchCalendarEventsForWeek();
+        showToast('Plan cancelled — calendar events removed.', false);
+    } catch (e) {
+        console.error('Failed to delete events:', e);
+        showToast('Could not remove calendar events.', false);
+    }
+}
+
+function showToast(message, success = true) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.background = success ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)';
+    toast.style.color = '#fff';
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3500);
+}
+
+function setOrderStatus(message, success) {
+    const el = document.getElementById('order-status');
+    el.textContent = message;
+    el.style.background = success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+    el.style.color = success ? '#16a34a' : '#dc2626';
+    el.classList.remove('hidden');
+}
+
+async function scheduleOrderEvent() {
+    const datetimeInput = document.getElementById('order-datetime').value;
+    if (!datetimeInput) {
+        setOrderStatus('Please select a date and time.', false);
+        return;
+    }
+    const start = new Date(datetimeInput);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+    const btn = document.getElementById('order-confirm-btn');
+    btn.setAttribute('disabled', 'true');
+    btn.textContent = 'Creating...';
+    document.getElementById('order-status').classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/calendar/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                start: start.toISOString(),
+                end: end.toISOString(),
+                ingredients: window._lastIngredientsText || ''
+            })
+        });
+        if (response.ok) {
+            window._lastSyncedEventIds = [];
+            _calendarCache.clear();
+            closeModal('order-modal');
+            await fetchCalendarEventsForWeek();
+            showToast('Events created and synced to Google Calendar!');
+        } else if (response.status === 403) {
+            setOrderStatus('Please link your Google account first.', false);
+            setTimeout(() => { window.location.href = '/auth/google'; }, 1500);
+        } else {
+            setOrderStatus('Failed to create calendar event.', false);
+        }
+    } catch (e) {
+        console.error('Order event error:', e);
+        setOrderStatus('An error occurred. Please try again.', false);
+    } finally {
+        btn.removeAttribute('disabled');
+        btn.textContent = 'Create Events';
+    }
+}
+
 
 // --- Management Logic ---
 
@@ -707,54 +798,133 @@ async function createNewIngredient(e) {
 
 // --- Specific Weekly Google Calendar Logic ---
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const dayNamesLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function getMondayOfCurrentWeek() {
     const d = new Date();
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(d.setDate(diff));
     monday.setHours(0, 0, 0, 0);
     return monday;
 }
 
+// Tracks the first day shown in the 7-column calendar window
+let windowStart = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+
 function initializeWeekDates() {
-    const monday = getMondayOfCurrentWeek();
-    
-    daysOfWeek.forEach((dayName, index) => {
-        const currentDate = new Date(monday);
-        currentDate.setDate(monday.getDate() + index);
-        
-        const dayCol = document.getElementById(`day-${dayName}`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    daysOfWeek.forEach((colId, index) => {
+        const currentDate = new Date(windowStart);
+        currentDate.setDate(windowStart.getDate() + index);
+
+        const dayCol = document.getElementById(`day-${colId}`);
         if (dayCol) {
+            const dayNameSpan = dayCol.querySelector('.day-name');
+            if (dayNameSpan) {
+                dayNameSpan.textContent = dayNamesLong[currentDate.getDay()];
+            }
             const dateLabel = dayCol.querySelector('.date-label');
             if (dateLabel) {
                 dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            // Store as YYYY-MM-DD (local date) so the sync payload isn't
-            // shifted by UTC offset when the string is later split.
             const y = currentDate.getFullYear();
             const m = String(currentDate.getMonth() + 1).padStart(2, '0');
             const d = String(currentDate.getDate()).padStart(2, '0');
             dayCol.dataset.date = `${y}-${m}-${d}`;
+
+            dayCol.classList.toggle('today', currentDate.getTime() === today.getTime());
         }
     });
 }
 
+function repositionPlacedCards() {
+    // Build date → meal-slot map for the current window
+    const dateToSlot = {};
+    daysOfWeek.forEach(colId => {
+        const col = document.getElementById(`day-${colId}`);
+        if (col && col.dataset.date) {
+            dateToSlot[col.dataset.date] = col.querySelector('.meal-slot');
+        }
+    });
+
+    // Collect all placed cards across all slots
+    const allCards = Array.from(document.querySelectorAll('.day-col .meal-slot .meal-card'));
+
+    allCards.forEach(card => {
+        const placedDate = card.dataset.placedDate;
+        if (!placedDate) return;
+
+        const targetSlot = dateToSlot[placedDate];
+        if (targetSlot) {
+            // Card belongs in a visible column — move it there
+            if (card.parentElement !== targetSlot) targetSlot.appendChild(card);
+            card.style.display = '';
+        } else {
+            // Date is outside the current window — hide but keep in DOM
+            card.style.display = 'none';
+        }
+    });
+}
+
+const _calendarCache = new Map();
+let _calendarFetchSeq = 0;
+let _lastShiftDelta = 1;
+
+function calendarCacheKey(date) {
+    return date.toISOString().slice(0, 10);
+}
+
+function clearEventsSlots() {
+    daysOfWeek.forEach(colId => {
+        const slot = document.querySelector(`#day-${colId} .events-slot`);
+        if (slot) slot.innerHTML = '';
+    });
+}
+
+async function shiftWindow(delta) {
+    if (delta === 0) {
+        windowStart = new Date(); windowStart.setHours(0,0,0,0);
+    } else {
+        _lastShiftDelta = delta;
+        windowStart = new Date(windowStart);
+        windowStart.setDate(windowStart.getDate() + delta);
+    }
+    initializeWeekDates();
+    repositionPlacedCards();
+
+    const key = calendarCacheKey(windowStart);
+    if (_calendarCache.has(key)) {
+        // Render from cache instantly — no flicker, no blank state
+        renderCalendarEvents(_calendarCache.get(key));
+    } else {
+        clearEventsSlots();
+    }
+
+    await fetchCalendarEventsForWeek();
+}
+
 async function fetchCalendarEventsForWeek() {
-    const monday = getMondayOfCurrentWeek();
-    
-    const nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
-    
+    const seq = ++_calendarFetchSeq;
+    const fetchStart = new Date(windowStart);
+    const key = calendarCacheKey(fetchStart);
+    const windowEnd = new Date(fetchStart);
+    windowEnd.setDate(fetchStart.getDate() + 7);
+
     try {
-        const url = `/api/calendar/events?timeMin=${encodeURIComponent(monday.toISOString())}&timeMax=${encodeURIComponent(nextMonday.toISOString())}`;
+        const url = `/api/calendar/events?timeMin=${encodeURIComponent(fetchStart.toISOString())}&timeMax=${encodeURIComponent(windowEnd.toISOString())}`;
         const response = await fetch(url);
-        
+
+        if (seq !== _calendarFetchSeq) return;
+
         if (response.ok) {
             let eventsText = await response.text();
-            if (!eventsText) return; 
+            if (!eventsText) return;
             try {
                 const eventsArray = JSON.parse(eventsText);
+                _calendarCache.set(key, eventsArray);
                 renderCalendarEvents(eventsArray);
             } catch (e) {
                 console.error("Failed to parse calendar events JSON:", e);
@@ -765,11 +935,40 @@ async function fetchCalendarEventsForWeek() {
     } catch (e) {
         console.error("Error fetching calendar events:", e);
     }
+
+    // Prefetch one step ahead in the last navigation direction
+    _prefetchWindow(_lastShiftDelta);
+}
+
+async function _prefetchWindow(delta) {
+    const prefetchStart = new Date(windowStart);
+    prefetchStart.setDate(windowStart.getDate() + delta);
+    const key = calendarCacheKey(prefetchStart);
+    if (_calendarCache.has(key)) return;
+
+    const prefetchEnd = new Date(prefetchStart);
+    prefetchEnd.setDate(prefetchStart.getDate() + 7);
+
+    try {
+        const url = `/api/calendar/events?timeMin=${encodeURIComponent(prefetchStart.toISOString())}&timeMax=${encodeURIComponent(prefetchEnd.toISOString())}`;
+        const response = await fetch(url);
+        if (response.ok) {
+            const text = await response.text();
+            if (text) _calendarCache.set(key, JSON.parse(text));
+        }
+    } catch (e) { /* silent — prefetch failure is non-critical */ }
 }
 
 function renderCalendarEvents(calendarDataArray) {
-    daysOfWeek.forEach(dayName => {
-        const slot = document.querySelector(`#day-${dayName} .events-slot`);
+    // Build a map from YYYY-MM-DD (local) → column element based on current window
+    const dateToCol = {};
+    daysOfWeek.forEach(colId => {
+        const col = document.getElementById(`day-${colId}`);
+        if (col && col.dataset.date) dateToCol[col.dataset.date] = col;
+    });
+
+    daysOfWeek.forEach(colId => {
+        const slot = document.querySelector(`#day-${colId} .events-slot`);
         if (slot) slot.innerHTML = '';
     });
 
@@ -799,28 +998,29 @@ function renderCalendarEvents(calendarDataArray) {
         }
 
         events.forEach(event => {
-            // Filter out birthday events by keyword
-            if (event.summary && event.summary.toLowerCase().includes('birthday')) {
-                return;
-            }
 
             const startStr = event.start.dateTime || event.start.date;
             if (!startStr) return;
 
-            // Date-only strings (all-day events) must be parsed without timezone
-            // conversion, otherwise midnight UTC shifts to the previous day locally.
+            // Compute local YYYY-MM-DD for matching against data-date
             let startDate;
+            let dateKey;
             if (event.start.dateTime) {
                 startDate = new Date(startStr);
+                const y = startDate.getFullYear();
+                const mo = String(startDate.getMonth() + 1).padStart(2, '0');
+                const d = String(startDate.getDate()).padStart(2, '0');
+                dateKey = `${y}-${mo}-${d}`;
             } else {
-                const [y, m, d] = startStr.split('-').map(Number);
-                startDate = new Date(y, m - 1, d);
+                // All-day: date string is already YYYY-MM-DD, parse as local
+                const [y, mo, d] = startStr.split('-').map(Number);
+                startDate = new Date(y, mo - 1, d);
+                dateKey = startStr.slice(0, 10);
             }
-            let dayIdx = startDate.getDay() - 1;
-            if (dayIdx === -1) dayIdx = 6; 
-            
-            const dayName = daysOfWeek[dayIdx];
-            const slot = document.querySelector(`#day-${dayName} .events-slot`);
+
+            const dayCol = dateToCol[dateKey];
+            if (!dayCol) return;
+            const slot = dayCol.querySelector('.events-slot');
             
             if (slot) {
                 const card = document.createElement('div');
@@ -828,16 +1028,44 @@ function renderCalendarEvents(calendarDataArray) {
                 card.style.backgroundColor = `${bgColor}33`; // 20% opacity
                 card.style.borderLeftColor = bgColor;
                 card.style.color = 'var(--text-primary)';
-                
-                const timeStr = event.start.dateTime ? 
+                card.dataset.eventId = event.id;
+
+                const timeStr = event.start.dateTime ?
                     startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'All Day';
-                    
+
+                const isMealPrepEvent = event.extendedProperties?.private?.mealPrepApp === 'true';
                 card.innerHTML = `
                     <div class="event-card-title" title="${event.summary}">${event.summary}</div>
                     <div class="event-card-time" style="color: ${fgColor}; opacity: 0.8">${timeStr}</div>
+                    ${isMealPrepEvent ? `<button class="event-card-delete" onclick="deleteCalendarEvent('${event.id}', this.parentElement)" title="Delete event">&times;</button>` : ''}
                 `;
                 slot.appendChild(card);
             }
         });
     });
+}
+
+async function deleteCalendarEvent(eventId, cardEl) {
+    cardEl.style.opacity = '0.4';
+    cardEl.style.pointerEvents = 'none';
+    try {
+        const response = await fetch('/api/calendar/delete-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_ids: [eventId] })
+        });
+        if (response.ok) {
+            _calendarCache.clear();
+            cardEl.remove();
+        } else {
+            cardEl.style.opacity = '';
+            cardEl.style.pointerEvents = '';
+            showToast('Failed to delete event.', false);
+        }
+    } catch (e) {
+        console.error('Delete event error:', e);
+        cardEl.style.opacity = '';
+        cardEl.style.pointerEvents = '';
+        showToast('Failed to delete event.', false);
+    }
 }
