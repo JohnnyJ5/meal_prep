@@ -10,6 +10,19 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   ((std::string *)userp)->append((char *)contents, size * nmemb);
   return size * nmemb;
 }
+std::string url_encode(const std::string &value) {
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex;
+    for (char c : value) {
+        if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            escaped << c;
+        } else {
+            escaped << std::uppercase << '%' << std::setw(2) << int((unsigned char)c);
+        }
+    }
+    return escaped.str();
+}
 } // namespace
 
 CalendarService::CalendarService(GoogleOAuth &oauth) : d_oauth(oauth) {}
@@ -42,34 +55,59 @@ bool CalendarService::createEvent(const std::string &summary,
   return false;
 }
 
-std::string url_encode(const std::string &value) {
-    std::ostringstream escaped;
-    escaped.fill('0');
-    escaped << std::hex;
-    for (char c : value) {
-        if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || c == '~') {
-            escaped << c;
-        } else {
-            escaped << std::uppercase << '%' << std::setw(2) << int((unsigned char)c);
-        }
-    }
-    return escaped.str();
-}
+#include <vector>
 
-std::string CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
-  std::string url =
-      "https://www.googleapis.com/calendar/v3/calendars/primary/"
-      "events?singleEvents=true&orderBy=startTime&maxResults=" +
-      std::to_string(maxResults);
-      
-  if (!timeMin.empty()) {
-      url += "&timeMin=" + url_encode(timeMin);
+std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
+  std::vector<CalendarEvents> results;
+
+  std::string listUrl = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+  std::string listResponse = makeAuthorizedRequest(listUrl);
+  if (listResponse.empty()) {
+      return results;
   }
-  if (!timeMax.empty()) {
-      url += "&timeMax=" + url_encode(timeMax);
+
+  auto listJson = crow::json::load(listResponse);
+  if (!listJson || !listJson.has("items")) {
+      return results;
   }
+
+  for (const auto& cal : listJson["items"]) {
+      if (!cal.has("id")) continue;
+      std::string calId = cal["id"].s();
       
-  return makeAuthorizedRequest(url);
+      CalendarEvents calData;
+      calData.summary = cal.has("summary") ? std::string(cal["summary"].s()) : "Unnamed Calendar";
+      calData.backgroundColor = cal.has("backgroundColor") ? std::string(cal["backgroundColor"].s()) : "#58a6ff";
+      calData.foregroundColor = cal.has("foregroundColor") ? std::string(cal["foregroundColor"].s()) : "#ffffff";
+
+      // Filter out the birthday/contacts calendar
+      if (calId == "addressbook#contacts@group.v.calendar.google.com" || 
+          calData.summary == "Birthdays" || 
+          calData.summary == "Contacts") {
+          continue;
+      }
+
+      std::string url =
+          "https://www.googleapis.com/calendar/v3/calendars/" + 
+          url_encode(calId) +
+          "/events?singleEvents=true&orderBy=startTime&maxResults=" +
+          std::to_string(maxResults);
+          
+      if (!timeMin.empty()) {
+          url += "&timeMin=" + url_encode(timeMin);
+      }
+      if (!timeMax.empty()) {
+          url += "&timeMax=" + url_encode(timeMax);
+      }
+          
+      std::string evResponse = makeAuthorizedRequest(url);
+      if (!evResponse.empty()) {
+          calData.eventsJson = evResponse;
+          results.push_back(calData);
+      }
+  }
+
+  return results;
 }
 
 std::string CalendarService::makeAuthorizedRequest(const std::string &url,

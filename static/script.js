@@ -748,50 +748,90 @@ async function fetchCalendarEventsForWeek() {
             let eventsText = await response.text();
             if (!eventsText) return; 
             try {
-                const eventsData = JSON.parse(eventsText);
-                if (eventsData.items) {
-                    renderCalendarEvents(eventsData.items);
-                }
+                const eventsArray = JSON.parse(eventsText);
+                renderCalendarEvents(eventsArray);
             } catch (e) {
                 console.error("Failed to parse calendar events JSON:", e);
             }
-        } else if (response.status === 401) {
-            console.log("Not linked to Google Calendar or token expired.");
+        } else if (response.status === 403) {
+            console.log("Not linked to Google Calendar or error fetching events.");
         }
     } catch (e) {
         console.error("Error fetching calendar events:", e);
     }
 }
 
-function renderCalendarEvents(events) {
+function renderCalendarEvents(calendarDataArray) {
     daysOfWeek.forEach(dayName => {
         const slot = document.querySelector(`#day-${dayName} .events-slot`);
         if (slot) slot.innerHTML = '';
     });
 
-    events.forEach(event => {
-        const startStr = event.start.dateTime || event.start.date;
-        if (!startStr) return;
-        
-        const startDate = new Date(startStr);
-        let dayIdx = startDate.getDay() - 1;
-        if (dayIdx === -1) dayIdx = 6; 
-        
-        const dayName = daysOfWeek[dayIdx];
-        const slot = document.querySelector(`#day-${dayName} .events-slot`);
-        
-        if (slot) {
-            const card = document.createElement('div');
-            card.className = 'event-card';
-            
-            const timeStr = event.start.dateTime ? 
-                startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'All Day';
-                
-            card.innerHTML = `
-                <div class="event-card-title" title="${event.summary}">📅 ${event.summary}</div>
-                <div class="event-card-time">${timeStr}</div>
+    const legend = document.getElementById('calendar-legend');
+    if (legend) {
+        legend.innerHTML = '';
+        legend.classList.add('hidden');
+    }
+
+    if (!Array.isArray(calendarDataArray)) return;
+
+    calendarDataArray.forEach(calData => {
+        const events = calData.events?.items || [];
+        const bgColor = calData.backgroundColor;
+        const fgColor = calData.foregroundColor;
+        const summary = calData.summary;
+
+        if (events.length > 0 && legend) {
+            legend.classList.remove('hidden');
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `
+                <div class="legend-color" style="background-color: ${bgColor}"></div>
+                <span>${summary}</span>
             `;
-            slot.appendChild(card);
+            legend.appendChild(item);
         }
+
+        events.forEach(event => {
+            // Filter out birthday events by keyword
+            if (event.summary && event.summary.toLowerCase().includes('birthday')) {
+                return;
+            }
+
+            const startStr = event.start.dateTime || event.start.date;
+            if (!startStr) return;
+
+            // Date-only strings (all-day events) must be parsed without timezone
+            // conversion, otherwise midnight UTC shifts to the previous day locally.
+            let startDate;
+            if (event.start.dateTime) {
+                startDate = new Date(startStr);
+            } else {
+                const [y, m, d] = startStr.split('-').map(Number);
+                startDate = new Date(y, m - 1, d);
+            }
+            let dayIdx = startDate.getDay() - 1;
+            if (dayIdx === -1) dayIdx = 6; 
+            
+            const dayName = daysOfWeek[dayIdx];
+            const slot = document.querySelector(`#day-${dayName} .events-slot`);
+            
+            if (slot) {
+                const card = document.createElement('div');
+                card.className = 'event-card';
+                card.style.backgroundColor = `${bgColor}33`; // 20% opacity
+                card.style.borderLeftColor = bgColor;
+                card.style.color = 'var(--text-primary)';
+                
+                const timeStr = event.start.dateTime ? 
+                    startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'All Day';
+                    
+                card.innerHTML = `
+                    <div class="event-card-title" title="${event.summary}">${event.summary}</div>
+                    <div class="event-card-time" style="color: ${fgColor}; opacity: 0.8">${timeStr}</div>
+                `;
+                slot.appendChild(card);
+            }
+        });
     });
 }

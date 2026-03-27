@@ -331,15 +331,34 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
     if (req.url_params.get("timeMin")) timeMin = req.url_params.get("timeMin");
     if (req.url_params.get("timeMax")) timeMax = req.url_params.get("timeMax");
 
-    auto events = calendarService->listEvents(timeMin, timeMax);
-    if (events.empty()) {
+    auto eventsList = calendarService->listEvents(timeMin, timeMax);
+    if (eventsList.empty()) {
       CROW_LOG_WARNING << "Failed to fetch events or no events found";
-      return crow::response(401, "Google account not linked or error fetching events");
+      crow::response err(403);
+      err.set_header("Content-Type", "application/json");
+      err.body = R"({"linked":false,"message":"Google account not linked or error fetching events"})";
+      return err;
     }
-    CROW_LOG_INFO << "Successfully fetched " << events.size() << " events from Calendar";
-    crow::response res(events);
-    res.add_header("Content-Type", "application/json");
-    return res;
+    
+    crow::json::wvalue res;
+    res = crow::json::wvalue::list();
+    for (size_t i = 0; i < eventsList.size(); ++i) {
+        crow::json::wvalue cal;
+        cal["summary"] = eventsList[i].summary;
+        cal["backgroundColor"] = eventsList[i].backgroundColor;
+        cal["foregroundColor"] = eventsList[i].foregroundColor;
+        cal["events"] = crow::json::load(eventsList[i].eventsJson);
+        res[i] = std::move(cal);
+    }
+    
+    std::string dumped = res.dump();
+    CROW_LOG_INFO << "Successfully fetched events from " << eventsList.size() << " calendars";
+    
+    crow::response res_final;
+    res_final.code = 200;
+    res_final.set_header("Content-Type", "application/json");
+    res_final.body = std::move(dumped);
+    return res_final;
   });
 
   // Route: Add a meal plan to Google Calendar

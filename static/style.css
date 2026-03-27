@@ -634,11 +634,36 @@ header p {
     border-radius: 4px;
     font-size: 0.85rem;
     animation: fadeIn 0.3s ease-out;
+    color: var(--text-primary);
+}
+
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
 }
 
 .event-card-title {
     font-weight: 600;
-    color: var(--text-primary);
     margin-bottom: 0.2rem;
     white-space: nowrap;
     overflow: hidden;
@@ -646,6 +671,6 @@ header p {
 }
 
 .event-card-time {
-    color: var(--text-secondary);
     font-size: 0.75rem;
+    opacity: 0.8;
 }

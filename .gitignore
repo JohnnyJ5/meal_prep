@@ -11,3 +11,4 @@ cmake_install.cmake
 CMakeCache.txt
 CTestTestfile.cmake
 meals.db
+server.log
