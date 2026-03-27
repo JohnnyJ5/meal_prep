@@ -317,14 +317,15 @@ async function syncCalendar() {
         const schedule = {};
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         days.forEach(day => {
-            schedule[day] = [];
+            const dayCol = document.getElementById(`day-${day}`);
+            const meals = [];
             const slot = document.querySelector(`#day-${day} .meal-slot`);
             if (slot) {
-                const cards = slot.querySelectorAll('.meal-card');
-                cards.forEach(c => {
-                    schedule[day].push(c.getAttribute('data-meal-id'));
+                slot.querySelectorAll('.meal-card').forEach(c => {
+                    meals.push(c.getAttribute('data-meal-id'));
                 });
             }
+            schedule[day] = { date: dayCol ? dayCol.dataset.date : null, meals };
         });
 
         const response = await fetch('/api/calendar/sync', {
@@ -337,7 +338,7 @@ async function syncCalendar() {
             alert("Successfully synced to Google Calendar! ✨");
         } else {
             const result = await response.text();
-            if (response.status === 401) {
+            if (response.status === 403) {
                 alert("Please link your Google account first.");
                 window.location.href = "/auth/google";
             } else {
@@ -729,7 +730,12 @@ function initializeWeekDates() {
             if (dateLabel) {
                 dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            dayCol.dataset.date = currentDate.toISOString();
+            // Store as YYYY-MM-DD (local date) so the sync payload isn't
+            // shifted by UTC offset when the string is later split.
+            const y = currentDate.getFullYear();
+            const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const d = String(currentDate.getDate()).padStart(2, '0');
+            dayCol.dataset.date = `${y}-${m}-${d}`;
         }
     });
 }

@@ -1,27 +1,23 @@
 #include "calendar_service.h"
+#include "curl_utils.h"
 #include <crow.h>
 #include <curl/curl.h>
 #include <iostream>
-#include <iomanip>
-#include <sstream>
+#include <vector>
 
 namespace {
-size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-  ((std::string *)userp)->append((char *)contents, size * nmemb);
-  return size * nmemb;
-}
 std::string url_encode(const std::string &value) {
-    std::ostringstream escaped;
-    escaped.fill('0');
-    escaped << std::hex;
-    for (char c : value) {
-        if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || c == '~') {
-            escaped << c;
-        } else {
-            escaped << std::uppercase << '%' << std::setw(2) << int((unsigned char)c);
-        }
-    }
-    return escaped.str();
+  CURL *curl = curl_easy_init();
+  if (!curl) return value;
+  char *output = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
+  if (!output) {
+    curl_easy_cleanup(curl);
+    return value;
+  }
+  std::string res(output);
+  curl_free(output);
+  curl_easy_cleanup(curl);
+  return res;
 }
 } // namespace
 
@@ -54,8 +50,6 @@ bool CalendarService::createEvent(const std::string &summary,
   std::cerr << "Calendar API error: " << response << std::endl;
   return false;
 }
-
-#include <vector>
 
 std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
   std::vector<CalendarEvents> results;
@@ -139,7 +133,7 @@ std::string CalendarService::makeAuthorizedRequest(const std::string &url,
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
 
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_utils::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
 
     CURLcode res = curl_easy_perform(curl);

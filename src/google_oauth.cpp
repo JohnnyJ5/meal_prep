@@ -1,18 +1,19 @@
 #include "google_oauth.h"
+#include "curl_utils.h"
 #include <chrono>
 #include <crow.h>
 #include <curl/curl.h>
 #include <sstream>
 
 namespace {
-size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-  ((std::string *)userp)->append((char *)contents, size * nmemb);
-  return size * nmemb;
-}
-
 std::string urlEncode(const std::string &value) {
   CURL *curl = curl_easy_init();
-  char *output = curl_easy_escape(curl, value.c_str(), value.length());
+  if (!curl) return value;
+  char *output = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
+  if (!output) {
+    curl_easy_cleanup(curl);
+    return value;
+  }
   std::string res(output);
   curl_free(output);
   curl_easy_cleanup(curl);
@@ -111,6 +112,8 @@ bool GoogleOAuth::refreshAccessToken() {
 }
 
 std::string GoogleOAuth::getAccessToken() {
+  std::lock_guard<std::mutex> lock(d_tokenMutex);
+
   std::string accessToken, refreshToken;
   int64_t expiryTime;
   if (!d_dbManager->getGoogleTokens(accessToken, refreshToken, expiryTime)) {
@@ -125,7 +128,7 @@ std::string GoogleOAuth::getAccessToken() {
       d_dbManager->getGoogleTokens(accessToken, refreshToken, expiryTime);
     } else {
       CROW_LOG_ERROR << "Failed to refresh Google access token.";
-      return ""; // Failed to refresh
+      return "";
     }
   }
 
@@ -142,7 +145,7 @@ GoogleOAuth::makeTokenRequest(const std::string &postData) {
     std::string responseString;
     curl_easy_setopt(curl, CURLOPT_URL, "https://oauth2.googleapis.com/token");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_utils::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
 
     CURLcode curl_res = curl_easy_perform(curl);

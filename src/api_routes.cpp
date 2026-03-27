@@ -371,17 +371,51 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
                 return crow::response(400, "Invalid JSON");
             }
             
-            std::string summary = "Meal Plan Synced";
-            if (body.has("summary")) summary = body["summary"].s();
-            
-            // Dummy date logic for now: Use tomorrow at 6 PM
-            // In a better implementation, this would parse the specific schedule
-            if (calendarService->createEvent(summary, "Meal planned via app", "2026-03-23T18:00:00Z", "2026-03-23T19:00:00Z")) {
-                CROW_LOG_INFO << "Successfully synced meal plan to Google Calendar: " << summary;
-                return crow::response(200, "Synced to Google Calendar");
-            } else {
-                CROW_LOG_ERROR << "Failed to sync meal plan to Google Calendar: " << summary;
-                return crow::response(401, "Google account not linked or authorization failed. Please re-link your account.");
+            // Body is { "Monday": { "date": "YYYY-MM-DD", "meals": [...] }, ... }
+            static const std::vector<std::string> kDays = {
+                "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday", "Sunday"
+            };
+
+            int successCount = 0, failCount = 0;
+            for (const auto &day : kDays) {
+                if (!body.has(day)) continue;
+                const auto &dayData = body[day];
+                if (!dayData.has("date") || !dayData.has("meals")) continue;
+
+                std::string dateStr = dayData["date"].s(); // "YYYY-MM-DD"
+                if (dateStr.empty()) continue;
+
+                const auto &mealsArr = dayData["meals"];
+                for (size_t i = 0; i < mealsArr.size(); ++i) {
+                    std::string mealName = mealsArr[i].s();
+                    if (mealName.empty()) continue;
+
+                    std::string startTime = dateStr + "T18:00:00Z";
+                    std::string endTime   = dateStr + "T19:00:00Z";
+                    if (calendarService->createEvent(mealName, "Meal planned via app", startTime, endTime)) {
+                        ++successCount;
+                    } else {
+                        ++failCount;
+                    }
+                }
             }
+
+            if (failCount > 0 && successCount == 0) {
+                CROW_LOG_ERROR << "Failed to sync any meals to Google Calendar";
+                crow::response err(403);
+                err.set_header("Content-Type", "application/json");
+                err.body = R"({"linked":false,"message":"Google account not linked or authorization failed"})";
+                return err;
+            }
+
+            CROW_LOG_INFO << "Synced " << successCount << " meal(s) to Google Calendar";
+            crow::json::wvalue result;
+            result["synced"] = successCount;
+            result["failed"] = failCount;
+            crow::response ok(200);
+            ok.set_header("Content-Type", "application/json");
+            ok.body = result.dump();
+            return ok;
           });
 }

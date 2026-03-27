@@ -96,9 +96,6 @@ public:
    */
   bool getAllMeals(std::vector<std::pair<std::string, std::string>> &meals);
 
-  // Provide raw connection if occasionally needed (e.g. testing)
-  sqlite3 *getConnection() const { return d_db; }
-
   /**
    * @brief Saves Google OAuth2 tokens to the database.
    * @param accessToken The access token.
