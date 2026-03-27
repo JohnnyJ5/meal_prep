@@ -4,6 +4,8 @@
 #include "google_oauth.h"
 #include <string>
 
+#include <vector>
+
 /**
  * @brief Handles interactions with the Google Calendar API.
  */
@@ -22,12 +24,21 @@ public:
   bool createEvent(const std::string &summary, const std::string &description,
                    const std::string &startTime, const std::string &endTime);
 
+  struct CalendarEvents {
+    std::string summary;
+    std::string backgroundColor;
+    std::string foregroundColor;
+    std::string eventsJson;
+  };
+
   /**
-   * @brief Lists upcoming events from the user's primary calendar.
+   * @brief Lists upcoming events from the user's calendars.
+   * @param timeMin Optional ISO 8601 string for start date constraint
+   * @param timeMax Optional ISO 8601 string for end date constraint
    * @param maxResults Maximum number of results to return.
-   * @return JSON string of events (or empty string on failure).
+   * @return Vector of CalendarEvents structs (or empty on failure).
    */
-  std::string listEvents(int maxResults = 10);
+  std::vector<CalendarEvents> listEvents(const std::string &timeMin = "", const std::string &timeMax = "", int maxResults = 100);
 
 private:
   GoogleOAuth &d_oauth;

@@ -2,8 +2,10 @@ let selectedMeals = new Set();
 let isPlanning = false;
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeWeekDates();
     fetchMeals();
     fetchIngredients();
+    fetchCalendarEventsForWeek();
 });
 
 let availableIngredients = [];
@@ -315,14 +317,15 @@ async function syncCalendar() {
         const schedule = {};
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         days.forEach(day => {
-            schedule[day] = [];
+            const dayCol = document.getElementById(`day-${day}`);
+            const meals = [];
             const slot = document.querySelector(`#day-${day} .meal-slot`);
             if (slot) {
-                const cards = slot.querySelectorAll('.meal-card');
-                cards.forEach(c => {
-                    schedule[day].push(c.getAttribute('data-meal-id'));
+                slot.querySelectorAll('.meal-card').forEach(c => {
+                    meals.push(c.getAttribute('data-meal-id'));
                 });
             }
+            schedule[day] = { date: dayCol ? dayCol.dataset.date : null, meals };
         });
 
         const response = await fetch('/api/calendar/sync', {
@@ -335,7 +338,7 @@ async function syncCalendar() {
             alert("Successfully synced to Google Calendar! ✨");
         } else {
             const result = await response.text();
-            if (response.status === 401) {
+            if (response.status === 403) {
                 alert("Please link your Google account first.");
                 window.location.href = "/auth/google";
             } else {
@@ -700,4 +703,141 @@ async function createNewIngredient(e) {
         console.error(err);
         alert("Error saving ingredient.");
     }
+}
+
+// --- Specific Weekly Google Calendar Logic ---
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function getMondayOfCurrentWeek() {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+}
+
+function initializeWeekDates() {
+    const monday = getMondayOfCurrentWeek();
+    
+    daysOfWeek.forEach((dayName, index) => {
+        const currentDate = new Date(monday);
+        currentDate.setDate(monday.getDate() + index);
+        
+        const dayCol = document.getElementById(`day-${dayName}`);
+        if (dayCol) {
+            const dateLabel = dayCol.querySelector('.date-label');
+            if (dateLabel) {
+                dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            // Store as YYYY-MM-DD (local date) so the sync payload isn't
+            // shifted by UTC offset when the string is later split.
+            const y = currentDate.getFullYear();
+            const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const d = String(currentDate.getDate()).padStart(2, '0');
+            dayCol.dataset.date = `${y}-${m}-${d}`;
+        }
+    });
+}
+
+async function fetchCalendarEventsForWeek() {
+    const monday = getMondayOfCurrentWeek();
+    
+    const nextMonday = new Date(monday);
+    nextMonday.setDate(monday.getDate() + 7);
+    
+    try {
+        const url = `/api/calendar/events?timeMin=${encodeURIComponent(monday.toISOString())}&timeMax=${encodeURIComponent(nextMonday.toISOString())}`;
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            let eventsText = await response.text();
+            if (!eventsText) return; 
+            try {
+                const eventsArray = JSON.parse(eventsText);
+                renderCalendarEvents(eventsArray);
+            } catch (e) {
+                console.error("Failed to parse calendar events JSON:", e);
+            }
+        } else if (response.status === 403) {
+            console.log("Not linked to Google Calendar or error fetching events.");
+        }
+    } catch (e) {
+        console.error("Error fetching calendar events:", e);
+    }
+}
+
+function renderCalendarEvents(calendarDataArray) {
+    daysOfWeek.forEach(dayName => {
+        const slot = document.querySelector(`#day-${dayName} .events-slot`);
+        if (slot) slot.innerHTML = '';
+    });
+
+    const legend = document.getElementById('calendar-legend');
+    if (legend) {
+        legend.innerHTML = '';
+        legend.classList.add('hidden');
+    }
+
+    if (!Array.isArray(calendarDataArray)) return;
+
+    calendarDataArray.forEach(calData => {
+        const events = calData.events?.items || [];
+        const bgColor = calData.backgroundColor;
+        const fgColor = calData.foregroundColor;
+        const summary = calData.summary;
+
+        if (events.length > 0 && legend) {
+            legend.classList.remove('hidden');
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `
+                <div class="legend-color" style="background-color: ${bgColor}"></div>
+                <span>${summary}</span>
+            `;
+            legend.appendChild(item);
+        }
+
+        events.forEach(event => {
+            // Filter out birthday events by keyword
+            if (event.summary && event.summary.toLowerCase().includes('birthday')) {
+                return;
+            }
+
+            const startStr = event.start.dateTime || event.start.date;
+            if (!startStr) return;
+
+            // Date-only strings (all-day events) must be parsed without timezone
+            // conversion, otherwise midnight UTC shifts to the previous day locally.
+            let startDate;
+            if (event.start.dateTime) {
+                startDate = new Date(startStr);
+            } else {
+                const [y, m, d] = startStr.split('-').map(Number);
+                startDate = new Date(y, m - 1, d);
+            }
+            let dayIdx = startDate.getDay() - 1;
+            if (dayIdx === -1) dayIdx = 6; 
+            
+            const dayName = daysOfWeek[dayIdx];
+            const slot = document.querySelector(`#day-${dayName} .events-slot`);
+            
+            if (slot) {
+                const card = document.createElement('div');
+                card.className = 'event-card';
+                card.style.backgroundColor = `${bgColor}33`; // 20% opacity
+                card.style.borderLeftColor = bgColor;
+                card.style.color = 'var(--text-primary)';
+                
+                const timeStr = event.start.dateTime ? 
+                    startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'All Day';
+                    
+                card.innerHTML = `
+                    <div class="event-card-title" title="${event.summary}">${event.summary}</div>
+                    <div class="event-card-time" style="color: ${fgColor}; opacity: 0.8">${timeStr}</div>
+                `;
+                slot.appendChild(card);
+            }
+        });
+    });
 }

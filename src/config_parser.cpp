@@ -183,5 +183,11 @@ Config loadConfig(const std::string &configFilePath) {
     }
   }
 
+  // Allow environment variable override for redirect URI
+  const char *envRedirectUri = std::getenv("GOOGLE_REDIRECT_URI");
+  if (envRedirectUri) {
+    config.google_redirect_uri = envRedirectUri;
+  }
+
   return config;
 }

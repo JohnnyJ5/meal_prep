@@ -4,6 +4,7 @@
 #include "config_parser.h"
 #include "db_manager.h"
 #include <memory>
+#include <mutex>
 #include <string>
 
 /**
@@ -41,6 +42,7 @@ public:
 private:
   Config d_config;
   std::shared_ptr<DBManager> d_dbManager;
+  std::mutex d_tokenMutex;
 
   struct TokenResponse {
     std::string access_token;

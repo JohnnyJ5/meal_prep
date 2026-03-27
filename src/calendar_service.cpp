@@ -1,12 +1,23 @@
 #include "calendar_service.h"
+#include "curl_utils.h"
 #include <crow.h>
 #include <curl/curl.h>
 #include <iostream>
+#include <vector>
 
 namespace {
-size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-  ((std::string *)userp)->append((char *)contents, size * nmemb);
-  return size * nmemb;
+std::string url_encode(const std::string &value) {
+  CURL *curl = curl_easy_init();
+  if (!curl) return value;
+  char *output = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
+  if (!output) {
+    curl_easy_cleanup(curl);
+    return value;
+  }
+  std::string res(output);
+  curl_free(output);
+  curl_easy_cleanup(curl);
+  return res;
 }
 } // namespace
 
@@ -40,12 +51,57 @@ bool CalendarService::createEvent(const std::string &summary,
   return false;
 }
 
-std::string CalendarService::listEvents(int maxResults) {
-  std::string url =
-      "https://www.googleapis.com/calendar/v3/calendars/primary/"
-      "events?maxResults=" +
-      std::to_string(maxResults);
-  return makeAuthorizedRequest(url);
+std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
+  std::vector<CalendarEvents> results;
+
+  std::string listUrl = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+  std::string listResponse = makeAuthorizedRequest(listUrl);
+  if (listResponse.empty()) {
+      return results;
+  }
+
+  auto listJson = crow::json::load(listResponse);
+  if (!listJson || !listJson.has("items")) {
+      return results;
+  }
+
+  for (const auto& cal : listJson["items"]) {
+      if (!cal.has("id")) continue;
+      std::string calId = cal["id"].s();
+      
+      CalendarEvents calData;
+      calData.summary = cal.has("summary") ? std::string(cal["summary"].s()) : "Unnamed Calendar";
+      calData.backgroundColor = cal.has("backgroundColor") ? std::string(cal["backgroundColor"].s()) : "#58a6ff";
+      calData.foregroundColor = cal.has("foregroundColor") ? std::string(cal["foregroundColor"].s()) : "#ffffff";
+
+      // Filter out the birthday/contacts calendar
+      if (calId == "addressbook#contacts@group.v.calendar.google.com" || 
+          calData.summary == "Birthdays" || 
+          calData.summary == "Contacts") {
+          continue;
+      }
+
+      std::string url =
+          "https://www.googleapis.com/calendar/v3/calendars/" + 
+          url_encode(calId) +
+          "/events?singleEvents=true&orderBy=startTime&maxResults=" +
+          std::to_string(maxResults);
+          
+      if (!timeMin.empty()) {
+          url += "&timeMin=" + url_encode(timeMin);
+      }
+      if (!timeMax.empty()) {
+          url += "&timeMax=" + url_encode(timeMax);
+      }
+          
+      std::string evResponse = makeAuthorizedRequest(url);
+      if (!evResponse.empty()) {
+          calData.eventsJson = evResponse;
+          results.push_back(calData);
+      }
+  }
+
+  return results;
 }
 
 std::string CalendarService::makeAuthorizedRequest(const std::string &url,
@@ -77,7 +133,7 @@ std::string CalendarService::makeAuthorizedRequest(const std::string &url,
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
 
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_utils::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
 
     CURLcode res = curl_easy_perform(curl);
