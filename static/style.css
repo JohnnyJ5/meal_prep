@@ -176,12 +176,6 @@ header p {
     color: var(--text-primary);
 }
 
-.day-col.today h3::after {
-    content: ' •';
-    color: var(--accent-color);
-    font-size: 0.7em;
-    vertical-align: middle;
-}
 
 .day-col h3 {
     text-align: center;
