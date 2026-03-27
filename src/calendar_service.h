@@ -21,8 +21,10 @@ public:
    * @param endTime ISO 8601 formatted end time (e.g., "2026-03-23T10:00:00Z").
    * @return true if successful, false otherwise.
    */
-  bool createEvent(const std::string &summary, const std::string &description,
-                   const std::string &startTime, const std::string &endTime);
+  std::string createEvent(const std::string &summary, const std::string &description,
+                          const std::string &startTime, const std::string &endTime);
+
+  bool deleteEvent(const std::string &eventId);
 
   struct CalendarEvents {
     std::string summary;

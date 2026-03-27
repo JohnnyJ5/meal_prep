@@ -1,8 +1,8 @@
 #pragma once
 
-#include "config_parser.h"
 #include "ingredient.h"
 #include "meal.h"
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -18,19 +18,6 @@
 void ConsolidateAllIngredients(
     std::map<std::string, Ingredient> &allIngredients,
     const std::vector<std::reference_wrapper<Meal>> &meals);
-
-/**
- * @brief Formats the weekly schedule and consolidated ingredients, then emails
- * them.
- *
- * @param allIngredients The consolidated map of ingredients.
- * @param schedule The weekly meal schedule.
- * @param config The application configuration containing email credentials.
- */
-void SendPlanEmail(
-    const std::map<std::string, Ingredient> &allIngredients,
-    const std::map<std::string, std::vector<std::string>> &schedule,
-    const Config &config);
 
 #include <ostream>
 

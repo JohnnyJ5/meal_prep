@@ -195,7 +195,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   // Route: Plan selected meals and trigger email
   CROW_ROUTE(app, "/api/plan")
       .methods(crow::HTTPMethod::POST)(
-          [&factory, &config](const crow::request &req) {
+          [&factory](const crow::request &req) {
             auto body = crow::json::load(req.body);
             if (!body) {
               CROW_LOG_ERROR << "Invalid JSON for /api/plan POST";
@@ -236,16 +236,16 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             std::map<std::string, Ingredient> allIngredients;
             ConsolidateAllIngredients(allIngredients, mealRefs);
 
-            std::stringstream scheduleOutput;
-            PrintWeeklySchedule(scheduleOutput, schedule);
-
-            // Send Email
-            SendPlanEmail(allIngredients, schedule, config);
+            std::stringstream ingredientsSS;
+            ingredientsSS << "Whole Foods Order - Ingredients:\n";
+            for (const auto &pair : allIngredients) {
+              ingredientsSS << "- " << pair.second << "\n";
+            }
 
             CROW_LOG_INFO << "Successfully planned meals, failed subset size: " << failedMeals.size();
             crow::json::wvalue res;
             res["status"] = "success";
-            res["schedule"] = scheduleOutput.str();
+            res["ingredients_text"] = ingredientsSS.str();
             if (!failedMeals.empty()) {
               for (size_t i = 0; i < failedMeals.size(); ++i) {
                 res["failed_meals"][i] = failedMeals[i];
@@ -378,6 +378,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             };
 
             int successCount = 0, failCount = 0;
+            std::vector<std::string> syncedIds;
             for (const auto &day : kDays) {
                 if (!body.has(day)) continue;
                 const auto &dayData = body[day];
@@ -393,8 +394,10 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
 
                     std::string startTime = dateStr + "T18:00:00Z";
                     std::string endTime   = dateStr + "T19:00:00Z";
-                    if (calendarService->createEvent(mealName, "Meal planned via app", startTime, endTime)) {
+                    std::string eventId = calendarService->createEvent(mealName, "Meal planned via app", startTime, endTime);
+                    if (!eventId.empty()) {
                         ++successCount;
+                        syncedIds.push_back(eventId);
                     } else {
                         ++failCount;
                     }
@@ -413,6 +416,62 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
             crow::json::wvalue result;
             result["synced"] = successCount;
             result["failed"] = failCount;
+            for (size_t i = 0; i < syncedIds.size(); ++i) {
+                result["event_ids"][i] = syncedIds[i];
+            }
+            crow::response ok(200);
+            ok.set_header("Content-Type", "application/json");
+            ok.body = result.dump();
+            return ok;
+          });
+
+  // Route: Create Whole Foods order calendar event
+  CROW_ROUTE(app, "/api/calendar/order")
+      .methods(crow::HTTPMethod::POST)(
+          [calendarService](const crow::request &req) {
+            auto body = crow::json::load(req.body);
+            if (!body || !body.has("start") || !body.has("end") || !body.has("ingredients")) {
+              return crow::response(400, "Missing fields: start, end, ingredients required");
+            }
+            std::string start = body["start"].s();
+            std::string end   = body["end"].s();
+            std::string ingredients = body["ingredients"].s();
+
+            std::string eventId = calendarService->createEvent("Whole Foods Order", ingredients, start, end);
+            if (!eventId.empty()) {
+              CROW_LOG_INFO << "Created Whole Foods order calendar event";
+              crow::json::wvalue result;
+              result["status"] = "success";
+              crow::response ok(200);
+              ok.set_header("Content-Type", "application/json");
+              ok.body = result.dump();
+              return ok;
+            }
+            CROW_LOG_ERROR << "Failed to create Whole Foods order calendar event";
+            crow::response err(403);
+            err.set_header("Content-Type", "application/json");
+            err.body = R"({"error":"Failed to create event — is Google account linked?"})";
+            return err;
+          });
+
+  // Route: Delete calendar events by ID (used to undo a plan sync)
+  CROW_ROUTE(app, "/api/calendar/delete-events")
+      .methods(crow::HTTPMethod::POST)(
+          [calendarService](const crow::request &req) {
+            auto body = crow::json::load(req.body);
+            if (!body || !body.has("event_ids")) {
+              return crow::response(400, "Missing event_ids");
+            }
+            const auto &ids = body["event_ids"];
+            int deleted = 0;
+            for (size_t i = 0; i < ids.size(); ++i) {
+              if (calendarService->deleteEvent(std::string(ids[i].s()))) {
+                ++deleted;
+              }
+            }
+            CROW_LOG_INFO << "Deleted " << deleted << " calendar event(s)";
+            crow::json::wvalue result;
+            result["deleted"] = deleted;
             crow::response ok(200);
             ok.set_header("Content-Type", "application/json");
             ok.body = result.dump();

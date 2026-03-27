@@ -50,48 +50,55 @@
             </div>
 
             <div class="calendar-container">
-                <h2>Weekly Schedule</h2>
+                <div class="calendar-header">
+                    <h2>Weekly Schedule</h2>
+                    <div class="calendar-nav">
+                        <button class="btn-nav" onclick="shiftWindow(-1)" title="Previous day">&#8249;</button>
+                        <button class="btn-nav btn-nav-today" onclick="shiftWindow(0)" title="Back to today">Today</button>
+                        <button class="btn-nav" onclick="shiftWindow(1)" title="Next day">&#8250;</button>
+                    </div>
+                </div>
                 <div id="calendar-legend" class="calendar-legend hidden"></div>
                 <div class="calendar-grid">
                     <div class="day-col" id="day-Monday" data-day="Monday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Monday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Tuesday" data-day="Tuesday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Tuesday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Wednesday" data-day="Wednesday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Wednesday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Thursday" data-day="Thursday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Thursday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Friday" data-day="Friday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Friday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Saturday" data-day="Saturday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Saturday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
                     <div class="day-col" id="day-Sunday" data-day="Sunday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
-                        <h3>Sunday <span class="date-label"></span></h3>
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
                         <div class="events-slot"></div>
                         <div class="meal-slot"></div>
                     </div>
@@ -107,24 +114,36 @@
                 style="margin-left: auto; margin-right: 1rem;">
                 View Ingredients
             </button>
-            <button id="sync-calendar-btn" class="btn btn-secondary hidden" onclick="syncCalendar()">
-                Sync to Calendar
-            </button>
             <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
-                <span class="btn-text">Generate Plan & Send Email</span>
+                <span class="btn-text">Generate Plan</span>
                 <div class="btn-loader hidden"></div>
             </button>
         </div>
 
-        <!-- Result Modal -->
-        <div id="result-modal" class="modal hidden">
+        <!-- Whole Foods Order Modal -->
+        <div id="order-modal" class="modal hidden">
             <div class="modal-content">
-                <h2>Success! ✨</h2>
-                <p>Your grocery list has been emailed to you. Here is your schedule:</p>
-                <pre id="schedule-output"></pre>
-                <button onclick="closeModal('result-modal')" class="btn btn-secondary mt-4">Close</button>
+                <h2>Schedule Whole Foods Order</h2>
+                <p>When would you like to place your order?</p>
+                <div class="form-group mt-2">
+                    <label for="order-datetime">Date &amp; Time</label>
+                    <input type="datetime-local" id="order-datetime" class="form-control">
+                </div>
+                <div class="mt-2">
+                    <p style="font-size:0.85rem; color: var(--text-secondary); margin-bottom:0.4rem;">Ingredients list</p>
+                    <pre id="order-ingredients" style="font-size:0.8rem; max-height:200px; overflow-y:auto;"></pre>
+                </div>
+                <div id="order-status" class="hidden" style="margin-top:0.75rem; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem;"></div>
+                <div class="form-actions mt-4">
+                    <button onclick="cancelPlan()" class="btn btn-danger">Cancel</button>
+                    <button onclick="skipOrderModal()" class="btn btn-secondary">Skip</button>
+                    <button onclick="scheduleOrderEvent()" class="btn btn-primary" id="order-confirm-btn">Create Events</button>
+                </div>
             </div>
         </div>
+
+        <!-- Toast notification -->
+        <div id="toast" class="hidden" style="position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); padding:0.75rem 1.5rem; border-radius:10px; font-size:0.9rem; z-index:1000; pointer-events:none;"></div>
 
         <!-- Ingredients Modal -->
         <div id="ingredients-modal" class="modal hidden">

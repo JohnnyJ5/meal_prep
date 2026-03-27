@@ -23,15 +23,16 @@ std::string url_encode(const std::string &value) {
 
 CalendarService::CalendarService(GoogleOAuth &oauth) : d_oauth(oauth) {}
 
-bool CalendarService::createEvent(const std::string &summary,
-                                  const std::string &description,
-                                  const std::string &startTime,
-                                  const std::string &endTime) {
+std::string CalendarService::createEvent(const std::string &summary,
+                                         const std::string &description,
+                                         const std::string &startTime,
+                                         const std::string &endTime) {
   crow::json::wvalue body;
   body["summary"] = summary;
   body["description"] = description;
   body["start"]["dateTime"] = startTime;
   body["end"]["dateTime"] = endTime;
+  body["extendedProperties"]["private"]["mealPrepApp"] = "true";
 
   std::string response = makeAuthorizedRequest(
       "https://www.googleapis.com/calendar/v3/calendars/primary/events", "POST",
@@ -39,16 +40,44 @@ bool CalendarService::createEvent(const std::string &summary,
 
   if (response.empty()) {
     std::cerr << "Calendar API returned empty response for createEvent" << std::endl;
-    return false;
+    return "";
   }
 
   auto json = crow::json::load(response);
   if (json && json.has("id")) {
-    return true;
+    return std::string(json["id"].s());
   }
 
   std::cerr << "Calendar API error: " << response << std::endl;
-  return false;
+  return "";
+}
+
+bool CalendarService::deleteEvent(const std::string &eventId) {
+  std::string token = d_oauth.getAccessToken();
+  if (token.empty()) return false;
+
+  std::string url = "https://www.googleapis.com/calendar/v3/calendars/primary/events/" + eventId;
+
+  CURL *curl = curl_easy_init();
+  if (!curl) return false;
+
+  struct curl_slist *headers = nullptr;
+  headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+      +[](char *, size_t size, size_t nmemb, void *) -> size_t { return size * nmemb; });
+
+  CURLcode res = curl_easy_perform(curl);
+  long httpCode = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+  curl_slist_free_all(headers);
+  curl_easy_cleanup(curl);
+
+  return res == CURLE_OK && httpCode == 204;
 }
 
 std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const std::string &timeMin, const std::string &timeMax, int maxResults) {
