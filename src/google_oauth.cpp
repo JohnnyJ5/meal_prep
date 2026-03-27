@@ -3,21 +3,20 @@
 #include <chrono>
 #include <crow.h>
 #include <curl/curl.h>
+#include <iomanip>
+#include <random>
 #include <sstream>
 
 namespace {
-std::string urlEncode(const std::string &value) {
-  CURL *curl = curl_easy_init();
-  if (!curl) return value;
-  char *output = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
-  if (!output) {
-    curl_easy_cleanup(curl);
-    return value;
+std::string generateRandomState() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint32_t> dis(0, UINT32_MAX);
+  std::ostringstream oss;
+  for (int i = 0; i < 4; ++i) {
+    oss << std::hex << std::setw(8) << std::setfill('0') << dis(gen);
   }
-  std::string res(output);
-  curl_free(output);
-  curl_easy_cleanup(curl);
-  return res;
+  return oss.str();
 }
 } // namespace
 
@@ -25,24 +24,37 @@ GoogleOAuth::GoogleOAuth(const Config &config,
                          std::shared_ptr<DBManager> dbManager)
     : d_config(config), d_dbManager(dbManager) {}
 
-std::string GoogleOAuth::getAuthUrl() const {
+std::string GoogleOAuth::getAuthUrl() {
+  std::lock_guard<std::mutex> lock(d_tokenMutex);
+  d_pendingState = generateRandomState();
   std::stringstream ss;
   ss << "https://accounts.google.com/o/oauth2/v2/auth?"
-     << "client_id=" << urlEncode(d_config.google_client_id)
-     << "&redirect_uri=" << urlEncode(d_config.google_redirect_uri)
+     << "client_id=" << curl_utils::urlEncode(d_config.google_client_id)
+     << "&redirect_uri=" << curl_utils::urlEncode(d_config.google_redirect_uri)
      << "&response_type=code"
-     << "&scope=" << urlEncode("https://www.googleapis.com/auth/calendar")
+     << "&scope=" << curl_utils::urlEncode("https://www.googleapis.com/auth/calendar")
      << "&access_type=offline"
-     << "&prompt=consent";
+     << "&prompt=consent"
+     << "&state=" << curl_utils::urlEncode(d_pendingState);
   return ss.str();
+}
+
+bool GoogleOAuth::validateState(const std::string &state) {
+  std::lock_guard<std::mutex> lock(d_tokenMutex);
+  if (d_pendingState.empty() || state != d_pendingState) {
+    CROW_LOG_WARNING << "OAuth state validation failed: CSRF attack or stale request.";
+    return false;
+  }
+  d_pendingState.clear();
+  return true;
 }
 
 bool GoogleOAuth::exchangeCodeForTokens(const std::string &code) {
   std::stringstream ss;
-  ss << "code=" << urlEncode(code)
-     << "&client_id=" << urlEncode(d_config.google_client_id)
-     << "&client_secret=" << urlEncode(d_config.google_client_secret)
-     << "&redirect_uri=" << urlEncode(d_config.google_redirect_uri)
+  ss << "code=" << curl_utils::urlEncode(code)
+     << "&client_id=" << curl_utils::urlEncode(d_config.google_client_id)
+     << "&client_secret=" << curl_utils::urlEncode(d_config.google_client_secret)
+     << "&redirect_uri=" << curl_utils::urlEncode(d_config.google_redirect_uri)
      << "&grant_type=authorization_code";
 
   auto response = makeTokenRequest(ss.str());
@@ -85,9 +97,9 @@ bool GoogleOAuth::refreshAccessToken() {
   }
 
   std::stringstream ss;
-  ss << "client_id=" << urlEncode(d_config.google_client_id)
-     << "&client_secret=" << urlEncode(d_config.google_client_secret)
-     << "&refresh_token=" << urlEncode(refreshToken)
+  ss << "client_id=" << curl_utils::urlEncode(d_config.google_client_id)
+     << "&client_secret=" << curl_utils::urlEncode(d_config.google_client_secret)
+     << "&refresh_token=" << curl_utils::urlEncode(refreshToken)
      << "&grant_type=refresh_token";
 
   auto response = makeTokenRequest(ss.str());
@@ -160,15 +172,14 @@ GoogleOAuth::makeTokenRequest(const std::string &postData) {
         res.expires_in = json["expires_in"].i();
         res.success = true;
       } else {
-          std::string errorMsg = "unknown error";
-          auto errJson = crow::json::load(responseString);
-          if (errJson && errJson.has("error")) {
-              errorMsg = errJson["error"].s();
-              if (errJson.has("error_description")) {
-                  errorMsg += ": " + std::string(errJson["error_description"].s());
-              }
+        std::string errorMsg = "unknown error";
+        if (json && json.has("error")) {
+          errorMsg = json["error"].s();
+          if (json.has("error_description")) {
+            errorMsg += ": " + std::string(json["error_description"].s());
           }
-          CROW_LOG_ERROR << "Token request failed: " << errorMsg;
+        }
+        CROW_LOG_ERROR << "Token request failed: " << errorMsg;
       }
     } else {
       CROW_LOG_ERROR << "curl_easy_perform() failed for token request: " << curl_easy_strerror(curl_res);

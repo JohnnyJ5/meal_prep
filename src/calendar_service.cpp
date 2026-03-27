@@ -5,23 +5,7 @@
 #include <iostream>
 #include <vector>
 
-namespace {
-std::string url_encode(const std::string &value) {
-  CURL *curl = curl_easy_init();
-  if (!curl) return value;
-  char *output = curl_easy_escape(curl, value.c_str(), static_cast<int>(value.length()));
-  if (!output) {
-    curl_easy_cleanup(curl);
-    return value;
-  }
-  std::string res(output);
-  curl_free(output);
-  curl_easy_cleanup(curl);
-  return res;
-}
-} // namespace
-
-CalendarService::CalendarService(GoogleOAuth &oauth) : d_oauth(oauth) {}
+CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
 
 std::string CalendarService::createEvent(const std::string &summary,
                                          const std::string &description,
@@ -53,7 +37,7 @@ std::string CalendarService::createEvent(const std::string &summary,
 }
 
 bool CalendarService::deleteEvent(const std::string &eventId) {
-  std::string token = d_oauth.getAccessToken();
+  std::string token = d_oauth->getAccessToken();
   if (token.empty()) return false;
 
   std::string url = "https://www.googleapis.com/calendar/v3/calendars/primary/events/" + eventId;
@@ -112,15 +96,15 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
 
       std::string url =
           "https://www.googleapis.com/calendar/v3/calendars/" + 
-          url_encode(calId) +
+          curl_utils::urlEncode(calId) +
           "/events?singleEvents=true&orderBy=startTime&maxResults=" +
           std::to_string(maxResults);
           
       if (!timeMin.empty()) {
-          url += "&timeMin=" + url_encode(timeMin);
+          url += "&timeMin=" + curl_utils::urlEncode(timeMin);
       }
       if (!timeMax.empty()) {
-          url += "&timeMax=" + url_encode(timeMax);
+          url += "&timeMax=" + curl_utils::urlEncode(timeMax);
       }
           
       std::string evResponse = makeAuthorizedRequest(url);
@@ -136,7 +120,7 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
 std::string CalendarService::makeAuthorizedRequest(const std::string &url,
                                                   const std::string &method,
                                                   const std::string &postData) {
-  std::string token = d_oauth.getAccessToken();
+  std::string token = d_oauth->getAccessToken();
   if (token.empty()) {
     std::cerr << "Failed to get access token for Calendar API" << std::endl;
     return "";

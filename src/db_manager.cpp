@@ -32,6 +32,7 @@ bool DBManager::executeQuery(const std::string &query) {
 }
 
 bool DBManager::initializeSchema() {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
@@ -76,7 +77,7 @@ bool DBManager::initializeSchema() {
 
   // Add category column to existing databases if it doesn't exist
   bool columnExists = false;
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   const std::string checkColumn = "PRAGMA table_info(meals);";
   if (sqlite3_prepare_v2(d_db, checkColumn.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
     while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -110,7 +111,7 @@ int DBManager::getMealId(const std::string &mealName) {
     return -1;
 
   std::string query = "SELECT id FROM meals WHERE name = ?;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   int mealId = -1;
 
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
@@ -126,6 +127,7 @@ int DBManager::getMealId(const std::string &mealName) {
 }
 
 bool DBManager::addMeal(const Meal &meal) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
@@ -133,7 +135,7 @@ bool DBManager::addMeal(const Meal &meal) {
   executeQuery("BEGIN TRANSACTION;");
 
   std::string insertMeal = "INSERT INTO meals (name, category) VALUES (?, ?);";
-  sqlite3_stmt *stmtMeal;
+  sqlite3_stmt *stmtMeal = nullptr;
   if (sqlite3_prepare_v2(d_db, insertMeal.c_str(), -1, &stmtMeal, nullptr) !=
       SQLITE_OK) {
     executeQuery("ROLLBACK;");
@@ -155,7 +157,7 @@ bool DBManager::addMeal(const Meal &meal) {
   std::string insertIngredient =
       "INSERT INTO ingredients (meal_id, name, amount, unit, preparation) "
       "VALUES (?, ?, ?, ?, ?);";
-  sqlite3_stmt *stmtIngred;
+  sqlite3_stmt *stmtIngred = nullptr;
   if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred,
                          nullptr) != SQLITE_OK) {
     executeQuery("ROLLBACK;");
@@ -169,17 +171,6 @@ bool DBManager::addMeal(const Meal &meal) {
     sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
     sqlite3_bind_int(stmtIngred, 4,
                      static_cast<int>(ing.getAmount().getUnit()));
-
-    // Handling preparation string, replacing empty/none with "None" if needed,
-    // though ingredient handles it However, looking at Ingredient, we don't
-    // have a public getter for preparation. Let's assume it's exposed or we
-    // need to add it. Wait, looking at `ingredient.h`, `d_preparation` does NOT
-    // have a getter. I need to fix that or ignore for now. I will add
-    // getPreparation() to ingredient.h first, or write it directly. For now,
-    // I'll assume we'll update it or just use "None". Let me check my thought
-    // process: I will use a dummy "None" for now and update `ingredient.h`
-    // shortly.
-
     sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1,
                       SQLITE_TRANSIENT);
 
@@ -197,37 +188,82 @@ bool DBManager::addMeal(const Meal &meal) {
 }
 
 bool DBManager::updateMeal(const Meal &meal) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
-  // To update, the simplest approach is to delete the old meal ingredients and
-  // recreate them. However we should probably keep the meal ID. Alternatively,
-  // delete the meal and add it again (cascade handles ingredients).
-
-  // Begin transaction
   executeQuery("BEGIN TRANSACTION;");
 
-  // First, delete
+  // Delete old meal (cascade removes ingredients)
   std::string delQuery = "DELETE FROM meals WHERE name = ?;";
-  sqlite3_stmt *stmtDel;
-  if (sqlite3_prepare_v2(d_db, delQuery.c_str(), -1, &stmtDel, nullptr) ==
+  sqlite3_stmt *stmtDel = nullptr;
+  if (sqlite3_prepare_v2(d_db, delQuery.c_str(), -1, &stmtDel, nullptr) !=
       SQLITE_OK) {
-    sqlite3_bind_text(stmtDel, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_step(stmtDel);
+    executeQuery("ROLLBACK;");
+    return false;
   }
+  sqlite3_bind_text(stmtDel, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
+  int delResult = sqlite3_step(stmtDel);
   sqlite3_finalize(stmtDel);
+  if (delResult != SQLITE_DONE) {
+    executeQuery("ROLLBACK;");
+    return false;
+  }
+
+  // Insert updated meal row
+  std::string insertMeal = "INSERT INTO meals (name, category) VALUES (?, ?);";
+  sqlite3_stmt *stmtMeal = nullptr;
+  if (sqlite3_prepare_v2(d_db, insertMeal.c_str(), -1, &stmtMeal, nullptr) !=
+      SQLITE_OK) {
+    executeQuery("ROLLBACK;");
+    return false;
+  }
+  sqlite3_bind_text(stmtMeal, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmtMeal, 2, meal.getCategory().c_str(), -1, SQLITE_TRANSIENT);
+  if (sqlite3_step(stmtMeal) != SQLITE_DONE) {
+    sqlite3_finalize(stmtMeal);
+    executeQuery("ROLLBACK;");
+    return false;
+  }
+  sqlite3_finalize(stmtMeal);
+
+  int mealId = sqlite3_last_insert_rowid(d_db);
+
+  // Insert updated ingredients
+  std::string insertIngredient =
+      "INSERT INTO ingredients (meal_id, name, amount, unit, preparation) "
+      "VALUES (?, ?, ?, ?, ?);";
+  sqlite3_stmt *stmtIngred = nullptr;
+  if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred,
+                         nullptr) != SQLITE_OK) {
+    executeQuery("ROLLBACK;");
+    return false;
+  }
+  for (const auto &ing : meal.getIngredients()) {
+    sqlite3_bind_int(stmtIngred, 1, mealId);
+    sqlite3_bind_text(stmtIngred, 2, ing.getName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
+    sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
+    sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
+      sqlite3_finalize(stmtIngred);
+      executeQuery("ROLLBACK;");
+      return false;
+    }
+    sqlite3_reset(stmtIngred);
+  }
+  sqlite3_finalize(stmtIngred);
 
   executeQuery("COMMIT;");
-
-  // Then add
-  return addMeal(meal);
+  return true;
 }
 
 bool DBManager::deleteMeal(const std::string &mealName) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
   std::string query = "DELETE FROM meals WHERE name = ?;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   bool success = false;
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
       SQLITE_OK) {
@@ -241,6 +277,7 @@ bool DBManager::deleteMeal(const std::string &mealName) {
 }
 
 std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return nullptr;
 
@@ -249,7 +286,7 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     return nullptr;
 
   std::string getCategoryQuery = "SELECT category FROM meals WHERE id = ?;";
-  sqlite3_stmt *stmtCat;
+  sqlite3_stmt *stmtCat = nullptr;
   std::string category = "Uncategorized";
   if (sqlite3_prepare_v2(d_db, getCategoryQuery.c_str(), -1, &stmtCat,
                          nullptr) == SQLITE_OK) {
@@ -265,7 +302,7 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
 
   std::string query = "SELECT name, amount, unit, preparation FROM ingredients "
                       "WHERE meal_id = ?;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   std::vector<Ingredient> ingredients;
 
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
@@ -279,8 +316,6 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
       std::string prep =
           reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
 
-      // Reconstruct ingredient. Assuming getPreparation exists soon.
-      // Ingredient(name, Measurement(value, unit), prep)
       ingredients.push_back(Ingredient(
           ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)),
           prep));
@@ -288,19 +323,17 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
   }
   sqlite3_finalize(stmt);
 
-  if (ingredients.empty())
-    return nullptr;
-
   return std::make_unique<Meal>(mealName, ingredients, category);
 }
 
 bool DBManager::getAllMeals(
     std::vector<std::pair<std::string, std::string>> &meals) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
   std::string query = "SELECT name, category FROM meals ORDER BY name ASC;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
 
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
       SQLITE_OK) {
@@ -321,12 +354,13 @@ bool DBManager::getAllMeals(
 
 bool DBManager::getAllIngredients(
     std::vector<std::pair<std::string, std::string>> &ingredients) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
   std::string query =
       "SELECT name, category FROM available_ingredients ORDER BY name ASC;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
 
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) ==
       SQLITE_OK) {
@@ -347,12 +381,13 @@ bool DBManager::getAllIngredients(
 
 bool DBManager::addIngredient(const std::string &name,
                               const std::string &category) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
 
   std::string insertIngredient =
       "INSERT INTO available_ingredients (name, category) VALUES (?, ?);";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmt, nullptr) !=
       SQLITE_OK) {
     return false;
@@ -367,6 +402,7 @@ bool DBManager::addIngredient(const std::string &name,
 }
 
 bool DBManager::seedDefaultIngredients() {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   std::vector<std::pair<std::string, std::string>> existing;
   getAllIngredients(existing);
   if (!existing.empty())
@@ -453,6 +489,7 @@ bool DBManager::seedDefaultIngredients() {
 }
 
 bool DBManager::seedDefaultMeals() {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   // This will seed the database with the initial hardcoded values if empty.
   std::vector<std::pair<std::string, std::string>> existing;
   getAllMeals(existing);
@@ -598,16 +635,18 @@ bool DBManager::seedDefaultMeals() {
 
   return allSuccess;
 }
+
 bool DBManager::saveGoogleTokens(const std::string &accessToken,
                                  const std::string &refreshToken,
                                  int64_t expiryTime) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
   std::string query =
       "INSERT OR REPLACE INTO google_tokens (id, access_token, refresh_token, "
       "expiry_time) "
       "VALUES (1, ?, ?, ?);";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
     return false;
   std::string encAccessToken = TokenEncryption::encrypt(accessToken);
@@ -627,11 +666,12 @@ bool DBManager::saveGoogleTokens(const std::string &accessToken,
 bool DBManager::getGoogleTokens(std::string &accessToken,
                                 std::string &refreshToken,
                                 int64_t &expiryTime) {
+  std::lock_guard<std::recursive_mutex> lock(d_mutex);
   if (!d_db)
     return false;
   std::string query = "SELECT access_token, refresh_token, expiry_time FROM "
                       "google_tokens WHERE id = 1;";
-  sqlite3_stmt *stmt;
+  sqlite3_stmt *stmt = nullptr;
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
     return false;
   bool found = false;

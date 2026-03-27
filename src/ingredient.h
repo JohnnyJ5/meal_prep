@@ -1,5 +1,4 @@
-#ifndef INGREDIENT_H
-#define INGREDIENT_H
+#pragma once
 
 #include "measurement.h"
 #include <ostream>
@@ -83,4 +82,3 @@ inline std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
-#endif // Ingredient_H

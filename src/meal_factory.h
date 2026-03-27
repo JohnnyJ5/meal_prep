@@ -1,5 +1,4 @@
-#ifndef MEAL_FACTORY_H
-#define MEAL_FACTORY_H
+#pragma once
 
 #include "db_manager.h"
 #include "meal.h"
@@ -40,4 +39,3 @@ private:
   std::shared_ptr<DBManager> d_dbManager;
 };
 
-#endif // MEAL_FACTORY_H
