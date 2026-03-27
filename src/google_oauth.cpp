@@ -144,6 +144,7 @@ GoogleOAuth::makeTokenRequest(const std::string &postData) {
   if (curl) {
     std::string responseString;
     curl_easy_setopt(curl, CURLOPT_URL, "https://oauth2.googleapis.com/token");
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_utils::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
@@ -159,7 +160,15 @@ GoogleOAuth::makeTokenRequest(const std::string &postData) {
         res.expires_in = json["expires_in"].i();
         res.success = true;
       } else {
-          CROW_LOG_ERROR << "Token request failed: " << responseString;
+          std::string errorMsg = "unknown error";
+          auto errJson = crow::json::load(responseString);
+          if (errJson && errJson.has("error")) {
+              errorMsg = errJson["error"].s();
+              if (errJson.has("error_description")) {
+                  errorMsg += ": " + std::string(errJson["error_description"].s());
+              }
+          }
+          CROW_LOG_ERROR << "Token request failed: " << errorMsg;
       }
     } else {
       CROW_LOG_ERROR << "curl_easy_perform() failed for token request: " << curl_easy_strerror(curl_res);

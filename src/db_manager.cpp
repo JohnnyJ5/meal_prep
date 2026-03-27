@@ -1,5 +1,6 @@
 #include "db_manager.h"
 #include "measurement.h"
+#include "token_encryption.h"
 #include <iostream>
 
 DBManager::DBManager(const std::string &dbPath)
@@ -609,11 +610,13 @@ bool DBManager::saveGoogleTokens(const std::string &accessToken,
   sqlite3_stmt *stmt;
   if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
     return false;
-  sqlite3_bind_text(stmt, 1, accessToken.c_str(), -1, SQLITE_TRANSIENT);
-  if (refreshToken.empty()) {
+  std::string encAccessToken = TokenEncryption::encrypt(accessToken);
+  std::string encRefreshToken = refreshToken.empty() ? "" : TokenEncryption::encrypt(refreshToken);
+  sqlite3_bind_text(stmt, 1, encAccessToken.c_str(), -1, SQLITE_TRANSIENT);
+  if (encRefreshToken.empty()) {
     sqlite3_bind_null(stmt, 2);
   } else {
-    sqlite3_bind_text(stmt, 2, refreshToken.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, encRefreshToken.c_str(), -1, SQLITE_TRANSIENT);
   }
   sqlite3_bind_int64(stmt, 3, expiryTime);
   bool success = (sqlite3_step(stmt) == SQLITE_DONE);
@@ -636,12 +639,12 @@ bool DBManager::getGoogleTokens(std::string &accessToken,
     const char *access =
         reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
     if (access) {
-      accessToken = access;
+      accessToken = TokenEncryption::decrypt(access);
     }
     const char *refresh =
         reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
     if (refresh) {
-      refreshToken = refresh;
+      refreshToken = TokenEncryption::decrypt(refresh);
     } else {
       refreshToken = "";
     }

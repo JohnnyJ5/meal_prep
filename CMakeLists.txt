@@ -45,6 +45,7 @@ set(LIB_SOURCES
     src/config_parser.cpp
     src/google_oauth.cpp
     src/calendar_service.cpp
+    src/token_encryption.cpp
     # Add other library source files here
 )
 

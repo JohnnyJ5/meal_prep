@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y \
 
 # devuser for local development
 RUN useradd -m -s /bin/bash -G sudo devuser && \
-    echo "devuser:devuser" | chpasswd && \
     echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 WORKDIR /home/devuser/meal_prep

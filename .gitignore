@@ -12,3 +12,13 @@ CMakeCache.txt
 CTestTestfile.cmake
 meals.db
 server.log
+
+# Sensitive files
+.env
+.env.*
+*.env
+*.key
+*.pem
+*credentials*.json
+*secret*.json
+.meal_prep/
