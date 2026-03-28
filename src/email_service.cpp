@@ -38,9 +38,7 @@ void SendEmail(const std::string &toAddress, const std::string &subject,
     std::cerr << "Warning: Email credentials are not configured. Skipping email send.\n";
     return;
   }
-  try {
-
-    std::string payload = "To: " + toAddress +
+  std::string payload = "To: " + toAddress +
                           "\r\n"
                           "From: " +
                           senderEmail +
@@ -86,7 +84,4 @@ void SendEmail(const std::string &toAddress, const std::string &subject,
       curl_slist_free_all(recipients);
       curl_easy_cleanup(curl);
     }
-  } catch (const std::exception &e) {
-    std::cerr << "Email send error: " << e.what() << std::endl;
-  }
 }

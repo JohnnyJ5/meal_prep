@@ -1,5 +1,4 @@
-#ifndef GOOGLE_OAUTH_H
-#define GOOGLE_OAUTH_H
+#pragma once
 
 #include "config_parser.h"
 #include "db_manager.h"
@@ -16,9 +15,17 @@ public:
 
   /**
    * @brief Generates the URL for the user to visit to authorize the application.
+   * Generates and stores a random CSRF state parameter.
    * @return The authorization URL.
    */
-  std::string getAuthUrl() const;
+  std::string getAuthUrl();
+
+  /**
+   * @brief Validates the state parameter received in the OAuth callback.
+   * @param state The state value received from Google's redirect.
+   * @return true if the state matches the expected value, false otherwise.
+   */
+  bool validateState(const std::string &state);
 
   /**
    * @brief Exchanges an authorization code for access and refresh tokens.
@@ -43,6 +50,7 @@ private:
   Config d_config;
   std::shared_ptr<DBManager> d_dbManager;
   std::mutex d_tokenMutex;
+  std::string d_pendingState;
 
   struct TokenResponse {
     std::string access_token;
@@ -53,5 +61,3 @@ private:
 
   TokenResponse makeTokenRequest(const std::string &postData);
 };
-
-#endif // GOOGLE_OAUTH_H

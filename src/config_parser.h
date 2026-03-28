@@ -1,5 +1,4 @@
-#ifndef CONFIG_PARSER_H
-#define CONFIG_PARSER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -30,4 +29,3 @@ struct Config {
  */
 Config loadConfig(const std::string &configFilePath);
 
-#endif // CONFIG_PARSER_H

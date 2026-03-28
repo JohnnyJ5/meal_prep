@@ -1,5 +1,4 @@
-#ifndef MEAL_H
-#define MEAL_H
+#pragma once
 
 #include "ingredient.h"
 #include <string>
@@ -32,4 +31,3 @@ private:
   std::string d_category;
 };
 
-#endif // MEAL_H

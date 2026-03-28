@@ -1,9 +1,8 @@
-#ifndef CALENDAR_SERVICE_H
-#define CALENDAR_SERVICE_H
+#pragma once
 
 #include "google_oauth.h"
+#include <memory>
 #include <string>
-
 #include <vector>
 
 /**
@@ -11,7 +10,7 @@
  */
 class CalendarService {
 public:
-  CalendarService(GoogleOAuth &oauth);
+  CalendarService(std::shared_ptr<GoogleOAuth> oauth);
 
   /**
    * @brief Creates a new event in the user's primary calendar.
@@ -19,7 +18,7 @@ public:
    * @param description The description of the event.
    * @param startTime ISO 8601 formatted start time (e.g., "2026-03-23T09:00:00Z").
    * @param endTime ISO 8601 formatted end time (e.g., "2026-03-23T10:00:00Z").
-   * @return true if successful, false otherwise.
+   * @return The created event ID, or empty string on failure.
    */
   std::string createEvent(const std::string &summary, const std::string &description,
                           const std::string &startTime, const std::string &endTime);
@@ -43,11 +42,9 @@ public:
   std::vector<CalendarEvents> listEvents(const std::string &timeMin = "", const std::string &timeMax = "", int maxResults = 100);
 
 private:
-  GoogleOAuth &d_oauth;
+  std::shared_ptr<GoogleOAuth> d_oauth;
 
   std::string makeAuthorizedRequest(const std::string &url,
                                     const std::string &method = "GET",
                                     const std::string &postData = "");
 };
-
-#endif // CALENDAR_SERVICE_H

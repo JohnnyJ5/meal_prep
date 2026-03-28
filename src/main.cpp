@@ -13,9 +13,14 @@
 #include <string>
 #include <vector>
 
+struct CurlGlobalGuard {
+  CurlGlobalGuard() { curl_global_init(CURL_GLOBAL_DEFAULT); }
+  ~CurlGlobalGuard() { curl_global_cleanup(); }
+};
+
 int main(int argc, char **argv) {
   try {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    CurlGlobalGuard curlGuard;
 
     // Simple command line parsing for now
     std::vector<std::string> mealNames;
@@ -48,7 +53,7 @@ int main(int argc, char **argv) {
     
     if (serveWeb) {
       auto googleOAuth = std::make_shared<GoogleOAuth>(config, dbManager);
-      auto calendarService = std::make_shared<CalendarService>(*googleOAuth);
+      auto calendarService = std::make_shared<CalendarService>(googleOAuth);
 
       crow::App<RequestTimerMiddleware> app;
       setupRoutes(app, dbManager, factory, config, googleOAuth, calendarService);
@@ -100,7 +105,6 @@ int main(int argc, char **argv) {
     ConsolidateAllIngredients(allIngredients, mealRefs);
     PrintWeeklySchedule(std::cout, schedule);
 
-    curl_global_cleanup();
   } catch (const std::exception &e) {
     std::cerr << "Exception: " << e.what() << std::endl;
     return 1;

@@ -4,6 +4,7 @@
 #include "meal.h"
 #include <functional>
 #include <map>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -18,8 +19,6 @@
 void ConsolidateAllIngredients(
     std::map<std::string, Ingredient> &allIngredients,
     const std::vector<std::reference_wrapper<Meal>> &meals);
-
-#include <ostream>
 
 /**
  * @brief Prints the weekly meal schedule to the given output stream.

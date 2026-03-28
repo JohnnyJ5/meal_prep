@@ -75,8 +75,8 @@ TEST_F(MeasurementTest, NonVolumeUnitsNoConversion) {
   Measurement m2(2.0, MeasurementUnit::GRAM);
   Measurement result = m1 + m2;
 
-  // Should add values as-is (no conversion)
-  EXPECT_NEAR(result.getValue(), 3.0, 0.001);
+  // Incompatible unit categories (mass units with different base): return lhs unchanged
+  EXPECT_NEAR(result.getValue(), 1.0, 0.001);
   EXPECT_EQ(result.getUnit(), MeasurementUnit::POUND);
 }
 

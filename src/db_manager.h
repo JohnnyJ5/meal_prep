@@ -1,9 +1,9 @@
-#ifndef DB_MANAGER_H
-#define DB_MANAGER_H
+#pragma once
 
 #include "meal.h"
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <sqlite3.h>
 #include <string>
 #include <vector>
@@ -119,9 +119,8 @@ public:
 private:
   sqlite3 *d_db;
   std::string d_dbPath;
+  mutable std::recursive_mutex d_mutex;
 
   bool executeQuery(const std::string &query);
   int getMealId(const std::string &mealName);
 };
-
-#endif // DB_MANAGER_H

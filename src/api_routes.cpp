@@ -263,6 +263,11 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
   CROW_ROUTE(app, "/")([googleOAuth](const crow::request &req) {
     if (auto code = req.url_params.get("code")) {
       CROW_LOG_INFO << "Received OAuth code at root route. Exchanging...";
+      auto stateParam = req.url_params.get("state");
+      if (!stateParam || !googleOAuth->validateState(stateParam)) {
+        CROW_LOG_ERROR << "OAuth state validation failed at root callback";
+        return crow::response(400, "Invalid OAuth state");
+      }
       if (googleOAuth->exchangeCodeForTokens(code)) {
         CROW_LOG_INFO << "Successfully exchanged authorization code for tokens";
       } else {
@@ -284,6 +289,9 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
 
   // Route: Serve all other static files (CSS, JS)
   CROW_ROUTE(app, "/<string>")([](std::string path) {
+    if (path.find("..") != std::string::npos || path.find('/') != std::string::npos) {
+      return crow::response(400, "Invalid path");
+    }
     crow::response res;
     res.set_static_file_info("static/" + path);
     if (res.code == 404) {
@@ -309,6 +317,12 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app,
     if (!code) {
       CROW_LOG_ERROR << "Authorization code not found in /auth/google/callback";
       return crow::response(400, "Authorization code not found");
+    }
+
+    auto stateParam = req.url_params.get("state");
+    if (!stateParam || !googleOAuth->validateState(stateParam)) {
+      CROW_LOG_ERROR << "OAuth state validation failed in /auth/google/callback";
+      return crow::response(400, "Invalid OAuth state");
     }
 
     if (googleOAuth->exchangeCodeForTokens(code)) {

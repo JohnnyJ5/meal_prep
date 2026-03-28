@@ -1,5 +1,4 @@
-#ifndef MEASUREMENTS_H
-#define MEASUREMENTS_H
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -19,24 +18,24 @@ enum class MeasurementUnit {
 };
 
 namespace Preparation {
-    const std::string k_WHOLE = "WHOLE";
-    const std::string k_HALF = "HALF";
-    const std::string k_CHOPPED = "CHOPPED";
-    const std::string k_DICED = "DICED";
-    const std::string k_STRIPS = "STRIPS";
-    const std::string k_SHREDDED = "SHREDDED";
-    const std::string k_MINCED = "MINCED";
-    const std::string k_GRATED = "GRATED";
-    const std::string k_THIN_SLICED = "THIN_SLICED";
-    const std::string K_PEELED = "PEELED";
+    inline constexpr const char* k_WHOLE = "WHOLE";
+    inline constexpr const char* k_HALF = "HALF";
+    inline constexpr const char* k_CHOPPED = "CHOPPED";
+    inline constexpr const char* k_DICED = "DICED";
+    inline constexpr const char* k_STRIPS = "STRIPS";
+    inline constexpr const char* k_SHREDDED = "SHREDDED";
+    inline constexpr const char* k_MINCED = "MINCED";
+    inline constexpr const char* k_GRATED = "GRATED";
+    inline constexpr const char* k_THIN_SLICED = "THIN_SLICED";
+    inline constexpr const char* K_PEELED = "PEELED";
 }
 
 class Measurement {
 public:
-    
-    Measurement() = default;
+
+    Measurement() : d_value(0.0), d_measurementUnit(MeasurementUnit::WHOLE) {}
     Measurement(double v, MeasurementUnit u)
-        : d_value(v), d_measurementUnit(u) 
+        : d_value(v), d_measurementUnit(u)
     {}
 
     Measurement(const Measurement &) = default;
@@ -46,23 +45,30 @@ public:
 
     Measurement operator+(const Measurement& other) const {
         if (d_measurementUnit != other.d_measurementUnit) {
-            // Convert both measurements to a common unit (teaspoons for volume)
-            double thisValue = convertToTeaspoons(d_value, d_measurementUnit);
-            double otherValue = convertToTeaspoons(other.d_value, other.d_measurementUnit);
-            double resultValue = thisValue + otherValue;
-            
-            // Return result in the first measurement's unit
-            return Measurement(convertFromTeaspoons(resultValue, d_measurementUnit), d_measurementUnit);
+            bool thisIsVolume = isVolumeUnit(d_measurementUnit);
+            bool otherIsVolume = isVolumeUnit(other.d_measurementUnit);
+            if (thisIsVolume && otherIsVolume) {
+                double thisValue = convertToTeaspoons(d_value, d_measurementUnit);
+                double otherValue = convertToTeaspoons(other.d_value, other.d_measurementUnit);
+                return Measurement(convertFromTeaspoons(thisValue + otherValue, d_measurementUnit), d_measurementUnit);
+            }
+            // Incompatible unit categories (e.g. mass + count): return this unchanged
+            return *this;
         }
-        else {
-            return Measurement(d_value + other.d_value, d_measurementUnit);
-        }
+        return Measurement(d_value + other.d_value, d_measurementUnit);
     }
 
     double getValue() const { return d_value; }
     MeasurementUnit getUnit() const { return d_measurementUnit; }
 
 private:
+    static bool isVolumeUnit(MeasurementUnit unit) {
+        return unit == MeasurementUnit::TABLESPOON ||
+               unit == MeasurementUnit::TEASPOON ||
+               unit == MeasurementUnit::CUP ||
+               unit == MeasurementUnit::OUNCE;
+    }
+
     // Convert any volume unit to teaspoons
     static double convertToTeaspoons(double value, MeasurementUnit unit) {
         switch (unit) {
@@ -75,11 +81,10 @@ private:
             case MeasurementUnit::OUNCE:
                 return value * 6.0;  // 1 fl oz = 6 tsp (assuming fluid ounces)
             default:
-                // For non-volume units, return as-is (no conversion)
                 return value;
         }
     }
-    
+
     // Convert from teaspoons back to target unit
     static double convertFromTeaspoons(double tspValue, MeasurementUnit targetUnit) {
         switch (targetUnit) {
@@ -92,7 +97,6 @@ private:
             case MeasurementUnit::OUNCE:
                 return tspValue / 6.0;  // tsp to fl oz
             default:
-                // For non-volume units, return as-is
                 return tspValue;
         }
     }
@@ -119,8 +123,3 @@ inline std::ostream & operator<<(std::ostream &os, const Measurement &m) {
     }
     return os;
 }
-
-
-
-
-#endif // FOOD_MEASUREMENTS_H
