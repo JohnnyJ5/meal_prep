@@ -45,6 +45,15 @@ include(FetchContent)
 FetchContent_Declare(googletest GIT_REPOSITORY https://github.com/google/googletest.git GIT_TAG v1.14.0)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
+# Treat GoogleTest headers as system includes so -Werror ignores them
+foreach(_gt_target gtest gtest_main gmock gmock_main)
+  if(TARGET ${_gt_target})
+    get_target_property(_inc ${_gt_target} INTERFACE_INCLUDE_DIRECTORIES)
+    if(_inc)
+      set_property(TARGET ${_gt_target} PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_inc}")
+    endif()
+  endif()
+endforeach()
 
 # 2. Standalone Asio (Header Only)
 FetchContent_Declare(
@@ -59,6 +68,11 @@ FetchContent_Declare(Crow GIT_REPOSITORY https://github.com/CrowCpp/Crow.git GIT
 set(CROW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CROW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(Crow)
+# Treat Crow headers as system includes so -Werror ignores them
+get_target_property(_crow_inc Crow INTERFACE_INCLUDE_DIRECTORIES)
+if(_crow_inc)
+  set_property(TARGET Crow PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_crow_inc}")
+endif()
 
 # 2. Find system dependencies (Boost & OpenSSL)
 # These must be installed in your Dockerfile (libboost-all-dev, libssl-dev)

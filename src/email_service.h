@@ -11,6 +11,5 @@
  * @param senderEmail The sender's email address.
  * @param senderPassword The sender's email password or app-specific password.
  */
-void SendEmail(const std::string &toAddress, const std::string &subject,
-               const std::string &body, const std::string &senderEmail,
-               const std::string &senderPassword);
+void SendEmail(const std::string &toAddress, const std::string &subject, const std::string &body,
+               const std::string &senderEmail, const std::string &senderPassword);
