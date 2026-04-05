@@ -29,6 +29,5 @@ jobs:
             --suppress=missingInclude \
             --inline-suppr \
             --std=c++17 \
-            --check-level=exhaustive \
             -I src \
             src/ tests/

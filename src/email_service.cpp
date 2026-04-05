@@ -61,13 +61,13 @@ void SendEmail(const std::string &toAddress, const std::string &subject, const s
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-        curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
+        curl_easy_setopt(curl, CURLOPT_USE_SSL, static_cast<long>(CURLUSESSL_ALL));
         curl_easy_setopt(curl, CURLOPT_USERNAME, senderEmail.c_str());
         curl_easy_setopt(curl, CURLOPT_PASSWORD, senderPassword.c_str());
 
         curl_easy_setopt(curl, CURLOPT_MAIL_FROM, senderEmail.c_str());
 
-        struct curl_slist *recipients = NULL;
+        struct curl_slist *recipients = nullptr;
         recipients = curl_slist_append(recipients, toAddress.c_str());
         curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 

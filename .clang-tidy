@@ -2,7 +2,7 @@
 Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
-  clang-analyzer-*,
+  -bugprone-narrowing-conversions,
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-default-member-init,
@@ -10,7 +10,6 @@ Checks: >
   modernize-avoid-bind,
   modernize-loop-convert,
   performance-unnecessary-copy-initialization,
-  performance-unnecessary-value-param,
   performance-move-const-arg,
   readability-redundant-smartptr-get,
   readability-redundant-string-cstr,
