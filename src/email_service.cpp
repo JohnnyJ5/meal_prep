@@ -54,10 +54,7 @@ void SendEmail(const std::string &toAddress, const std::string &subject, const s
     upload_ctx.length = payload.length();
     upload_ctx.pos = 0;
 
-    CURL *curl;
-    CURLcode res = CURLE_OK;
-
-    curl = curl_easy_init();
+    CURL *curl = curl_easy_init();
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
@@ -75,7 +72,7 @@ void SendEmail(const std::string &toAddress, const std::string &subject, const s
         curl_easy_setopt(curl, CURLOPT_READDATA, &upload_ctx);
         curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-        res = curl_easy_perform(curl);
+        CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
         }

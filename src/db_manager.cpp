@@ -292,8 +292,8 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
             int unit = sqlite3_column_int(stmt, 2);
             std::string prep = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
 
-            ingredients.push_back(
-                Ingredient(ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep));
+            ingredients.emplace_back(ingName,
+                                     Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
         }
     }
     sqlite3_finalize(stmt);
@@ -316,7 +316,7 @@ bool DBManager::getAllMeals(std::vector<std::pair<std::string, std::string>> &me
                     reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
                 category = catText;
             }
-            meals.push_back({name, category});
+            meals.emplace_back(name, category);
         }
     }
     sqlite3_finalize(stmt);
@@ -338,7 +338,7 @@ bool DBManager::getAllIngredients(std::vector<std::pair<std::string, std::string
                     reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
                 category = catText;
             }
-            ingredients.push_back({name, category});
+            ingredients.emplace_back(name, category);
         }
     }
     sqlite3_finalize(stmt);

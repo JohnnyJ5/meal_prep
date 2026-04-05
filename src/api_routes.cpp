@@ -5,7 +5,7 @@
 #include "meal_planner.h"
 
 void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManager> dbManager,
-                 MealFactory &factory, const Config &config,
+                 MealFactory &factory, [[maybe_unused]] const Config &config,
                  std::shared_ptr<GoogleOAuth> googleOAuth,
                  std::shared_ptr<CalendarService> calendarService) {
     // Route: Get all available meals
@@ -86,8 +86,8 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                         prep = ingJson["preparation"].s();
                     }
 
-                    ingredients.push_back(Ingredient(
-                        ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep));
+                    ingredients.emplace_back(
+                        ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
                 }
 
                 std::string category = "Uncategorized";
@@ -114,53 +114,53 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
 
     // Route: Update an existing meal
     CROW_ROUTE(app, "/api/meals/<string>")
-        .methods(
-            crow::HTTPMethod::PUT)([&dbManager](const crow::request &req, std::string mealName) {
-            auto body = crow::json::load(req.body);
-            if (!body) {
-                CROW_LOG_ERROR << "Invalid JSON for /api/meals/" << mealName << " PUT";
-                return crow::response(400, "Invalid JSON");
-            }
+        .methods(crow::HTTPMethod::PUT)(
+            [&dbManager](const crow::request &req, std::string mealName) {
+                auto body = crow::json::load(req.body);
+                if (!body) {
+                    CROW_LOG_ERROR << "Invalid JSON for /api/meals/" << mealName << " PUT";
+                    return crow::response(400, "Invalid JSON");
+                }
 
-            try {
-                // We expect the body to contain the new ingredients (and
-                // optionally a new name, though for simplicity we bind to the
-                // URL name)
-                std::vector<Ingredient> ingredients;
+                try {
+                    // We expect the body to contain the new ingredients (and
+                    // optionally a new name, though for simplicity we bind to the
+                    // URL name)
+                    std::vector<Ingredient> ingredients;
 
-                for (const auto &ingJson : body["ingredients"]) {
-                    std::string ingName = ingJson["name"].s();
-                    double amount = ingJson["amount"].d();
-                    int unit = ingJson["unit"].i();
-                    std::string prep = "None";
-                    if (ingJson.has("preparation")) {
-                        prep = ingJson["preparation"].s();
+                    for (const auto &ingJson : body["ingredients"]) {
+                        std::string ingName = ingJson["name"].s();
+                        double amount = ingJson["amount"].d();
+                        int unit = ingJson["unit"].i();
+                        std::string prep = "None";
+                        if (ingJson.has("preparation")) {
+                            prep = ingJson["preparation"].s();
+                        }
+
+                        ingredients.emplace_back(
+                            ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
                     }
 
-                    ingredients.push_back(Ingredient(
-                        ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep));
-                }
+                    std::string category = "Uncategorized";
+                    if (body.has("category")) {
+                        category = body["category"].s();
+                    }
 
-                std::string category = "Uncategorized";
-                if (body.has("category")) {
-                    category = body["category"].s();
+                    // Name from URL is used
+                    Meal updatedMeal(mealName, ingredients, category);
+                    if (dbManager->updateMeal(updatedMeal)) {
+                        CROW_LOG_INFO << "Successfully updated meal: " << mealName;
+                        return crow::response(200, "Meal updated successfully");
+                    } else {
+                        CROW_LOG_ERROR << "Failed to update meal: " << mealName;
+                        return crow::response(500, "Failed to update meal in database.");
+                    }
+                } catch (const std::exception &e) {
+                    CROW_LOG_ERROR << "Invalid meal data format in /api/meals/" << mealName
+                                   << " PUT: " << e.what();
+                    return crow::response(400, "Invalid meal data format");
                 }
-
-                // Name from URL is used
-                Meal updatedMeal(mealName, ingredients, category);
-                if (dbManager->updateMeal(updatedMeal)) {
-                    CROW_LOG_INFO << "Successfully updated meal: " << mealName;
-                    return crow::response(200, "Meal updated successfully");
-                } else {
-                    CROW_LOG_ERROR << "Failed to update meal: " << mealName;
-                    return crow::response(500, "Failed to update meal in database.");
-                }
-            } catch (const std::exception &e) {
-                CROW_LOG_ERROR << "Invalid meal data format in /api/meals/" << mealName
-                               << " PUT: " << e.what();
-                return crow::response(400, "Invalid meal data format");
-            }
-        });
+            });
 
     // Route: Delete a meal
     CROW_ROUTE(app, "/api/meals/<string>")
