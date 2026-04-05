@@ -4,6 +4,39 @@ project(MealPrep VERSION 1.0.0 DESCRIPTION "Meal Prep - C++ meal planning tool")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- CI / Developer Build Options ---
+option(ENABLE_WERROR   "Treat compiler warnings as errors"          OFF)
+option(ENABLE_ASAN     "Enable AddressSanitizer + LeakSanitizer"    OFF)
+option(ENABLE_UBSAN    "Enable UndefinedBehaviorSanitizer"          OFF)
+option(ENABLE_TSAN     "Enable ThreadSanitizer"                     OFF)
+option(ENABLE_COVERAGE "Enable code coverage instrumentation"       OFF)
+
+if(ENABLE_TSAN AND (ENABLE_ASAN OR ENABLE_UBSAN))
+  message(FATAL_ERROR "ThreadSanitizer cannot be combined with ASan or UBSan")
+endif()
+
+set(_EXTRA_COMPILE_FLAGS "")
+set(_EXTRA_LINK_FLAGS "")
+
+if(ENABLE_WERROR)
+  list(APPEND _EXTRA_COMPILE_FLAGS -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(ENABLE_ASAN)
+  list(APPEND _EXTRA_COMPILE_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+  list(APPEND _EXTRA_LINK_FLAGS    -fsanitize=address)
+endif()
+if(ENABLE_UBSAN)
+  list(APPEND _EXTRA_COMPILE_FLAGS -fsanitize=undefined)
+  list(APPEND _EXTRA_LINK_FLAGS    -fsanitize=undefined)
+endif()
+if(ENABLE_TSAN)
+  list(APPEND _EXTRA_COMPILE_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+  list(APPEND _EXTRA_LINK_FLAGS    -fsanitize=thread)
+endif()
+if(ENABLE_COVERAGE)
+  list(APPEND _EXTRA_COMPILE_FLAGS --coverage -fprofile-arcs -ftest-coverage)
+  list(APPEND _EXTRA_LINK_FLAGS    --coverage)
+endif()
 
 # --- FetchContent Section ---
 include(FetchContent)
@@ -101,3 +134,15 @@ target_link_libraries(meal_prep_tests
 
 include(GoogleTest)
 gtest_discover_tests(meal_prep_tests)
+
+# --- Apply extra flags to project targets only (not fetched deps) ---
+if(_EXTRA_COMPILE_FLAGS)
+  target_compile_options(meal_prep_lib  PUBLIC  ${_EXTRA_COMPILE_FLAGS})
+  target_compile_options(meal_prep      PRIVATE ${_EXTRA_COMPILE_FLAGS})
+  target_compile_options(meal_prep_tests PRIVATE ${_EXTRA_COMPILE_FLAGS})
+endif()
+if(_EXTRA_LINK_FLAGS)
+  target_link_options(meal_prep_lib  PUBLIC  ${_EXTRA_LINK_FLAGS})
+  target_link_options(meal_prep      PRIVATE ${_EXTRA_LINK_FLAGS})
+  target_link_options(meal_prep_tests PRIVATE ${_EXTRA_LINK_FLAGS})
+endif()
