@@ -1,4 +1,4 @@
-.PHONY: all build start stop test clean internal-build
+.PHONY: all build start stop test clean internal-build lint lint-fix
 
 all: build
 
@@ -31,3 +31,11 @@ test: build
 clean: stop
 	@echo "Cleaning build directories natively to ensure complete reset..."
 	rm -rf ./build ./build_docker
+
+lint: build
+	@echo "Running lintenator (clang-tidy + clang-format) inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/lintenator.sh --build-dir build_docker"
+
+lint-fix: build
+	@echo "Running lintenator with --fix inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/lintenator.sh --build-dir build_docker --fix"

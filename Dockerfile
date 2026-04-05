@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
+    clang \
+    clang-tidy \
+    clang-format \
     libssl-dev \
     libboost-dev \
     libcurl4-openssl-dev \

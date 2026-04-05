@@ -1,0 +1,51 @@
+name: clang lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lintenator:
+    name: lintenator (clang-tidy + clang-format)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            git \
+            clang \
+            clang-tidy \
+            clang-format \
+            libssl-dev \
+            libboost-dev \
+            libcurl4-openssl-dev \
+            libsqlite3-dev
+
+      - name: Cache CMake FetchContent
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Configure (generate compile_commands.json)
+        run: |
+          cmake -B build \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Run lintenator
+        run: |
+          chmod +x scripts/lintenator.sh
+          ./scripts/lintenator.sh --build-dir build

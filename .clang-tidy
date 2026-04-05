@@ -1,0 +1,28 @@
+---
+Checks: >
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  clang-analyzer-*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-default-member-init,
+  modernize-use-emplace,
+  modernize-avoid-bind,
+  modernize-loop-convert,
+  performance-unnecessary-copy-initialization,
+  performance-unnecessary-value-param,
+  performance-move-const-arg,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-container-size-empty,
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: 'src/.*\.h$'
+
+CheckOptions:
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: assert
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+...
