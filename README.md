@@ -22,25 +22,31 @@ This project uses a fully Dockerized development environment to ensure consisten
 
 All development commands are wrapped in the `Makefile` and are executed inside the Docker container automatically.
 
-1. **Build the Environment**
+1. **Create your local config**
+   ```bash
+   cp meal_prep.conf.json.example meal_prep.conf.json
+   ```
+   Edit `meal_prep.conf.json` to set your email address and paths to your credential files in `~/.meal_prep/`. The server will start without this file, but email and Google Calendar features will not work.
+
+2. **Build the Environment**
    ```bash
    make build
    ```
    This command starts the background containers and compiles the C++ codebase inside the container.
 
-2. **Start the API Server**
+3. **Start the API Server**
    ```bash
    make start
    ```
    This will start the Meal Prep API server on port 8080. You can then access the web interface at [http://localhost:8080](http://localhost:8080).
 
-3. **Stop the Environment**
+4. **Stop the Environment**
    ```bash
    make stop
    ```
    Brings down the Docker containers and cleans up the active environment.
 
-4. **Clean Build Files**
+5. **Clean Build Files**
    ```bash
    make clean
    ```
