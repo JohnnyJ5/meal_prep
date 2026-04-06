@@ -8,6 +8,7 @@
 
 #include "curl_utils.h"
 
+// cppcheck-suppress passedByValue
 CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
 
 std::string CalendarService::createEvent(const std::string &summary, const std::string &description,

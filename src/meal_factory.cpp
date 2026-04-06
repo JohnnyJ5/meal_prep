@@ -7,6 +7,7 @@
 #include "meal.h"
 
 // MealFactory constructor
+// cppcheck-suppress passedByValue
 MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager)
     : d_dbManager(std::move(dbManager)) {}
 

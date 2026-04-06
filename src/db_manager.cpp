@@ -287,10 +287,12 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(stmt, 1, mealId);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string ingName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            const char *nameC = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            const char *prepC = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            std::string ingName = nameC ? nameC : "";
             double amount = sqlite3_column_double(stmt, 1);
             int unit = sqlite3_column_int(stmt, 2);
-            std::string prep = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            std::string prep = prepC ? prepC : "";
 
             ingredients.emplace_back(ingName,
                                      Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
@@ -310,7 +312,8 @@ bool DBManager::getAllMeals(std::vector<std::pair<std::string, std::string>> &me
 
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            const char *nameC = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            std::string name = nameC ? nameC : "";
             std::string category = "Uncategorized";
             if (const char *catText =
                     reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
@@ -332,7 +335,8 @@ bool DBManager::getAllIngredients(std::vector<std::pair<std::string, std::string
 
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            const char *nameC = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            std::string name = nameC ? nameC : "";
             std::string category = "Uncategorized";
             if (const char *catText =
                     reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {

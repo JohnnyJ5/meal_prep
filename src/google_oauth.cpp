@@ -23,6 +23,7 @@ std::string generateRandomState() {
 }
 }  // namespace
 
+// cppcheck-suppress passedByValue
 GoogleOAuth::GoogleOAuth(const Config &config, std::shared_ptr<DBManager> dbManager)
     : d_config(config), d_dbManager(std::move(dbManager)) {}
 
