@@ -38,61 +38,6 @@ Config loadConfig(const std::string &configFilePath) {
                   << config.port << "\n";
       }
 
-      if (jsonBody.has("email_recipients")) {
-        for (const auto &email : jsonBody["email_recipients"]) {
-          config.email_recipients.push_back(email.s());
-        }
-      } else {
-        std::cerr << "Notice: 'email_recipients' not found in config. No "
-                     "emails will be sent.\n";
-      }
-
-      if (jsonBody.has("email_credentials_file")) {
-        std::string credPath = jsonBody["email_credentials_file"].s();
-
-        // Check if the credentials file exists
-        std::ifstream credFile(credPath);
-        if (!credFile.is_open()) {
-          if (!config.email_recipients.empty()) {
-            std::cerr
-                << "Warning: Could not open email credentials file at "
-                << credPath
-                << ". Checking /secrets/credentials.json as fallback...\n";
-          }
-
-          // Fallback for Secret Manager mount
-          credPath = "/secrets/credentials.json";
-          credFile.open(credPath);
-        }
-
-        if (credFile.is_open()) {
-          std::stringstream credBuffer;
-          credBuffer << credFile.rdbuf();
-          auto credJson = crow::json::load(credBuffer.str());
-
-          if (credJson) {
-            if (credJson.has("email")) {
-              config.sender_email = credJson["email"].s();
-            } else {
-              std::cerr << "Warning: 'email' field missing in credentials file "
-                        << credPath << "\n";
-            }
-            if (credJson.has("password")) {
-              config.sender_password = credJson["password"].s();
-            } else {
-              std::cerr
-                  << "Warning: 'password' field missing in credentials file "
-                  << credPath << "\n";
-            }
-          } else {
-            std::cerr << "Warning: Failed to parse JSON in " << credPath
-                      << "\n";
-          }
-        }
-      } else {
-        std::cerr << "Notice: 'email_credentials_file' not found in config.\n";
-      }
-
       if (jsonBody.has("gmail_calendar_credentials_file")) {
         std::string credPath = jsonBody["gmail_calendar_credentials_file"].s();
         std::ifstream credFile(credPath);

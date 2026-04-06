@@ -22,11 +22,19 @@ This project uses a fully Dockerized development environment to ensure consisten
 
 All development commands are wrapped in the `Makefile` and are executed inside the Docker container automatically.
 
-1. **Create your local config**
+1. **Set up Google Calendar credentials** (required for Calendar integration)
+
+   Download an OAuth 2.0 client credentials file from [Google Cloud Console](https://console.cloud.google.com/):
+   - Go to **APIs & Services > Credentials**
+   - Click **Create Credentials > OAuth client ID**
+   - Choose **Web application**, set the authorised redirect URI to `http://localhost:8080/auth/google/callback`
+   - Download the JSON file and save it to `~/.meal_prep/dev_calendar_credentials.json`
+
+   Then create your local config:
    ```bash
    cp meal_prep.conf.json.example meal_prep.conf.json
    ```
-   Edit `meal_prep.conf.json` to set your email address and paths to your credential files in `~/.meal_prep/`. The server will start without this file, but email and Google Calendar features will not work.
+   Edit `meal_prep.conf.json` and update the path to your credentials file if needed. The server will start without this file, but Google Calendar features will not work.
 
 2. **Build the Environment**
    ```bash

@@ -1,8 +1,4 @@
 {
     "port": 8080,
-    "email_recipients": [
-        "your-email@example.com"
-    ],
-    "email_credentials_file": "/home/<your-username>/.meal_prep/email_credentials.json",
     "gmail_calendar_credentials_file": "/home/<your-username>/.meal_prep/dev_calendar_credentials.json"
 }

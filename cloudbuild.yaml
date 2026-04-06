@@ -28,7 +28,7 @@ steps:
       - '--add-volume-mount'
       - 'volume=db-volume,mount-path=/mnt/db'
       - '--update-secrets'
-      - '/secrets/credentials.json=email-credentials:latest,/secrets_calendar/calendar_credentials.json=calendar-credentials:latest'
+      - '/secrets_calendar/calendar_credentials.json=calendar-credentials:latest'
 
 images:
   - 'gcr.io/$PROJECT_ID/meal-prep'
