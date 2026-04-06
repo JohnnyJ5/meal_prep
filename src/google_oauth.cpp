@@ -24,7 +24,7 @@ std::string generateRandomState() {
 }  // namespace
 
 GoogleOAuth::GoogleOAuth(const Config &config, std::shared_ptr<DBManager> dbManager)
-    : d_config(config), d_dbManager(dbManager) {}
+    : d_config(config), d_dbManager(std::move(dbManager)) {}
 
 std::string GoogleOAuth::getAuthUrl() {
     std::lock_guard<std::mutex> lock(d_tokenMutex);

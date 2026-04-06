@@ -22,13 +22,16 @@ jobs:
             build-essential \
             cmake \
             git \
-            clang \
-            clang-tidy \
-            clang-format \
+            clang-18 \
+            clang-tidy-18 \
+            clang-format-18 \
             libssl-dev \
             libboost-dev \
             libcurl4-openssl-dev \
             libsqlite3-dev
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 18
+          sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-18 18
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-18 18
 
       - name: Cache CMake FetchContent
         uses: actions/cache@v4
@@ -42,7 +45,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
             -DCMAKE_BUILD_TYPE=Debug
 
       - name: Run lintenator

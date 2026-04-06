@@ -7,7 +7,8 @@
 #include "meal.h"
 
 // MealFactory constructor
-MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager) : d_dbManager(dbManager) {}
+MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager)
+    : d_dbManager(std::move(dbManager)) {}
 
 // Meal factory function
 std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName) {
