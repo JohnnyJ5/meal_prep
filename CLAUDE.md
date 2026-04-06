@@ -7,11 +7,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 All development runs inside Docker via the Makefile:
 
 ```bash
-make build    # Build Docker image and compile C++ code
-make start    # Start API server on port 8080
-make stop     # Bring down Docker containers
-make test     # Run test suite with ctest inside container
-make clean    # Remove build_docker/ and build/ directories
+make build      # Build Docker image and compile C++ code
+make start      # Start API server on port 8080
+make stop       # Bring down Docker containers
+make test       # Run test suite with ctest inside container
+make clean      # Remove build_docker/ and build/ directories
+make lint       # Run clang-tidy + clang-format checks (lintenator.sh)
+make lint-fix   # Same as lint but auto-applies fixes
+make asan       # Build and test with AddressSanitizer + UBSan
+make tsan       # Build and test with ThreadSanitizer
+make coverage   # Build with coverage instrumentation; print summary
+make cppcheck   # Run cppcheck static analysis
 ```
 
 The local directory is volume-mounted into the container at `/home/devuser/meal_prep`, so code changes are reflected without rebuilding.

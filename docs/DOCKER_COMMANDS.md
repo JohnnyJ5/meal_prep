@@ -13,6 +13,12 @@ Most commands are wrapped in the `Makefile` and should be run using `make`.
 | `make stop` | Stops and removes the Docker containers. |
 | `make test` | Runs the automated test suite inside the container. |
 | `make clean` | Removes build artifacts and temporary files. |
+| `make lint` | Run clang-tidy and clang-format checks via `lintenator.sh`. |
+| `make lint-fix` | Same as `lint` but auto-applies fixes. |
+| `make asan` | Build and test with AddressSanitizer + UBSan. |
+| `make tsan` | Build and test with ThreadSanitizer. |
+| `make coverage` | Build with coverage instrumentation and print a summary. |
+| `make cppcheck` | Run static analysis with cppcheck. |
 
 ## Manual Docker Commands
 
@@ -25,17 +31,17 @@ docker ps
 
 ### View Container Logs
 ```bash
-docker-compose logs -f meal_prep_dev
+docker compose logs -f meal_prep_dev
 ```
 
 ### Execute Shell inside Container
 ```bash
-docker-compose exec meal_prep_dev /bin/bash
+docker compose exec meal_prep_dev /bin/bash
 ```
 
 ### Rebuild without Cache
 ```bash
-docker-compose build --no-cache
+docker compose build --no-cache
 ```
 
 ### Clean up Volumes and Orphanded Images
