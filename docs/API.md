@@ -11,7 +11,7 @@ All API responses are in JSON format.
 ### 1. Get All Meals
 - **URL**: `/api/meals`
 - **Method**: `GET`
-- **Description**: Returns a list of all available meal names in the database.
+- **Description**: Returns a list of all available meals with their names and categories.
 - **Example**:
   ```bash
   curl http://localhost:8080/api/meals
@@ -19,8 +19,8 @@ All API responses are in JSON format.
 - **Response Example**:
   ```json
   [
-    "Spaghetti Bolognese",
-    "Chicken Salad"
+    { "name": "Spaghetti Bolognese", "category": "Dinner" },
+    { "name": "Chicken Salad", "category": "Lunch" }
   ]
   ```
 
@@ -36,6 +36,7 @@ All API responses are in JSON format.
   ```json
   {
     "name": "Spaghetti Bolognese",
+    "category": "Dinner",
     "ingredients": [
       {
         "name": "Ground Beef",
@@ -56,12 +57,13 @@ All API responses are in JSON format.
   ```bash
   curl -X POST http://localhost:8080/api/meals/add \
        -H "Content-Type: application/json" \
-       -d '{"name": "New Meal", "ingredients": []}'
+       -d '{"name": "New Meal", "category": "Dinner", "ingredients": []}'
   ```
 - **Payload Example**:
   ```json
   {
     "name": "Spaghetti Bolognese",
+    "category": "Dinner",
     "ingredients": [
       {
         "name": "Ground Beef",
@@ -78,16 +80,16 @@ All API responses are in JSON format.
 ### 4. Update an Existing Meal
 - **URL**: `/api/meals/<meal_name>`
 - **Method**: `PUT`
-- **Description**: Updates the ingredients of an existing meal.
+- **Description**: Updates the ingredients of an existing meal. The meal name is taken from the URL.
 - **Example**:
   ```bash
   curl -X PUT http://localhost:8080/api/meals/Existing%20Meal \
        -H "Content-Type: application/json" \
-       -d '{"name": "Updated Name", "ingredients": []}'
+       -d '{"category": "Lunch", "ingredients": []}'
   ```
-- **Payload Example**: Same format as adding a new meal.
+- **Payload Example**: Same format as adding a new meal (without `name`; it is taken from the URL).
 - **Success Response**: `200 OK`
-- **Error Response**: `500 Server Error`
+- **Error Response**: `400 Bad Request` or `500 Server Error`
 
 ### 5. Delete a Meal
 - **URL**: `/api/meals/<meal_name>`
@@ -100,15 +102,15 @@ All API responses are in JSON format.
 - **Success Response**: `200 OK`
 - **Error Response**: `404 Not Found`
 
-### 6. Generate Weekly Plan & Email
+### 6. Generate Weekly Plan & Consolidated Ingredients
 - **URL**: `/api/plan`
 - **Method**: `POST`
-- **Description**: Submits a weekly meal schedule. This endpoint consolidates the required ingredients into a single grocery list and triggers an email to the configured address.
+- **Description**: Submits a weekly meal schedule. This endpoint consolidates the required ingredients from all selected meals into a single grocery list returned in the response.
 - **Example**:
   ```bash
   curl -X POST http://localhost:8080/api/plan \
        -H "Content-Type: application/json" \
-       -d '{"Monday": ["Spaghetti Bolognese"], ...}'
+       -d '{"Monday": ["Spaghetti Bolognese"], "Tuesday": ["Chicken Salad"]}'
   ```
 - **Payload Example**:
   ```json
@@ -126,10 +128,11 @@ All API responses are in JSON format.
   ```json
   {
     "status": "success",
-    "schedule": "Consolidated text schedule...",
+    "ingredients_text": "Whole Foods Order - Ingredients:\n- Ground Beef: 1 lb\n...",
     "failed_meals": ["Unknown Meal"]
   }
   ```
+  > Note: `failed_meals` is only present if one or more meals could not be found.
 
 ---
 
@@ -177,50 +180,94 @@ These endpoints require Google OAuth to be authorized first (see OAuth Endpoints
 ### 9. Get Calendar Events
 - **URL**: `/api/calendar/events`
 - **Method**: `GET`
-- **Description**: Retrieves Google Calendar events within a date range.
-- **Query Parameters**: `start` (ISO 8601 date), `end` (ISO 8601 date)
+- **Description**: Retrieves Google Calendar events within a date/time range. Returns events grouped by calendar.
+- **Query Parameters**: `timeMin` (RFC 3339 datetime), `timeMax` (RFC 3339 datetime)
 - **Example**:
   ```bash
-  curl "http://localhost:8080/api/calendar/events?start=2026-03-24&end=2026-03-30"
+  curl "http://localhost:8080/api/calendar/events?timeMin=2026-03-24T00:00:00Z&timeMax=2026-03-30T23:59:59Z"
   ```
-- **Success Response**: `200 OK` with array of calendar event objects.
-- **Error Response**: `401 Unauthorized` if not authenticated, `500 Server Error`
+- **Success Response**: `200 OK` with array of calendar objects:
+  ```json
+  [
+    {
+      "summary": "My Calendar",
+      "backgroundColor": "#4285f4",
+      "foregroundColor": "#ffffff",
+      "events": [ ... ]
+    }
+  ]
+  ```
+- **Error Response**: `403 Forbidden` if Google account is not linked:
+  ```json
+  { "linked": false, "message": "Google account not linked or error fetching events" }
+  ```
 
 ### 10. Sync Meal Plan to Calendar
 - **URL**: `/api/calendar/sync`
 - **Method**: `POST`
-- **Description**: Creates Google Calendar events for each meal in the weekly plan.
+- **Description**: Creates Google Calendar events for each meal in the weekly plan. Each meal is scheduled as a 1-hour dinner event at 18:00 UTC on the specified date.
 - **Example**:
   ```bash
   curl -X POST http://localhost:8080/api/calendar/sync \
        -H "Content-Type: application/json" \
-       -d '{"Monday": ["Spaghetti Bolognese"], "Tuesday": ["Chicken Salad"], ...}'
+       -d '{"Monday": {"date": "2026-04-07", "meals": ["Spaghetti Bolognese"]}}'
   ```
-- **Payload**: Same format as `/api/plan`.
+- **Payload**:
+  ```json
+  {
+    "Monday":    { "date": "2026-04-07", "meals": ["Spaghetti Bolognese"] },
+    "Tuesday":   { "date": "2026-04-08", "meals": ["Chicken Salad"] },
+    "Wednesday": { "date": "2026-04-09", "meals": [] },
+    "Thursday":  { "date": "2026-04-10", "meals": [] },
+    "Friday":    { "date": "2026-04-11", "meals": [] },
+    "Saturday":  { "date": "2026-04-12", "meals": [] },
+    "Sunday":    { "date": "2026-04-13", "meals": [] }
+  }
+  ```
 - **Success Response**: `200 OK`
-- **Error Response**: `401 Unauthorized` if not authenticated, `500 Server Error`
+  ```json
+  {
+    "synced": 2,
+    "failed": 0,
+    "event_ids": ["eventId1", "eventId2"]
+  }
+  ```
+- **Error Response**: `403 Forbidden` if Google account is not linked:
+  ```json
+  { "linked": false, "message": "Google account not linked or authorization failed" }
+  ```
 
 ### 11. Create Grocery Order Event
 - **URL**: `/api/calendar/order`
 - **Method**: `POST`
-- **Description**: Creates a Whole Foods grocery order reminder event on Google Calendar.
+- **Description**: Creates a Whole Foods grocery order reminder event on Google Calendar with the consolidated ingredients as the event description.
 - **Payload**:
   ```json
-  { "date": "2026-03-28", "time": "10:00" }
+  {
+    "start": "2026-03-28T10:00:00Z",
+    "end":   "2026-03-28T11:00:00Z",
+    "ingredients": "Whole Foods Order - Ingredients:\n- Ground Beef: 1 lb\n..."
+  }
   ```
 - **Success Response**: `200 OK`
-- **Error Response**: `401 Unauthorized`, `500 Server Error`
+  ```json
+  { "status": "success" }
+  ```
+- **Error Response**: `400 Bad Request` if fields are missing, `403 Forbidden` if Google account is not linked.
 
 ### 12. Delete Calendar Events
 - **URL**: `/api/calendar/delete-events`
 - **Method**: `POST`
-- **Description**: Deletes specific Google Calendar events by their IDs.
+- **Description**: Deletes specific Google Calendar events by their IDs. Used to undo a calendar sync.
 - **Payload**:
   ```json
   { "event_ids": ["eventId1", "eventId2"] }
   ```
 - **Success Response**: `200 OK`
-- **Error Response**: `401 Unauthorized`, `500 Server Error`
+  ```json
+  { "deleted": 2 }
+  ```
+- **Error Response**: `400 Bad Request` if `event_ids` is missing.
 
 ---
 
@@ -235,7 +282,7 @@ These endpoints require Google OAuth to be authorized first (see OAuth Endpoints
 ### 14. Google OAuth Callback
 - **URL**: `/auth/google/callback`
 - **Method**: `GET`
-- **Description**: Handles the redirect from Google after the user grants permission. Exchanges the authorization code for access/refresh tokens and stores them (encrypted) in the database.
+- **Description**: Handles the redirect from Google after the user grants permission. Exchanges the authorization code for access/refresh tokens and stores them (encrypted with AES-256-GCM) in the database, then redirects to `/`.
 - **Query Parameters**: `code` (authorization code from Google), `state`
 - **Note**: This URL must match `GOOGLE_REDIRECT_URI` configured in `docker-compose.yml` and registered in the GCP OAuth credentials.
 
@@ -251,4 +298,4 @@ These endpoints require Google OAuth to be authorized first (see OAuth Endpoints
   ```bash
   curl http://localhost:8080/api/health
   ```
-- **Response**: `200 OK` with `{"status": "ok"}`
+- **Response**: `200 OK` with plain text body `OK`

@@ -6,8 +6,7 @@ A C++ based meal preparation and planning application. It allows you to manage r
 
 - **Store Meals:** Create, read, update, and delete meals and their ingredients in a local SQLite database.
 - **Weekly Schedule:** Plan your meals for each day of the week with drag-and-drop scheduling.
-- **Grocery List Generation:** Automatically consolidate ingredients from selected meals into a single, unified grocery list.
-- **Email Notifications:** Send the final grocery list directly to your email using SMTP.
+- **Grocery List Generation:** Automatically consolidate ingredients from selected meals into a single, unified grocery list, returned via the API and optionally saved as a Google Calendar order reminder.
 - **Google Calendar Integration:** Sync your weekly meal plan to Google Calendar and create grocery order reminders.
 - **Web Interface:** A responsive single-page application for visual meal planning.
 - **REST API:** A robust API backing the web interface for meal management, planning, and calendar sync.
@@ -55,6 +54,17 @@ make test
 ```
 This command compiles the tests and runs them using `ctest` inside the Docker environment.
 
+Additional quality targets:
+
+| Command | Description |
+| :--- | :--- |
+| `make lint` | Run clang-tidy and clang-format checks via `lintenator.sh`. |
+| `make lint-fix` | Same as `lint` but auto-applies fixes. |
+| `make asan` | Build and test with AddressSanitizer + UBSan. |
+| `make tsan` | Build and test with ThreadSanitizer. |
+| `make coverage` | Build with coverage instrumentation and print a summary. |
+| `make cppcheck` | Run static analysis with cppcheck. |
+
 ## Architecture
 
 The Meal Prep application follows a modular architecture consisting of a C++ backend, a web-based frontend, and a cloud-native deployment strategy.
@@ -63,11 +73,14 @@ The Meal Prep application follows a modular architecture consisting of a C++ bac
 graph TD
     subgraph "Local environment"
         User(["User (Browser)"]) --> WebUI["Web Interface (HTML/CSS/JS)"]
-        WebUI --> API["C++ Crow API Server"]
-        API --> DB[("SQLite Database")]
-        API --> SMTP["SMTP Server (Email)"]
+        WebUI --> MW["RequestTimerMiddleware"]
+        MW --> API["C++ Crow API Server"]
+        API --> MF["MealFactory / MealPlanner"]
+        MF --> DB[("SQLite Database")]
+        API --> DB
         API --> OAuth["GoogleOAuth (token exchange)"]
-        OAuth --> DB
+        OAuth --> TE["TokenEncryption (AES-256-GCM)"]
+        TE --> DB
         API --> Cal["CalendarService (REST)"]
     end
 
@@ -87,10 +100,11 @@ graph TD
 ```
 
 ### Components
-- **Backend (C++):** Built using the Crow web framework. It handles RESTful requests, manages the SQLite database, interacts with SMTP for emails, and integrates with Google Calendar.
+- **Backend (C++):** Built using the Crow web framework with `RequestTimerMiddleware` logging request durations on all routes. Handles RESTful requests, manages the SQLite database, and integrates with Google Calendar.
 - **Frontend:** A responsive single-page application with drag-and-drop scheduling, served statically by the C++ backend.
 - **Database:** SQLite stores recipes, schedules, and encrypted OAuth tokens. In production, the database file is persisted on Google Cloud Storage via FUSE mount.
-- **Google Integration:** OAuth 2.0 Authorization Code Flow for Google Calendar access. Tokens are stored in the database encrypted with AES-256-GCM (requires `MEAL_PREP_TOKEN_KEY` env var).
+- **Google Integration:** OAuth 2.0 Authorization Code Flow for Google Calendar access. Tokens are stored encrypted with AES-256-GCM via `TokenEncryption` (requires `MEAL_PREP_TOKEN_KEY` env var).
+- **MealFactory / MealPlanner:** `MealFactory` constructs `Meal` objects from DB rows; `MealPlanner` consolidates ingredients across a plan.
 - **Infrastructure:** Dockerized for local development and deployed to Google Cloud Run for scalability.
 
 ## Workflow
@@ -117,5 +131,6 @@ The project follows a streamlined development-to-deployment workflow:
     - [API Reference](docs/API.md)
     - [GCP Commands](docs/GCP_COMMANDS.md)
     - [Docker Commands](docs/DOCKER_COMMANDS.md)
+    - [DB Dump Job](docs/DB_DUMP_JOB.md)
 - `Dockerfile` & `docker-compose.yml`: Definitions for the Docker development environment.
 - `Makefile`: Provides shortcuts for building, starting, and testing the project.
