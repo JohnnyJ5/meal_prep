@@ -8,9 +8,6 @@
  */
 struct Config {
   int port;
-  std::vector<std::string> email_recipients;
-  std::string sender_email;
-  std::string sender_password;
   std::string db_path;
   // Google OAuth2
   std::string google_client_id;

@@ -1,0 +1,4 @@
+{
+    "port": 8080,
+    "gmail_calendar_credentials_file": "/home/<your-username>/.meal_prep/dev_calendar_credentials.json"
+}

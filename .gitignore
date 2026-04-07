@@ -13,6 +13,9 @@ CTestTestfile.cmake
 meals.db
 server.log
 
+# Runtime config (contains environment-specific paths and PII)
+meal_prep.conf.json
+
 # Sensitive files
 .env
 .env.*
