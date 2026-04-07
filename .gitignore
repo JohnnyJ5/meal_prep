@@ -16,6 +16,9 @@ server.log
 # Runtime config (contains environment-specific paths and PII)
 meal_prep.conf.json
 
+#claude worksapce
+.claude_workspace_env/
+
 # Sensitive files
 .env
 .env.*
