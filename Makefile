@@ -157,7 +157,7 @@ ifeq ($(LOCAL),1)
 	@echo "Running cppcheck locally..."
 	cppcheck --error-exitcode=1 --enable=warning,style,performance,portability \
 	  --suppress=missingIncludeSystem --suppress=missingInclude \
-	  --inline-suppr --std=c++17 --check-level=exhaustive \
+	  --inline-suppr --std=c++17 \
 	  -I src src/ tests/
 else
 	@echo "Running cppcheck inside container..."

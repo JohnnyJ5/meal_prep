@@ -3,6 +3,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -62,7 +63,7 @@ std::vector<unsigned char> base64Decode(const std::string &encoded) {
             char3[0] = (char4[0] << 2) + ((char4[1] & 0x30) >> 4);
             char3[1] = ((char4[1] & 0x0f) << 4) + ((char4[2] & 0x3c) >> 2);
             char3[2] = ((char4[2] & 0x03) << 6) + char4[3];
-            for (unsigned char &j : char3) ret.push_back(j);
+            std::copy(char3, char3 + 3, std::back_inserter(ret));
             i = 0;
         }
     }

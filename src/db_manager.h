@@ -18,7 +18,7 @@
  */
 class DBManager {
    public:
-    DBManager(const std::string &dbPath);
+    explicit DBManager(const std::string &dbPath);
     ~DBManager();
 
     // Disable copy/move for simplicity

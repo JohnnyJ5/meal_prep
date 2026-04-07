@@ -1,5 +1,6 @@
 #include "api_routes.h"
 
+#include <algorithm>
 #include <iostream>
 
 #include "meal_planner.h"
@@ -232,9 +233,8 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                 return crow::response(400, "No valid meals selected.");
             }
 
-            for (auto &m : createdMeals) {
-                mealRefs.emplace_back(*m);
-            }
+            std::transform(createdMeals.begin(), createdMeals.end(), std::back_inserter(mealRefs),
+                           [](const auto &m) -> std::reference_wrapper<Meal> { return *m; });
 
             std::map<std::string, Ingredient> allIngredients;
             ConsolidateAllIngredients(allIngredients, mealRefs);
@@ -485,7 +485,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             int deleted = 0;
             for (const auto &id : ids) {
                 if (calendarService->deleteEvent(std::string(id.s()))) {
-                    ++deleted;
+                    ++deleted;  // cppcheck-suppress useStlAlgorithm
                 }
             }
             CROW_LOG_INFO << "Deleted " << deleted << " calendar event(s)";

@@ -11,7 +11,7 @@
  */
 class CalendarService {
    public:
-    CalendarService(std::shared_ptr<GoogleOAuth> oauth);
+    explicit CalendarService(std::shared_ptr<GoogleOAuth> oauth);
 
     /**
      * @brief Creates a new event in the user's primary calendar.

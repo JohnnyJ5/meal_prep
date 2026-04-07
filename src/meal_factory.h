@@ -18,7 +18,7 @@ class MealFactory {
      * @brief Constructs a MealFactory with the given database manager.
      * @param dbManager Shared pointer to the database manager.
      */
-    MealFactory(std::shared_ptr<DBManager> dbManager);
+    explicit MealFactory(std::shared_ptr<DBManager> dbManager);
     ~MealFactory() = default;
 
     /**

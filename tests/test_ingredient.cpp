@@ -55,7 +55,7 @@ TEST_F(IngredientTest, AdditionDifferentIngredientsThrows) {
     Ingredient ing1("Spinach", m1);
     Ingredient ing2("Broccoli", m2);
 
-    EXPECT_THROW({ Ingredient result = ing1 + ing2; }, std::invalid_argument);
+    EXPECT_THROW({ [[maybe_unused]] Ingredient result = ing1 + ing2; }, std::invalid_argument);
 }
 
 // Test in-place addition

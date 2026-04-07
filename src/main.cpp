@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
         // Convert to vector of references for consolidation
         std::vector<std::reference_wrapper<Meal>> mealRefs;
         std::map<std::string, std::vector<std::string>> schedule;
-        for (auto &meal : meals) {
+        for (const auto &meal : meals) {
             mealRefs.emplace_back(*meal);
             schedule["Monday"].push_back(meal->getName());  // Dummy assignment for CLI
         }

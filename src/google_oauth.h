@@ -56,8 +56,8 @@ class GoogleOAuth {
     struct TokenResponse {
         std::string access_token;
         std::string refresh_token;
-        int expires_in;
-        bool success;
+        int expires_in{0};
+        bool success{false};
     };
 
     TokenResponse makeTokenRequest(const std::string &postData);
