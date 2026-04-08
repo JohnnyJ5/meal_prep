@@ -18,7 +18,8 @@ struct RequestTimerMiddleware {
         ctx.start_time = std::chrono::high_resolution_clock::now();
     }
 
-    void after_handle(crow::request& req, crow::response& res, const context& ctx) {
+    // cppcheck-suppress constParameter -- Crow's trait detection requires non-const context&
+    void after_handle(crow::request& req, crow::response& res, context& ctx) {
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration =
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - ctx.start_time)
