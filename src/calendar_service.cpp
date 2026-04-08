@@ -11,13 +11,22 @@
 CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
 
 std::string CalendarService::createEvent(const std::string &summary, const std::string &description,
-                                         const std::string &startTime, const std::string &endTime) {
+                                         const std::string &startTime, const std::string &endTime,
+                                         bool withReminders) {
     crow::json::wvalue body;
     body["summary"] = summary;
     body["description"] = description;
     body["start"]["dateTime"] = startTime;
     body["end"]["dateTime"] = endTime;
     body["extendedProperties"]["private"]["mealPrepApp"] = "true";
+
+    if (withReminders) {
+        body["reminders"]["useDefault"] = false;
+        body["reminders"]["overrides"][0]["method"] = "popup";
+        body["reminders"]["overrides"][0]["minutes"] = 2880;  // 2 days prior
+        body["reminders"]["overrides"][1]["method"] = "popup";
+        body["reminders"]["overrides"][1]["minutes"] = 1440;  // 1 day prior
+    }
 
     std::string response = makeAuthorizedRequest(
         "https://www.googleapis.com/calendar/v3/calendars/primary/events", "POST", body.dump());

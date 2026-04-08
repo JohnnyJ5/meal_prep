@@ -457,7 +457,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             std::string ingredients = body["ingredients"].s();
 
             std::string eventId =
-                calendarService->createEvent("Whole Foods Order", ingredients, start, end);
+                calendarService->createEvent("Whole Foods Order", ingredients, start, end, true);
             if (!eventId.empty()) {
                 CROW_LOG_INFO << "Created Whole Foods order calendar event";
                 crow::json::wvalue result;
