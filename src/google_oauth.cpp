@@ -36,8 +36,7 @@ std::string GoogleOAuth::getAuthUrl() {
        << "&redirect_uri=" << curl_utils::urlEncode(d_config.google_redirect_uri)
        << "&response_type=code"
        << "&scope=" << curl_utils::urlEncode("https://www.googleapis.com/auth/calendar")
-       << "&access_type=offline"
-       << "&prompt=consent"
+       << "&access_type=offline" << "&prompt=consent"
        << "&state=" << curl_utils::urlEncode(d_pendingState);
     return ss.str();
 }
