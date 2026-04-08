@@ -89,6 +89,8 @@ set(TEST_SOURCES
     tests/test_meal_factory.cpp
     tests/test_measurement.cpp
     tests/test_meal_planner.cpp
+    tests/test_db_manager.cpp
+    tests/test_token_encryption.cpp
     # Add other test source files here
 )
 

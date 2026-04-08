@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <sstream>
+
 #include "../src/ingredient.h"
 #include "../src/meal.h"
 #include "../src/meal_planner.h"
@@ -83,4 +85,32 @@ TEST_F(MealPlannerTest, ConsolidateOverlappingDifferentUnits) {
     // 1 tbsp + 3 tsp = 2 tbsp
     EXPECT_NEAR(allIngredients["Olive Oil"].getAmount().getValue(), 2.0, 0.001);
     EXPECT_EQ(allIngredients["Olive Oil"].getAmount().getUnit(), MeasurementUnit::TABLESPOON);
+}
+
+// PrintWeeklySchedule with empty schedule shows "(Nothing planned)" for all days
+TEST_F(MealPlannerTest, PrintWeeklyScheduleEmpty) {
+    std::map<std::string, std::vector<std::string>> schedule;
+    std::ostringstream oss;
+    PrintWeeklySchedule(oss, schedule);
+    std::string output = oss.str();
+    EXPECT_NE(output.find("Monday"), std::string::npos);
+    EXPECT_NE(output.find("(Nothing planned)"), std::string::npos);
+    EXPECT_NE(output.find("Sunday"), std::string::npos);
+}
+
+// PrintWeeklySchedule lists meals for days that have them
+TEST_F(MealPlannerTest, PrintWeeklyScheduleWithMeals) {
+    std::map<std::string, std::vector<std::string>> schedule;
+    schedule["Monday"] = {"turkey-burgers", "chicken-stir-fry"};
+    schedule["Wednesday"] = {"baked-chicken"};
+
+    std::ostringstream oss;
+    PrintWeeklySchedule(oss, schedule);
+    std::string output = oss.str();
+
+    EXPECT_NE(output.find("turkey-burgers"), std::string::npos);
+    EXPECT_NE(output.find("chicken-stir-fry"), std::string::npos);
+    EXPECT_NE(output.find("baked-chicken"), std::string::npos);
+    // Days without meals still show the placeholder
+    EXPECT_NE(output.find("(Nothing planned)"), std::string::npos);
 }
