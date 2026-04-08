@@ -71,7 +71,7 @@ echo "============================================"
 echo " Running clang-tidy"
 echo "============================================"
 
-TIDY_ARGS=(-p "${BUILD_DIR}")
+TIDY_ARGS=(-p "${BUILD_DIR}" --extra-arg=-std=c++20)
 if $FIX_MODE; then
   TIDY_ARGS+=(--fix --fix-errors)
 fi
@@ -83,7 +83,10 @@ for src in "${PROJECT_SOURCES[@]}"; do
     continue
   fi
   echo "  Checking ${src}..."
-  if ! clang-tidy "${TIDY_ARGS[@]}" "${full_path}" 2>&1; then
+  tidy_out=$(clang-tidy "${TIDY_ARGS[@]}" "${full_path}" 2>&1 || true)
+  # Only fail on diagnostics in project source files, not third-party deps
+  if echo "${tidy_out}" | grep -qE "^${PROJECT_ROOT}/(src|tests)/[^/]+\.(cpp|h):[0-9]+:[0-9]+: (warning|error):"; then
+    echo "${tidy_out}"
     ERRORS=$((ERRORS + 1))
   fi
 done
