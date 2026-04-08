@@ -3,8 +3,8 @@
 
 LOCAL ?= 0
 
-# Auto-enable LOCAL mode when running as the claude Linux user
-ifeq ($(shell whoami),claude)
+# Auto-enable LOCAL mode when running as johnnyj or devuser
+ifneq ($(filter $(shell whoami),johnnyj devuser),)
   LOCAL := 1
 endif
 
