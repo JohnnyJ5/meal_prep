@@ -22,7 +22,8 @@ class CalendarService {
      * @return The created event ID, or empty string on failure.
      */
     std::string createEvent(const std::string &summary, const std::string &description,
-                            const std::string &startTime, const std::string &endTime);
+                            const std::string &startTime, const std::string &endTime,
+                            bool withReminders = false);
 
     bool deleteEvent(const std::string &eventId);
 
