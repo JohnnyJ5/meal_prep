@@ -3,6 +3,11 @@
 
 LOCAL ?= 0
 
+# Auto-enable LOCAL mode when running as the claude Linux user
+ifeq ($(shell whoami),claude)
+  LOCAL := 1
+endif
+
 all: build
 
 build:
