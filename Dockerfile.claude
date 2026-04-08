@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     npm \
     python3 \
     jq \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Anthropic's Claude CLI
