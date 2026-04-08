@@ -1,5 +1,5 @@
 # --- Stage 1: Build Environment ---
-FROM ubuntu:22.04 AS build-env
+FROM ubuntu:24.04 AS build-env
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -9,25 +9,15 @@ RUN apt-get update && apt-get install -y \
     git \
     gh \
     curl \
-    gnupg \
-    lsb-release \
     sudo \
     libssl-dev \
     libboost-dev \
     libcurl4-openssl-dev \
     libasio-dev \
     libsqlite3-dev \
-    && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] https://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" \
-       > /etc/apt/sources.list.d/llvm-18.list \
-    && apt-get update && apt-get install -y \
-    clang-18 \
-    clang-tidy-18 \
-    clang-format-18 \
-    && ln -sf /usr/bin/clang-18 /usr/local/bin/clang \
-    && ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++ \
-    && ln -sf /usr/bin/clang-tidy-18 /usr/local/bin/clang-tidy \
-    && ln -sf /usr/bin/clang-format-18 /usr/local/bin/clang-format \
+    clang \
+    clang-tidy \
+    clang-format \
     && rm -rf /var/lib/apt/lists/*
 
 # devuser for local development
@@ -42,7 +32,7 @@ USER devuser
 RUN make internal-build
 
 # --- Stage 2: Production Environment ---
-FROM ubuntu:22.04 AS prod-env
+FROM ubuntu:24.04 AS prod-env
 
 ENV DEBIAN_FRONTEND=noninteractive
 
