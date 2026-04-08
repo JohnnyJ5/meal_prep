@@ -8,16 +8,26 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     gh \
-    clang \
-    clang-tidy \
-    clang-format \
+    curl \
+    gnupg \
+    lsb-release \
+    sudo \
     libssl-dev \
     libboost-dev \
     libcurl4-openssl-dev \
     libasio-dev \
     libsqlite3-dev \
-    sudo \
-    curl \
+    && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] https://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" \
+       > /etc/apt/sources.list.d/llvm-18.list \
+    && apt-get update && apt-get install -y \
+    clang-18 \
+    clang-tidy-18 \
+    clang-format-18 \
+    && ln -sf /usr/bin/clang-18 /usr/local/bin/clang \
+    && ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++ \
+    && ln -sf /usr/bin/clang-tidy-18 /usr/local/bin/clang-tidy \
+    && ln -sf /usr/bin/clang-format-18 /usr/local/bin/clang-format \
     && rm -rf /var/lib/apt/lists/*
 
 # devuser for local development
