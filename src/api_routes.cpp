@@ -6,7 +6,7 @@
 #include "meal_planner.h"
 
 void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManager> dbManager,
-                 MealFactory &factory, const Config &config,
+                 MealFactory &factory, const Config & /*config*/,
                  const std::shared_ptr<GoogleOAuth> &googleOAuth,
                  const std::shared_ptr<CalendarService> &calendarService) {
     // Route: Get all available meals
