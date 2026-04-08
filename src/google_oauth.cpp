@@ -36,8 +36,7 @@ std::string GoogleOAuth::getAuthUrl() {
        << "&redirect_uri=" << curl_utils::urlEncode(d_config.google_redirect_uri)
        << "&response_type=code"
        << "&scope=" << curl_utils::urlEncode("https://www.googleapis.com/auth/calendar")
-       << "&access_type=offline"
-       << "&prompt=consent"
+       << "&access_type=offline" << "&prompt=consent"
        << "&state=" << curl_utils::urlEncode(d_pendingState);
     return ss.str();
 }
@@ -169,7 +168,7 @@ GoogleOAuth::TokenResponse GoogleOAuth::makeTokenRequest(const std::string &post
                 if (json.has("refresh_token")) {
                     res.refresh_token = json["refresh_token"].s();
                 }
-                res.expires_in = json["expires_in"].i();
+                res.expires_in = static_cast<int>(json["expires_in"].i());
                 res.success = true;
             } else {
                 std::string errorMsg = "unknown error";

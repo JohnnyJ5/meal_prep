@@ -34,7 +34,7 @@ Config loadConfig(const std::string &configFilePath) {
                       << ". Using defaults.\n";
         } else {
             if (jsonBody.has("port")) {
-                config.port = jsonBody["port"].i();
+                config.port = static_cast<int>(jsonBody["port"].i());
             } else {
                 std::cerr << "Notice: 'port' not found in config. Using default: " << config.port
                           << "\n";
