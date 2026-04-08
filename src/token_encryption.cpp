@@ -1,6 +1,9 @@
 #include "token_encryption.h"
+
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -28,7 +31,7 @@ std::string base64Encode(const unsigned char *data, size_t len) {
             char4[1] = ((char3[0] & 0x03) << 4) + ((char3[1] & 0xf0) >> 4);
             char4[2] = ((char3[1] & 0x0f) << 2) + ((char3[2] & 0xc0) >> 6);
             char4[3] = char3[2] & 0x3f;
-            for (int j = 0; j < 4; j++) ret += BASE64_CHARS[char4[j]];
+            for (unsigned char j : char4) ret += BASE64_CHARS[j];
             i = 0;
         }
     }
@@ -48,29 +51,27 @@ std::vector<unsigned char> base64Decode(const std::string &encoded) {
     int i = 0;
     size_t in_ = 0;
     unsigned char char3[3], char4[4];
-    auto isBase64 = [](unsigned char c) -> bool {
-        return isalnum(c) || c == '+' || c == '/';
-    };
+    auto isBase64 = [](unsigned char c) -> bool { return isalnum(c) || c == '+' || c == '/'; };
     size_t inLen = encoded.size();
     while (inLen-- && encoded[in_] != '=' && isBase64(encoded[in_])) {
         char4[i++] = encoded[in_++];
         if (i == 4) {
-            for (int j = 0; j < 4; j++) {
-                auto pos = BASE64_CHARS.find(char4[j]);
-                char4[j] = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
+            for (unsigned char &j : char4) {
+                auto pos = BASE64_CHARS.find(j);
+                j = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
             }
             char3[0] = (char4[0] << 2) + ((char4[1] & 0x30) >> 4);
             char3[1] = ((char4[1] & 0x0f) << 4) + ((char4[2] & 0x3c) >> 2);
             char3[2] = ((char4[2] & 0x03) << 6) + char4[3];
-            for (int j = 0; j < 3; j++) ret.push_back(char3[j]);
+            std::copy(char3, char3 + 3, std::back_inserter(ret));
             i = 0;
         }
     }
     if (i) {
         for (int j = i; j < 4; j++) char4[j] = 0;
-        for (int j = 0; j < 4; j++) {
-            auto pos = BASE64_CHARS.find(char4[j]);
-            char4[j] = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
+        for (unsigned char &j : char4) {
+            auto pos = BASE64_CHARS.find(j);
+            j = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
         }
         char3[0] = (char4[0] << 2) + ((char4[1] & 0x30) >> 4);
         char3[1] = ((char4[1] & 0x0f) << 4) + ((char4[2] & 0x3c) >> 2);
@@ -97,7 +98,7 @@ bool getKey(unsigned char key[KEY_LEN]) {
     return true;
 }
 
-} // namespace
+}  // namespace
 
 namespace TokenEncryption {
 
@@ -118,14 +119,16 @@ std::string encrypt(const std::string &plaintext) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return plaintext;
 
-    bool ok =
-        EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
-        EVP_EncryptInit_ex(ctx, nullptr, nullptr, key, iv) == 1 &&
-        EVP_EncryptUpdate(ctx, ciphertext.data(), &len,
-                          reinterpret_cast<const unsigned char *>(plaintext.data()),
-                          static_cast<int>(plaintext.size())) == 1;
+    bool ok = EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
+              EVP_EncryptInit_ex(ctx, nullptr, nullptr, key, iv) == 1 &&
+              EVP_EncryptUpdate(ctx, ciphertext.data(), &len,
+                                reinterpret_cast<const unsigned char *>(plaintext.data()),
+                                static_cast<int>(plaintext.size())) == 1;
 
-    if (!ok) { EVP_CIPHER_CTX_free(ctx); return plaintext; }
+    if (!ok) {
+        EVP_CIPHER_CTX_free(ctx);
+        return plaintext;
+    }
     cipherLen = len;
 
     if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1) {
@@ -146,9 +149,8 @@ std::string encrypt(const std::string &plaintext) {
 }
 
 std::string decrypt(const std::string &stored) {
-    if (stored.size() < ENC_PREFIX.size() ||
-        stored.substr(0, ENC_PREFIX.size()) != ENC_PREFIX) {
-        return stored; // Legacy plaintext — return as-is
+    if (stored.size() < ENC_PREFIX.size() || stored.substr(0, ENC_PREFIX.size()) != ENC_PREFIX) {
+        return stored;  // Legacy plaintext — return as-is
     }
 
     unsigned char key[KEY_LEN];
@@ -173,14 +175,15 @@ std::string decrypt(const std::string &stored) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return "";
 
-    bool ok =
-        EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
-        EVP_DecryptInit_ex(ctx, nullptr, nullptr, key, iv) == 1 &&
-        EVP_DecryptUpdate(ctx, plaintext.data(), &len,
-                          packed.data() + IV_LEN,
-                          static_cast<int>(cipherLen)) == 1;
+    bool ok = EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
+              EVP_DecryptInit_ex(ctx, nullptr, nullptr, key, iv) == 1 &&
+              EVP_DecryptUpdate(ctx, plaintext.data(), &len, packed.data() + IV_LEN,
+                                static_cast<int>(cipherLen)) == 1;
 
-    if (!ok) { EVP_CIPHER_CTX_free(ctx); return ""; }
+    if (!ok) {
+        EVP_CIPHER_CTX_free(ctx);
+        return "";
+    }
     plaintextLen = len;
 
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, TAG_LEN, tag);
@@ -195,4 +198,4 @@ std::string decrypt(const std::string &stored) {
     return std::string(plaintext.begin(), plaintext.begin() + plaintextLen);
 }
 
-} // namespace TokenEncryption
+}  // namespace TokenEncryption

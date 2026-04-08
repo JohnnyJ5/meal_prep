@@ -7,12 +7,12 @@
  * @brief Application configuration data.
  */
 struct Config {
-  int port;
-  std::string db_path;
-  // Google OAuth2
-  std::string google_client_id;
-  std::string google_client_secret;
-  std::string google_redirect_uri;
+    int port;
+    std::string db_path;
+    // Google OAuth2
+    std::string google_client_id;
+    std::string google_client_secret;
+    std::string google_redirect_uri;
 };
 
 /**
@@ -25,4 +25,3 @@ struct Config {
  * @return Config The parsed configuration object.
  */
 Config loadConfig(const std::string &configFilePath);
-

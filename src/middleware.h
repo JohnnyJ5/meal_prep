@@ -1,6 +1,7 @@
 #pragma once
 
 #include <crow.h>
+
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -17,12 +18,14 @@ struct RequestTimerMiddleware {
         ctx.start_time = std::chrono::high_resolution_clock::now();
     }
 
-    void after_handle(crow::request& req, crow::response& res, context& ctx) {
+    void after_handle(crow::request& req, crow::response& res, const context& ctx) {
         auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - ctx.start_time).count();
+        auto duration =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end_time - ctx.start_time)
+                .count();
 
         // Standard Crow logs have a specific format, we'll try to follow it or make it distinct
-        std::cout << "[TIMER] " << crow::method_name(req.method) << " " << req.url 
-                  << " - " << duration << "ms" << std::endl;
+        std::cout << "[TIMER] " << crow::method_name(req.method) << " " << req.url << " - "
+                  << duration << "ms" << std::endl;
     }
 };

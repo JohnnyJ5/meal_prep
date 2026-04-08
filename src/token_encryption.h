@@ -8,4 +8,4 @@
 namespace TokenEncryption {
 std::string encrypt(const std::string &plaintext);
 std::string decrypt(const std::string &stored);
-} // namespace TokenEncryption
+}  // namespace TokenEncryption
