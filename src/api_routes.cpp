@@ -80,7 +80,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                 for (const auto &ingJson : body["ingredients"]) {
                     std::string ingName = ingJson["name"].s();
                     double amount = ingJson["amount"].d();
-                    int unit = ingJson["unit"].i();
+                    int unit = static_cast<int>(ingJson["unit"].i());
                     // Preparation is optional in the JSON
                     std::string prep = "None";
                     if (ingJson.has("preparation")) {
@@ -132,7 +132,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                     for (const auto &ingJson : body["ingredients"]) {
                         std::string ingName = ingJson["name"].s();
                         double amount = ingJson["amount"].d();
-                        int unit = ingJson["unit"].i();
+                        int unit = static_cast<int>(ingJson["unit"].i());
                         std::string prep = "None";
                         if (ingJson.has("preparation")) {
                             prep = ingJson["preparation"].s();

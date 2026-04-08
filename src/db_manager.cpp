@@ -143,7 +143,7 @@ bool DBManager::addMeal(const Meal &meal) {
     }
     sqlite3_finalize(stmtMeal);
 
-    int mealId = sqlite3_last_insert_rowid(d_db);
+    int mealId = static_cast<int>(sqlite3_last_insert_rowid(d_db));
 
     std::string insertIngredient =
         "INSERT INTO ingredients (meal_id, name, amount, unit, preparation) "
@@ -211,7 +211,7 @@ bool DBManager::updateMeal(const Meal &meal) {
     }
     sqlite3_finalize(stmtMeal);
 
-    int mealId = sqlite3_last_insert_rowid(d_db);
+    int mealId = static_cast<int>(sqlite3_last_insert_rowid(d_db));
 
     // Insert updated ingredients
     std::string insertIngredient =

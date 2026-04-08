@@ -57,7 +57,7 @@ std::vector<unsigned char> base64Decode(const std::string &encoded) {
         char4[i++] = encoded[in_++];
         if (i == 4) {
             for (unsigned char &j : char4) {
-                auto pos = BASE64_CHARS.find(j);
+                auto pos = BASE64_CHARS.find(static_cast<char>(j));
                 j = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
             }
             char3[0] = (char4[0] << 2) + ((char4[1] & 0x30) >> 4);
@@ -70,7 +70,7 @@ std::vector<unsigned char> base64Decode(const std::string &encoded) {
     if (i) {
         for (int j = i; j < 4; j++) char4[j] = 0;
         for (unsigned char &j : char4) {
-            auto pos = BASE64_CHARS.find(j);
+            auto pos = BASE64_CHARS.find(static_cast<char>(j));
             j = (pos == std::string::npos) ? 0 : static_cast<unsigned char>(pos);
         }
         char3[0] = (char4[0] << 2) + ((char4[1] & 0x30) >> 4);
@@ -87,9 +87,10 @@ bool getKey(unsigned char key[KEY_LEN]) {
     const char *keyHex = std::getenv("MEAL_PREP_TOKEN_KEY");
     if (!keyHex) return false;
     size_t hexLen = std::strlen(keyHex);
-    if (hexLen != static_cast<size_t>(KEY_LEN * 2)) return false;
+    if (hexLen != static_cast<size_t>(KEY_LEN) * 2) return false;
     for (int i = 0; i < KEY_LEN; i++) {
-        char byte[3] = {keyHex[i * 2], keyHex[i * 2 + 1], '\0'};
+        char byte[3] = {keyHex[static_cast<size_t>(i) * 2], keyHex[static_cast<size_t>(i) * 2 + 1],
+                        '\0'};
         char *end = nullptr;
         long val = std::strtol(byte, &end, 16);
         if (end != byte + 2) return false;
@@ -160,7 +161,7 @@ std::string decrypt(const std::string &stored) {
     }
 
     auto packed = base64Decode(stored.substr(ENC_PREFIX.size()));
-    if (packed.size() < static_cast<size_t>(IV_LEN + TAG_LEN)) return "";
+    if (packed.size() < static_cast<size_t>(IV_LEN) + TAG_LEN) return "";
 
     unsigned char iv[IV_LEN];
     memcpy(iv, packed.data(), IV_LEN);
