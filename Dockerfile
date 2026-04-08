@@ -15,13 +15,9 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libasio-dev \
     libsqlite3-dev \
-    clang-18 \
-    clang-tidy-18 \
-    clang-format-18 \
-    && ln -sf /usr/bin/clang-18 /usr/local/bin/clang \
-    && ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++ \
-    && ln -sf /usr/bin/clang-tidy-18 /usr/local/bin/clang-tidy \
-    && ln -sf /usr/bin/clang-format-18 /usr/local/bin/clang-format \
+    clang \
+    clang-tidy \
+    clang-format \
     && rm -rf /var/lib/apt/lists/*
 
 # devuser for local development
