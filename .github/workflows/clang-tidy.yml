@@ -1,4 +1,4 @@
-name: clang lint
+name: clang-tidy
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  lintenator:
-    name: lintenator (clang-tidy + clang-format)
+  clang-tidy:
+    name: clang-tidy
     runs-on: ubuntu-24.04
 
     steps:
@@ -27,8 +27,7 @@ jobs:
             libcurl4-openssl-dev \
             libsqlite3-dev \
             clang \
-            clang-tidy \
-            clang-format
+            clang-tidy
 
       - name: Cache CMake FetchContent
         uses: actions/cache@v4
@@ -45,7 +44,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_BUILD_TYPE=Debug
 
-      - name: Run lintenator
+      - name: Run clang-tidy
         run: |
-          chmod +x scripts/lintenator.sh
-          ./scripts/lintenator.sh --build-dir build
+          chmod +x scripts/clang-tidy.sh
+          ./scripts/clang-tidy.sh --build-dir build

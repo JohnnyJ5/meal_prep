@@ -71,20 +71,28 @@ endif
 
 lint: build
 ifeq ($(LOCAL),1)
-	@echo "Running lintenator locally..."
-	./scripts/lintenator.sh --build-dir build
+	@echo "Running clang-tidy locally..."
+	./scripts/clang-tidy.sh --build-dir build
+	@echo "Running clang-format locally..."
+	./scripts/clang-format.sh
 else
-	@echo "Running lintenator (clang-tidy + clang-format) inside container..."
-	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/lintenator.sh --build-dir build_docker"
+	@echo "Running clang-tidy inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/clang-tidy.sh --build-dir build_docker"
+	@echo "Running clang-format inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/clang-format.sh"
 endif
 
 lint-fix: build
 ifeq ($(LOCAL),1)
-	@echo "Running lintenator with --fix locally..."
-	./scripts/lintenator.sh --build-dir build --fix
+	@echo "Running clang-tidy with --fix locally..."
+	./scripts/clang-tidy.sh --build-dir build --fix
+	@echo "Running clang-format with --fix locally..."
+	./scripts/clang-format.sh --fix
 else
-	@echo "Running lintenator with --fix inside container..."
-	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/lintenator.sh --build-dir build_docker --fix"
+	@echo "Running clang-tidy with --fix inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/clang-tidy.sh --build-dir build_docker --fix"
+	@echo "Running clang-format with --fix inside container..."
+	docker exec meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./scripts/clang-format.sh --fix"
 endif
 
 asan:
