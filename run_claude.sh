@@ -3,14 +3,15 @@
 CONTAINER_NAME="claude-workspace"
 DOTFILES_REPO="git@github.com:JohnnyJ5/dotfiles.git"
 DOTFILES_DIR=".claude_workspace_env/dotfiles"
+CLAUDE_CONFIG_DIR="$HOME/.claude_config"
 
-if [ -f "$HOME/.config/gh/gh_token" ]; then
-    GH_TOKEN_VALUE=$(cat "$HOME/.config/gh/gh_token")
+if [ -f "$CLAUDE_CONFIG_DIR/gh_token" ]; then
+    GH_TOKEN_VALUE=$(cat "$CLAUDE_CONFIG_DIR/gh_token")
 elif [ -n "$GH_TOKEN" ]; then
     GH_TOKEN_VALUE="$GH_TOKEN"
 else
     echo "WARNING: No GH_TOKEN found. gh commands will not be authenticated."
-    echo "  Fix: echo 'ghp_yourtoken' > ~/.config/gh/gh_token && chmod 600 ~/.config/gh/gh_token"
+    echo "  Fix: echo 'ghp_yourtoken' > ~/.claude_config/gh_token && chmod 600 ~/.claude_config/gh_token"
     GH_TOKEN_VALUE=""
 fi
 
@@ -19,7 +20,7 @@ DOCKER_COMMON=(
     -e GIT_SSH_COMMAND="ssh -i /app/.claude_workspace_env/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
     -e GH_TOKEN="${GH_TOKEN_VALUE}"
     -v "$(pwd)":/app
-    -v "$HOME/.ssh/claude_github:/app/.claude_workspace_env/.ssh/id_ed25519:ro"
+    -v "$CLAUDE_CONFIG_DIR/ssh/id_ed25519:/app/.claude_workspace_env/.ssh/id_ed25519:ro"
 )
 
 dotfiles() {
@@ -51,8 +52,8 @@ if [ "$(docker ps -q -f name=^${CONTAINER_NAME}$)" ]; then
 else
     echo "Starting a new '${CONTAINER_NAME}' container..."
 
-    if [ ! -f "$HOME/.ssh/claude_github" ]; then
-        echo "ERROR: SSH key not found at ~/.ssh/claude_github"
+    if [ ! -f "$CLAUDE_CONFIG_DIR/ssh/id_ed25519" ]; then
+        echo "ERROR: SSH key not found at ~/.claude_config/ssh/id_ed25519"
         exit 1
     fi
 
