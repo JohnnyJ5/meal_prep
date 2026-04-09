@@ -39,10 +39,9 @@ RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/bash.bashrc
 
 # GH_TOKEN is read automatically by `gh` — pass it at runtime via --env or docker-compose.
 # No credentials are baked into the image; the variable just needs to be present at runtime.
-ENV GH_TOKEN=""
 
 # Create a non-root user to run Claude (with sudo privileges just in case)
-RUN useradd -m -u 1000 -s /bin/bash claude && \
+RUN useradd -m -s /bin/bash claude && \
     echo "claude ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Switch to the non-root user
