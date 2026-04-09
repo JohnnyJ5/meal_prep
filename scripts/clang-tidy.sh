@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# lintenator.sh — runs clang-tidy and clang-format checks on project sources.
+# clang-tidy.sh — runs clang-tidy checks on project sources.
 #
 # Usage:
-#   ./scripts/lintenator.sh [--build-dir <dir>] [--fix]
+#   ./scripts/clang-tidy.sh [--build-dir <dir>] [--fix]
 #
 # Options:
 #   --build-dir <dir>   Directory containing compile_commands.json (default: build)
@@ -47,7 +47,7 @@ if [[ ! -f "${COMPILE_COMMANDS}" ]]; then
   exit 1
 fi
 
-# Source files to lint (project sources only, excluding third-party)
+# Source files to check (project sources only, excluding third-party)
 PROJECT_SOURCES=(
   src/db_manager.cpp
   src/meal_factory.cpp
@@ -66,7 +66,6 @@ PROJECT_SOURCES=(
   tests/test_meal_planner.cpp
 )
 
-# ── clang-tidy ────────────────────────────────────────────────────────────────
 echo "============================================"
 echo " Running clang-tidy"
 echo "============================================"
@@ -91,53 +90,14 @@ for src in "${PROJECT_SOURCES[@]}"; do
   fi
 done
 
-# ── clang-format ──────────────────────────────────────────────────────────────
-echo ""
-echo "============================================"
-echo " Running clang-format"
-echo "============================================"
-
-FORMAT_SOURCES=()
-for src in "${PROJECT_SOURCES[@]}"; do
-  full_path="${PROJECT_ROOT}/${src}"
-  [[ -f "${full_path}" ]] && FORMAT_SOURCES+=("${full_path}")
-done
-
-# Also include header files
-while IFS= read -r -d '' hdr; do
-  FORMAT_SOURCES+=("${hdr}")
-done < <(find "${PROJECT_ROOT}/src" -maxdepth 1 -name '*.h' -print0)
-
-if $FIX_MODE; then
-  echo "  Applying clang-format..."
-  clang-format -i "${FORMAT_SOURCES[@]}"
-  echo "  Done."
-else
-  echo "  Checking formatting..."
-  FORMAT_ERRORS=0
-  for f in "${FORMAT_SOURCES[@]}"; do
-    rel="${f#"${PROJECT_ROOT}/"}"
-    if ! clang-format --dry-run --Werror "${f}" 2>/dev/null; then
-      echo "  [FAIL] ${rel} — formatting issue (run with --fix to auto-correct)"
-      FORMAT_ERRORS=$((FORMAT_ERRORS + 1))
-    fi
-  done
-  if [[ "${FORMAT_ERRORS}" -eq 0 ]]; then
-    echo "  All files correctly formatted."
-  else
-    ERRORS=$((ERRORS + FORMAT_ERRORS))
-  fi
-fi
-
-# ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================"
 if [[ "${ERRORS}" -eq 0 ]]; then
-  echo " lintenator: all checks passed"
+  echo " clang-tidy: all checks passed"
   echo "============================================"
   exit 0
 else
-  echo " lintenator: ${ERRORS} check(s) failed"
+  echo " clang-tidy: ${ERRORS} check(s) failed"
   echo "============================================"
   exit 1
 fi
