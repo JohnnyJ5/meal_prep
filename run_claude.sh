@@ -4,9 +4,20 @@ CONTAINER_NAME="claude-workspace"
 DOTFILES_REPO="git@github.com:JohnnyJ5/dotfiles.git"
 DOTFILES_DIR=".claude_workspace_env/dotfiles"
 
+if [ -f "$HOME/.config/gh/gh_token" ]; then
+    GH_TOKEN_VALUE=$(cat "$HOME/.config/gh/gh_token")
+elif [ -n "$GH_TOKEN" ]; then
+    GH_TOKEN_VALUE="$GH_TOKEN"
+else
+    echo "WARNING: No GH_TOKEN found. gh commands will not be authenticated."
+    echo "  Fix: echo 'ghp_yourtoken' > ~/.config/gh/gh_token && chmod 600 ~/.config/gh/gh_token"
+    GH_TOKEN_VALUE=""
+fi
+
 DOCKER_COMMON=(
     -e HOME=/app/.claude_workspace_env
     -e GIT_SSH_COMMAND="ssh -i /app/.claude_workspace_env/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
+    -e GH_TOKEN="${GH_TOKEN_VALUE}"
     -v "$(pwd)":/app
     -v "$HOME/.ssh/claude_github:/app/.claude_workspace_env/.ssh/id_ed25519:ro"
 )
