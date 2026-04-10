@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     jq \
     vim \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Anthropic's Claude CLI
@@ -44,11 +45,14 @@ RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/bash.bashrc
 RUN useradd -m -s /bin/bash claude && \
     echo "claude ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Switch to the non-root user
-USER claude
+# Copy and install the entrypoint that remaps claude's UID/GID at runtime
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Stay as root so the entrypoint can call usermod/groupmod before dropping to claude
 # Set the working directory where the repository should be mounted
 WORKDIR /app
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # Ensure we have a default command that drops the user into an interactive shell
 CMD ["/bin/bash"]

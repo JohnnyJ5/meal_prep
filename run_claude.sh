@@ -19,6 +19,8 @@ DOCKER_COMMON=(
     -e HOME=/app/.claude_workspace_env
     -e GIT_SSH_COMMAND="ssh -i /app/.claude_workspace_env/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
     -e GH_TOKEN="${GH_TOKEN_VALUE}"
+    -e HOST_UID="$(id -u)"
+    -e HOST_GID="$(id -g)"
     -v "$(pwd)":/app
     -v "$CLAUDE_CONFIG_DIR/ssh/id_ed25519:/app/.claude_workspace_env/.ssh/id_ed25519:ro"
 )
