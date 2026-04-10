@@ -32,11 +32,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Anthropic's Claude CLI
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/bash.bashrc
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Alias Claude to always skip permissions across the whole container
 RUN echo "alias claude-yolo='claude --worktree --dangerously-skip-permissions'" >> /etc/bash.bashrc
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /etc/bash.bashrc
 
 # GH_TOKEN is read automatically by `gh` — pass it at runtime via --env or docker-compose.
 # No credentials are baked into the image; the variable just needs to be present at runtime.
