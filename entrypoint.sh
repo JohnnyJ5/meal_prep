@@ -9,7 +9,7 @@ if [ -n "${HOST_UID}" ] && [ "${HOST_UID}" != "$(id -u claude)" ]; then
     # pre-installed in ubuntu:24.04), bump it out of the way first.
     conflicting_user=$(getent passwd "${HOST_UID}" | cut -d: -f1 || true)
     if [ -n "$conflicting_user" ] && [ "$conflicting_user" != "claude" ]; then
-        usermod -u 65534 "$conflicting_user"
+        usermod -o -u 65534 "$conflicting_user"
     fi
     usermod -u "${HOST_UID}" claude
 fi
@@ -18,9 +18,9 @@ if [ -n "${HOST_GID}" ] && [ "${HOST_GID}" != "$(id -g claude)" ]; then
     # Same treatment for GID conflicts.
     conflicting_group=$(getent group "${HOST_GID}" | cut -d: -f1 || true)
     if [ -n "$conflicting_group" ] && [ "$conflicting_group" != "claude" ]; then
-        groupmod -g 65534 "$conflicting_group"
+        groupmod -o -g 65534 "$conflicting_group"
     fi
     groupmod -g "${HOST_GID}" claude
 fi
 
-exec gosu claude "$@"
+exec gosu claude env HOME="${HOME}" "$@"
