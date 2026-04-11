@@ -14,6 +14,7 @@ DOCKER_COMMON=(
     -v "$HOME/.ssh/claude_github:/home/claude/.ssh/claude_github:ro"
 )
 
+##token expires in one year
 setup_gh_token() {
 if [ -f "$CLAUDE_CONFIG_DIR/gh/claude_gh_token" ]; then
     GH_TOKEN_VALUE=$(cat "$CLAUDE_CONFIG_DIR/gh/claude_gh_token")
