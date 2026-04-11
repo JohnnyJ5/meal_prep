@@ -72,9 +72,10 @@ Host github.com
     IdentitiesOnly yes
     StrictHostKeyChecking no
 EOF
-        chmod 600 .claude_workspace_env/.ssh/config
+    chmod 600 .claude_workspace_env/.ssh/config
 
-    docker build --no-cache --pull -t claude-cli-env -f Dockerfile.claude .
+    # docker build --no-cache --pull -t claude-cli-env -f Dockerfile.claude .
+    docker build -t claude-cli-env -f Dockerfile.claude .
 
     # Clone and install dotfiles on first run so ~/.claude agents/settings are available
     dotfiles
