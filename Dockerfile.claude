@@ -31,20 +31,20 @@ RUN apt-get update && apt-get install -y \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Anthropic's Claude CLI globally via npm so it lands in /usr/local/bin
-RUN npm install -g @anthropic-ai/claude-code
-
-# Alias Claude to always skip permissions across the whole container
-RUN echo "alias claude-yolo='claude --dangerously-skip-permissions'" >> /etc/bash.bashrc
-
-# ubuntu:24.04 ships with an 'ubuntu' user at UID/GID 1000. Move it out of the
-# way so that 'claude' can claim UID 1000 and the entrypoint's usermod can
-# remap to any host UID without hitting a collision.
-RUN usermod -u 999 ubuntu 2>/dev/null || true
-
 # Create a non-root user to run Claude (with sudo privileges just in case)
 RUN useradd -m -s /bin/bash claude && \
     echo "claude ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Install Anthropic's Claude CLI via the official installer as the claude user
+USER claude
+RUN curl -fsSL https://claude.ai/install.sh | sh
+USER root
+
+# Ensure the claude user's local bin is on PATH for all sessions
+ENV PATH="/home/claude/.local/bin:$PATH"
+
+# Alias Claude to always skip permissions across the whole container
+RUN echo "alias claude-yolo='claude --dangerously-skip-permissions'" >> /etc/bash.bashrc
 
 # Copy and install the entrypoint that remaps claude's UID/GID at runtime
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
