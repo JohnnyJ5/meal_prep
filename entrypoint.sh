@@ -23,4 +23,4 @@ if [ -n "${HOST_GID}" ] && [ "${HOST_GID}" != "$(id -g claude)" ]; then
     groupmod -g "${HOST_GID}" claude
 fi
 
-exec gosu claude env HOME="${HOME}" "$@"
+exec gosu claude "$@"
