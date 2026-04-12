@@ -36,15 +36,33 @@ def dump_table(cursor, table_name):
     except sqlite3.OperationalError as e:
         print(f"Error accessing table '{table_name}': {e}")
 
+def execute_sql(conn, cursor, sql):
+    # Only allow DML statements for safety
+    normalized = sql.strip().upper()
+    allowed = ("INSERT", "UPDATE", "DELETE")
+    if not any(normalized.startswith(op) for op in allowed):
+        print(f"Error: only INSERT, UPDATE, and DELETE statements are allowed.")
+        sys.exit(1)
+
+    try:
+        cursor.execute(sql)
+        conn.commit()
+        print(f"OK. Rows affected: {cursor.rowcount}")
+    except sqlite3.OperationalError as e:
+        print(f"SQL error: {e}")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Dump SQLite database contents")
     parser.add_argument("db_file", help="Path to the SQLite database file", nargs='?', default="meals.db")
     parser.add_argument("-l", "--list", action="store_true", dest="list_tables", help="List all table names")
     parser.add_argument("-d", "--dump", metavar="TABLENAME", dest="dump_table", help="Dump the contents of the specified table")
+    parser.add_argument("-e", "--execute", metavar="SQL", dest="execute_sql", help="Execute an INSERT, UPDATE, or DELETE statement")
 
     args = parser.parse_args()
 
-    if not args.list_tables and not args.dump_table:
+    if not args.list_tables and not args.dump_table and not args.execute_sql:
         parser.print_help()
         sys.exit(1)
 
@@ -54,11 +72,14 @@ def main():
 
         if args.list_tables:
             list_tables(cursor)
-        
+
         if args.dump_table:
             if args.list_tables:
                 print()
             dump_table(cursor, args.dump_table)
+
+        if args.execute_sql:
+            execute_sql(conn, cursor, args.execute_sql)
 
         conn.close()
 

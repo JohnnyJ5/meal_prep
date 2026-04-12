@@ -139,8 +139,28 @@ Runs the job to dump the contents of a specific table, e.g. `meals`.
 gcloud run jobs execute db-dump-job --region=us-central1 --args="/mnt/db/meals.db,-d,meals"
 ```
 
+### Run Database Admin Job (Execute SQL)
+Runs an INSERT, UPDATE, or DELETE statement directly against the production database.
+```bash
+gcloud run jobs execute db-dump-job --region=us-central1 \
+    --args="/mnt/db/meals.db,-e,UPDATE meals SET name='New Name' WHERE id=1"
+```
+
 ### View Job Logs
 Watch the logs of the executed job.
 ```bash
 gcloud run jobs logs tail db-dump-job --region=us-central1
 ```
+
+### Running Jobs via the Cloud Console UI
+You can execute any of the above jobs without the CLI:
+1. Go to **Cloud Run > Jobs** and select `db-dump-job`.
+2. Click **Execute**.
+3. Expand **"Show advanced settings"** and find the **"Override"** section.
+4. In the **Arguments** field, enter each arg on its own line — e.g.:
+   ```
+   /mnt/db/meals.db
+   -e
+   UPDATE meals SET name='New Name' WHERE id=1
+   ```
+5. Click **Execute**. View output under **Executions > Logs**.
