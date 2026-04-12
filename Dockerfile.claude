@@ -29,6 +29,8 @@ RUN apt-get update && apt-get install -y \
     jq \
     vim \
     gosu \
+    libheif-examples \
+    imagemagick \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user to run Claude (with sudo privileges just in case)

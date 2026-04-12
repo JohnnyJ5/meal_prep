@@ -1,0 +1,1 @@
+- [Project: meal-prep coverage](project_meal_prep_coverage.md) — Coverage raised from 41.6% to 90.1% by adding 8 new test files covering token encryption, DBManager, config parser, google OAuth, and extended measurement/planner tests
