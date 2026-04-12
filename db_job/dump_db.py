@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sqlite3
 import argparse
+import os
 import sys
 
 def list_tables(cursor):
@@ -55,12 +56,15 @@ def execute_sql(conn, cursor, sql):
 
 def main():
     parser = argparse.ArgumentParser(description="Dump SQLite database contents")
-    parser.add_argument("db_file", help="Path to the SQLite database file", nargs='?', default="meals.db")
+    parser.add_argument("db_file", help="Path to the SQLite database file", nargs='?',
+                        default=os.environ.get("DB_PATH", "meals.db"))
     parser.add_argument("-l", "--list", action="store_true", dest="list_tables", help="List all table names")
     parser.add_argument("-d", "--dump", metavar="TABLENAME", dest="dump_table", help="Dump the contents of the specified table")
     parser.add_argument("-e", "--execute", metavar="SQL", dest="execute_sql", help="Execute an INSERT, UPDATE, or DELETE statement")
 
     args = parser.parse_args()
+
+    print(f"Arguments: db_file={args.db_file}, list={args.list_tables}, dump={args.dump_table}, execute={args.execute_sql}")
 
     if not args.list_tables and not args.dump_table and not args.execute_sql:
         parser.print_help()

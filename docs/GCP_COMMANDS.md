@@ -122,28 +122,32 @@ gsutil cp ./meals.db gs://[YOUR_BUCKET_NAME]/meals.db
 ## Database Admin Job
 
 ### Deploy Database Dump Job
-Builds and deploys the Cloud Run Job `db-dump-job` to run `dump_db.py`.
+Builds and deploys the Cloud Run Job `db-dump-job`. The `--db-path` flag sets the `DB_PATH`
+env var baked into the job (default: `/mnt/db/meals.db`).
 ```bash
-./deploy_db_job.sh
+# Default production path
+cd db_job && ./deploy_db_job.sh
+
+# Custom path
+cd db_job && ./deploy_db_job.sh --db-path /mnt/db/other.db
 ```
 
 ### Run Database Dump Job (List Tables)
-Runs the `db-dump-job` to output the list of tables to Cloud Run logs.
 ```bash
-gcloud run jobs execute db-dump-job --region=us-central1 --args="/mnt/db/meals.db,-l"
+gcloud run jobs execute db-dump-job --region=us-central1 --args="-l"
 ```
 
 ### Run Database Dump Job (Dump Table)
-Runs the job to dump the contents of a specific table, e.g. `meals`.
+Dump the contents of a specific table, e.g. `meals`.
 ```bash
-gcloud run jobs execute db-dump-job --region=us-central1 --args="/mnt/db/meals.db,-d,meals"
+gcloud run jobs execute db-dump-job --region=us-central1 --args="-d,meals"
 ```
 
 ### Run Database Admin Job (Execute SQL)
 Runs an INSERT, UPDATE, or DELETE statement directly against the production database.
 ```bash
 gcloud run jobs execute db-dump-job --region=us-central1 \
-    --args="/mnt/db/meals.db,-e,UPDATE meals SET name='New Name' WHERE id=1"
+    --args="-e,UPDATE meals SET name='New Name' WHERE id=1"
 ```
 
 ### View Job Logs
@@ -159,8 +163,8 @@ You can execute any of the above jobs without the CLI:
 3. Expand **"Show advanced settings"** and find the **"Override"** section.
 4. In the **Arguments** field, enter each arg on its own line — e.g.:
    ```
-   /mnt/db/meals.db
    -e
    UPDATE meals SET name='New Name' WHERE id=1
    ```
+   The database path comes from the `DB_PATH` env var set at deploy time. To override it for a single run, add it as the first argument before the flags.
 5. Click **Execute**. View output under **Executions > Logs**.
