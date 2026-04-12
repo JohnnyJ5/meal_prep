@@ -474,10 +474,15 @@ async function viewIngredients() {
 
     try {
         const fetchPromises = Array.from(selectedMeals).map(mealId =>
-            fetch(`/api/meals/${mealId}`).then(res => res.json())
+            fetch(`/api/meals/${encodeURIComponent(mealId)}`)
+                .then(res => res.ok ? res.json() : null)
+                .catch(() => null)
         );
 
-        const mealsData = await Promise.all(fetchPromises);
+        const results = await Promise.allSettled(fetchPromises);
+        const mealsData = results
+            .filter(r => r.status === 'fulfilled' && r.value)
+            .map(r => r.value);
 
         // 1. Render Per Meal
         perMealList.innerHTML = '';

@@ -66,7 +66,7 @@ Use the **Read tool** on the PNG path to visually inspect the recipe.
 ### Step 3 — Extract Recipe Data
 
 From the image, identify:
-- **name**: the title/name of the dish (string)
+- **name**: the title/name of the dish formatted as **kebab-case** (lowercase, spaces replaced with hyphens, e.g. `"greek-yogurt-banana-pancakes"`). All existing meals use this format and Crow's URL routing requires it.
 - **category**: one of `Breakfast`, `Lunch`, `Dinner`, `Snack`, `Dessert`, `Side`, `Drink` — default `Uncategorized`
 - **ingredients**: array of objects, each with:
   - `name` — lowercase ingredient name (e.g. `"chicken breast"`)
@@ -79,7 +79,7 @@ From the image, identify:
 ```bash
 gcloud run services describe meal-prep \
     --region=us-central1 \
-    --format='value(status.url)' 2>/dev/null || echo "http://localhost:8080"
+    --format='value(status.url)' 2>/dev/null || echo "https://meal-prep-449200254263.us-central1.run.app"
 ```
 
 Use the URL printed (strip trailing whitespace/newlines).
