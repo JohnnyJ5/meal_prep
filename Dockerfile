@@ -51,7 +51,6 @@ WORKDIR /home/appuser/app
 # Copy binary from build stage
 COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/build_docker/meal_prep .
 COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/static ./static
-COPY --from=build-env --chown=appuser:appuser /home/devuser/meal_prep/meal_prep.conf.json .
 
 USER appuser
 
