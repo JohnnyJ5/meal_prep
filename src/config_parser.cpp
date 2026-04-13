@@ -112,10 +112,11 @@ Config loadConfig(const std::string &configFilePath) {
                 config.google_redirect_uri = jsonBody["google_redirect_uri"].s();
             }
 
-            if (config.google_redirect_uri.empty()) {
-                config.google_redirect_uri = "http://localhost:8080/auth/google/callback";
-            }
         }
+    }
+
+    if (config.google_redirect_uri.empty()) {
+        config.google_redirect_uri = "http://localhost:8080/auth/google/callback";
     }
 
     // Cloud Run sets the PORT environment variable - this MUST take precedence
