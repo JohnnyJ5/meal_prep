@@ -136,5 +136,12 @@ Config loadConfig(const std::string &configFilePath) {
         config.google_redirect_uri = envRedirectUri;
     }
 
+    std::cout << "Config loaded:\n"
+              << "  port:                " << config.port << "\n"
+              << "  db_path:             " << config.db_path << "\n"
+              << "  google_client_id:    " << (config.google_client_id.empty() ? "(not set)" : config.google_client_id) << "\n"
+              << "  google_client_secret:" << (config.google_client_secret.empty() ? " (not set)" : " (set)") << "\n"
+              << "  google_redirect_uri: " << (config.google_redirect_uri.empty() ? "(not set)" : config.google_redirect_uri) << "\n";
+
     return config;
 }
