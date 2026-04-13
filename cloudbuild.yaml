@@ -1,15 +1,20 @@
 steps:
   # 1. Build the container image
-  - name: 'gcr.io/cloud-builders/docker'
+  - id: 'build-main'
+    name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/meal-prep', '.']
 
   # 2. Push the image to Artifact Registry
-  - name: 'gcr.io/cloud-builders/docker'
+  - id: 'push-main'
+    name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/meal-prep']
+    waitFor: ['build-main']
 
   # 3. Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - id: 'deploy-main'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
+    waitFor: ['push-main']
     args:
       - 'run'
       - 'deploy'
@@ -30,17 +35,23 @@ steps:
       - '--update-secrets'
       - '/secrets_calendar/calendar_credentials.json=calendar-credentials:latest'
 
-  # 4. Build the db-dump-job image
-  - name: 'gcr.io/cloud-builders/docker'
+  # 4. Build the db-dump-job image (runs in parallel with main build)
+  - id: 'build-db-job'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['-']
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/db-dump-job', '-f', 'db_job/Dockerfile.job', 'db_job']
 
   # 5. Push the db-dump-job image
-  - name: 'gcr.io/cloud-builders/docker'
+  - id: 'push-db-job'
+    name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/db-dump-job']
+    waitFor: ['build-db-job']
 
   # 6. Deploy the db-dump-job Cloud Run Job
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - id: 'deploy-db-job'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
+    waitFor: ['push-db-job']
     args:
       - 'run'
       - 'jobs'

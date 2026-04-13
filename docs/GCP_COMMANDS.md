@@ -18,10 +18,60 @@ If you encounter `Error 403: access_denied` with the message "The app is current
 
 Alternatively, if your app is ready to be used by anyone, you can click **PUBLISH APP** on the OAuth consent screen to move its status from "Testing" to "In production", which removes the requirement to manually add test users.
 
+## Container Images (GCR)
+
+### Authenticate Docker with GCR
+Required once before pulling or pushing images locally.
+```bash
+gcloud auth configure-docker
+```
+
+### Set Default Project
+```bash
+gcloud config set project [YOUR_PROJECT_ID]
+```
+
+### Pull the Latest Image
+```bash
+docker pull gcr.io/mealprepsite/meal-prep
+docker pull gcr.io/mealprepsite/db-dump-job
+```
+
+### List Available Image Tags
+```bash
+gcloud container images list-tags gcr.io/mealprepsite/meal-prep
+gcloud container images list-tags gcr.io/mealprepsite/db-dump-job
+```
+
+### Inspect Files Inside an Image
+Pulled images are stored in Docker's local image store — use `docker images` to list them. On WSL2, the underlying data lives inside the WSL2 virtual disk; always interact via Docker commands rather than the filesystem directly.
+
+```bash
+# List locally pulled images
+docker images
+
+# Open a shell to browse the image filesystem
+docker run --rm -it gcr.io/mealprepsite/meal-prep /bin/bash
+
+# db-dump-job has a hardcoded ENTRYPOINT — override it to get a shell
+docker run --rm -it --entrypoint /bin/bash gcr.io/mealprepsite/db-dump-job
+
+# Copy a file out to your host without entering the container
+docker create --name tmp-inspect gcr.io/mealprepsite/db-dump-job
+docker cp tmp-inspect:/app/dump_db.py ./dump_db.py
+docker rm tmp-inspect
+
+# Inspect image metadata (env vars, entrypoint, layers, etc.)
+docker inspect gcr.io/mealprepsite/meal-prep
+
+# Remove a local image when done
+docker rmi gcr.io/mealprepsite/meal-prep
+```
+
 ## Deployment
 
 ### Submit a Cloud Build
-Builds the container and deploys to Cloud Run using the `cloudbuild.yaml` configuration.
+Builds both the `meal-prep` service and `db-dump-job` images in parallel and deploys both to Cloud Run.
 ```bash
 gcloud builds submit --config cloudbuild.yaml
 ```
@@ -30,11 +80,6 @@ gcloud builds submit --config cloudbuild.yaml
 Get a list of all projects you have access to.
 ```bash
 gcloud projects list
-```
-
-### Set Default Project
-```bash
-gcloud config set project [YOUR_PROJECT_ID]
 ```
 
 ## Monitoring & Management

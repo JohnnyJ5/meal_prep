@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-PROJECT_ID=$(gcloud config get-value project)
+PROJECT_ID=mealprepsite
 REGION="us-central1"
 JOB_NAME="db-dump-job"
 IMAGE_URL="gcr.io/${PROJECT_ID}/${JOB_NAME}"
