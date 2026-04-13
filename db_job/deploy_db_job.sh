@@ -3,6 +3,22 @@
 # Ensure we exit on error
 set -e
 
+DB_PATH="/mnt/db/meals.db"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --db-path)
+            DB_PATH="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            echo "Usage: $0 [--db-path <path>]"
+            exit 1
+            ;;
+    esac
+done
+
 PROJECT_ID=$(gcloud config get-value project)
 REGION="us-central1"
 JOB_NAME="db-dump-job"
@@ -29,16 +45,19 @@ echo "----------------------------------------"
 gcloud run jobs deploy ${JOB_NAME} \
     --image ${IMAGE_URL} \
     --region ${REGION} \
-    --set-env-vars="DB_PATH=/mnt/db/meals.db" \
+    --set-env-vars="DB_PATH=${DB_PATH}" \
     --add-volume=name=db-volume,type=cloud-storage,bucket=meal-prep-db-bucket \
     --add-volume-mount=volume=db-volume,mount-path=/mnt/db
 
 echo "----------------------------------------"
-echo "Deployment complete!"
+echo "Deployment complete! DB_PATH=${DB_PATH}"
 echo ""
-echo "You can now execute the job to list tables:"
-echo "  gcloud run jobs execute ${JOB_NAME} --region ${REGION} --args=\"/mnt/db/meals.db,-l\""
+echo "List tables:"
+echo "  gcloud run jobs execute ${JOB_NAME} --region ${REGION} --args=\"-l\""
 echo ""
-echo "To dump a specific table (e.g., meals):"
-echo "  gcloud run jobs execute ${JOB_NAME} --region ${REGION} --args=\"/mnt/db/meals.db,-d,meals\""
+echo "Dump a table (e.g., meals):"
+echo "  gcloud run jobs execute ${JOB_NAME} --region ${REGION} --args=\"-d,meals\""
+echo ""
+echo "Execute SQL:"
+echo "  gcloud run jobs execute ${JOB_NAME} --region ${REGION} --args=\"-e,UPDATE meals SET name='X' WHERE id=1\""
 echo "----------------------------------------"
