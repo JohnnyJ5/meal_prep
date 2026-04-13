@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "api_routes.h"
@@ -68,10 +69,11 @@ int main(int argc, char **argv) {
 
         if (listMeals) {
             std::cout << "Available meals:" << std::endl;
-            std::vector<std::pair<std::string, std::string>> meals;
+            std::vector<std::tuple<int, std::string, std::string>> meals;
             factory.getAvailableMeals(meals);
-            for (const auto &mealPair : meals) {
-                std::cout << "-m " << mealPair.first << " [" << mealPair.second << "]" << std::endl;
+            for (const auto &mealTuple : meals) {
+                std::cout << "-m " << std::get<1>(mealTuple) << " [" << std::get<2>(mealTuple)
+                          << "]" << std::endl;
             }
             return 0;
         }

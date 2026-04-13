@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <tuple>
 
 #include "meal_planner.h"
 
@@ -12,12 +13,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
     // Route: Get all available meals
     CROW_ROUTE(app, "/api/meals")
     ([&factory]() {
-        std::vector<std::pair<std::string, std::string>> meals;
+        std::vector<std::tuple<int, std::string, std::string>> meals;
         factory.getAvailableMeals(meals);
         crow::json::wvalue res;
         for (size_t i = 0; i < meals.size(); ++i) {
-            res[i]["name"] = meals[i].first;
-            res[i]["category"] = meals[i].second;
+            res[i]["id"] = std::get<0>(meals[i]);
+            res[i]["name"] = std::get<1>(meals[i]);
+            res[i]["category"] = std::get<2>(meals[i]);
         }
         CROW_LOG_INFO << "Successfully retrieved " << meals.size() << " available meals";
         return res;
