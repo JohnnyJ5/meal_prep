@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "meal.h"
@@ -90,12 +91,12 @@ class DBManager {
     std::unique_ptr<Meal> getMeal(const std::string &mealName);
 
     /**
-     * @brief Retrieves a list of all available meal names and categories from the
-     * database.
-     * @param meals Vector to populate with pairs of meal names and categories.
+     * @brief Retrieves a list of all available meal ids, names, and categories
+     * from the database.
+     * @param meals Vector to populate with tuples of (id, name, category).
      * @return true if successful, false otherwise.
      */
-    bool getAllMeals(std::vector<std::pair<std::string, std::string>> &meals);
+    bool getAllMeals(std::vector<std::tuple<int, std::string, std::string>> &meals);
 
     /**
      * @brief Saves Google OAuth2 tokens to the database.

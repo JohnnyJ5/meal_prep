@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -33,7 +34,7 @@ class MealFactory {
      * meals.
      * @param meals The vector to populate.
      */
-    void getAvailableMeals(std::vector<std::pair<std::string, std::string>> &meals);
+    void getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>> &meals);
 
    private:
     std::shared_ptr<DBManager> d_dbManager;

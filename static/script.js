@@ -574,6 +574,7 @@ async function fetchManageMeals() {
                     <strong>${formatName(mealId)}</strong>
                     <span class="badge" style="margin-left:8px; font-size:0.8rem; background:var(--primary-color); padding:2px 6px; border-radius:4px; color:white;">${meal.category}</span>
                     <br><small style="color: var(--text-secondary);">${mealId}</small>
+                    <br><small style="color: var(--text-secondary);">ID: ${meal.id}</small>
                 </div>
                 <div class="manage-item-actions">
                     <button class="btn btn-secondary btn-sm" onclick="editMeal('${mealId}')">Edit</button>
