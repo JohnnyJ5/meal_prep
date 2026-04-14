@@ -148,7 +148,7 @@ std::string CalendarService::getFamilyCalendarId() {
         // Case-insensitive match for "Family"
         std::string summaryLower = summary;
         std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(), ::tolower);
-        if (summaryLower == "family") {
+        if (summaryLower == "family calendar") {
             return std::string(cal["id"].s());
         }
     }
