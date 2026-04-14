@@ -1,6 +1,7 @@
 #include "meal_factory.h"
 
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -20,7 +21,7 @@ std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName) {
 }
 
 // Function to get all available meal names and categories
-void MealFactory::getAvailableMeals(std::vector<std::pair<std::string, std::string>> &meals) {
+void MealFactory::getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>> &meals) {
     if (d_dbManager) {
         d_dbManager->getAllMeals(meals);
     }

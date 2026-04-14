@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdlib>
+#include <tuple>
 
 #include "../src/db_manager.h"
 #include "../src/ingredient.h"
@@ -79,16 +80,16 @@ TEST_F(DBManagerTest, GetAllMealsReturnsAllEntries) {
     db->addMeal(makeMeal("meal-b", "Cat2"));
     db->addMeal(makeMeal("meal-a", "Cat1"));
 
-    std::vector<std::pair<std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string>> meals;
     EXPECT_TRUE(db->getAllMeals(meals));
     ASSERT_EQ(meals.size(), 2u);
-    EXPECT_EQ(meals[0].first, "meal-a");  // ordered ASC
-    EXPECT_EQ(meals[1].first, "meal-b");
+    EXPECT_EQ(std::get<1>(meals[0]), "meal-a");  // ordered ASC
+    EXPECT_EQ(std::get<1>(meals[1]), "meal-b");
 }
 
 // getAllMeals on empty DB returns empty vector
 TEST_F(DBManagerTest, GetAllMealsEmptyDB) {
-    std::vector<std::pair<std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string>> meals;
     EXPECT_TRUE(db->getAllMeals(meals));
     EXPECT_TRUE(meals.empty());
 }
@@ -144,7 +145,7 @@ TEST_F(DBManagerTest, SeedDefaultIngredientsIsIdempotent) {
 TEST_F(DBManagerTest, SeedDefaultMealsPopulatesTable) {
     EXPECT_TRUE(db->seedDefaultMeals());
 
-    std::vector<std::pair<std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string>> meals;
     db->getAllMeals(meals);
     EXPECT_GT(meals.size(), 0u);
 }
@@ -152,11 +153,11 @@ TEST_F(DBManagerTest, SeedDefaultMealsPopulatesTable) {
 // seedDefaultMeals is idempotent
 TEST_F(DBManagerTest, SeedDefaultMealsIsIdempotent) {
     db->seedDefaultMeals();
-    std::vector<std::pair<std::string, std::string>> first;
+    std::vector<std::tuple<int, std::string, std::string>> first;
     db->getAllMeals(first);
 
     db->seedDefaultMeals();
-    std::vector<std::pair<std::string, std::string>> second;
+    std::vector<std::tuple<int, std::string, std::string>> second;
     db->getAllMeals(second);
 
     EXPECT_EQ(first.size(), second.size());

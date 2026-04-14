@@ -301,22 +301,23 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     return std::make_unique<Meal>(mealName, ingredients, category);
 }
 
-bool DBManager::getAllMeals(std::vector<std::pair<std::string, std::string>> &meals) {
+bool DBManager::getAllMeals(std::vector<std::tuple<int, std::string, std::string>> &meals) {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     if (!d_db) return false;
 
-    std::string query = "SELECT name, category FROM meals ORDER BY name ASC;";
+    std::string query = "SELECT id, name, category FROM meals ORDER BY name ASC;";
     sqlite3_stmt *stmt = nullptr;
 
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0));
+            int id = sqlite3_column_int(stmt, 0);
+            std::string name = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
             std::string category = "Uncategorized";
             if (const char *catText =
-                    reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))) {
+                    reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2))) {
                 category = catText;
             }
-            meals.emplace_back(name, category);
+            meals.emplace_back(id, name, category);
         }
     }
     sqlite3_finalize(stmt);
@@ -453,7 +454,7 @@ bool DBManager::seedDefaultIngredients() {
 bool DBManager::seedDefaultMeals() {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     // This will seed the database with the initial hardcoded values if empty.
-    std::vector<std::pair<std::string, std::string>> existing;
+    std::vector<std::tuple<int, std::string, std::string>> existing;
     getAllMeals(existing);
     if (!existing.empty()) return true;  // Already seeded
 
