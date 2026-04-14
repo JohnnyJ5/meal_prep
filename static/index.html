@@ -40,16 +40,21 @@
         </section>
 
         <section class="planner-layout hidden" id="planner-layout">
-            <div class="sidebar-container">
+            <div class="mobile-tab-bar">
+                <button class="mobile-tab active" data-tab="meals">Meals</button>
+                <button class="mobile-tab" data-tab="calendar">Calendar</button>
+            </div>
+            <div class="sidebar-container" data-panel="meals">
                 <h2>Available Meals</h2>
                 <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1rem;">Drag meals below to plan your
                     week.</p>
+                <p class="text-secondary touch-hint" style="font-size: 0.9rem; margin-bottom: 1rem;">Tap a meal to select it, then tap a day to assign it.</p>
                 <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
                     <!-- Meal cards will be injected here by JS -->
                 </div>
             </div>
 
-            <div class="calendar-container">
+            <div class="calendar-container" data-panel="calendar">
                 <div class="calendar-header">
                     <h2>Weekly Schedule</h2>
                     <div class="calendar-nav">
@@ -59,6 +64,10 @@
                     </div>
                 </div>
                 <div id="calendar-legend" class="calendar-legend hidden"></div>
+                <div id="mobile-selected-meal-banner" class="hidden">
+                    <span id="mobile-selected-meal-name"></span>
+                    <button onclick="cancelMobileTapSelection()">Cancel</button>
+                </div>
                 <div class="calendar-grid">
                     <div class="day-col" id="day-Monday" data-day="Monday" ondrop="drop(event)"
                         ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
