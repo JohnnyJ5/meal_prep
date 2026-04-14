@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <tuple>
+
 #include "../src/db_manager.h"
 #include "../src/meal.h"
 #include "../src/meal_factory.h"
@@ -47,7 +49,7 @@ TEST_F(MealFactoryTest, CaseSensitivity) {
 
 // Test getAvailableMeals
 TEST_F(MealFactoryTest, GetAvailableMeals) {
-    std::vector<std::pair<std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string>> meals;
     factory->getAvailableMeals(meals);
 
     EXPECT_GT(meals.size(), 0);
@@ -56,11 +58,11 @@ TEST_F(MealFactoryTest, GetAvailableMeals) {
     bool hasTurkeyBurgers = false;
     bool hasChickenStirFry = false;
 
-    for (const auto &mealPair : meals) {
-        if (mealPair.first == "turkey-burgers") {
+    for (const auto &mealTuple : meals) {
+        if (std::get<1>(mealTuple) == "turkey-burgers") {
             hasTurkeyBurgers = true;
         }
-        if (mealPair.first == "chicken-stir-fry") {
+        if (std::get<1>(mealTuple) == "chicken-stir-fry") {
             hasChickenStirFry = true;
         }
     }
@@ -71,12 +73,12 @@ TEST_F(MealFactoryTest, GetAvailableMeals) {
 
 // Test that all available meals can be creatable
 TEST_F(MealFactoryTest, AllAvailableMealsAreCreatable) {
-    std::vector<std::pair<std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string>> meals;
     factory->getAvailableMeals(meals);
 
-    for (const auto &mealPair : meals) {
-        auto meal = factory->createMeal(mealPair.first);
-        EXPECT_NE(meal, nullptr) << "Failed to create meal: " << mealPair.first;
+    for (const auto &mealTuple : meals) {
+        auto meal = factory->createMeal(std::get<1>(mealTuple));
+        EXPECT_NE(meal, nullptr) << "Failed to create meal: " << std::get<1>(mealTuple);
         if (meal) {
             EXPECT_FALSE(meal->getName().empty());
             EXPECT_FALSE(meal->getCategory().empty());

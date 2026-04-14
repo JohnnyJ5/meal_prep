@@ -99,7 +99,8 @@ Config loadConfig(const std::string &configFilePath) {
                 }
             } else {
                 std::cerr << "Notice: 'gmail_calendar_credentials_file' not found in config."
-                             " Trying " << kCloudRunCredPath << " as fallback...\n";
+                             " Trying "
+                          << kCloudRunCredPath << " as fallback...\n";
                 loadCredentialsFile(kCloudRunCredPath, config);
             }
 
