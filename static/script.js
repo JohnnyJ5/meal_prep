@@ -1,8 +1,13 @@
 let selectedMeals = new Set();
 let isPlanning = false;
 
+function isMobile() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeWeekDates();
+    initMobileTabs();
     fetchMeals();
     fetchIngredients();
     fetchCalendarEventsForWeek();
@@ -133,6 +138,7 @@ function renderMeals(meals) {
             });
 
             grid.appendChild(card);
+            attachMealTouchListeners(card, mealId);
         });
     }
 }
@@ -210,6 +216,113 @@ function drop(ev) {
 
         updateActionBar();
     }
+}
+
+// ── Mobile tab bar ───────────────────────────────────────────────────────────
+
+function initMobileTabs() {
+    const tabBar = document.querySelector('.mobile-tab-bar');
+    if (!tabBar) return;
+
+    const tabs = tabBar.querySelectorAll('.mobile-tab');
+    const panels = document.querySelectorAll('[data-panel]');
+
+    function activateTab(targetTab) {
+        tabs.forEach(t => t.classList.toggle('active', t === targetTab));
+        const targetPanelId = targetTab.dataset.tab;
+        panels.forEach(p => p.classList.toggle('panel-active', p.dataset.panel === targetPanelId));
+    }
+
+    if (isMobile()) activateTab(tabs[0]); // default: meals panel on load
+
+    tabs.forEach(tab => tab.addEventListener('click', () => activateTab(tab)));
+}
+
+// ── Mobile touch-tap assignment ──────────────────────────────────────────────
+
+let mobilePendingMeal = null; // { mealId, cardEl }
+
+function handleMealTap(mealId, cardEl) {
+    if (!isMobile()) return;
+
+    // Tapping the same card again deselects it
+    if (mobilePendingMeal && mobilePendingMeal.cardEl === cardEl) {
+        cancelMobileTapSelection();
+        return;
+    }
+
+    if (mobilePendingMeal) mobilePendingMeal.cardEl.classList.remove('pending-tap');
+
+    mobilePendingMeal = { mealId, cardEl };
+    cardEl.classList.add('pending-tap');
+
+    const banner = document.getElementById('mobile-selected-meal-banner');
+    const nameSpan = document.getElementById('mobile-selected-meal-name');
+    if (banner && nameSpan) {
+        nameSpan.textContent = cardEl.querySelector('h3')?.textContent || mealId;
+        banner.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.day-col').forEach(col => col.classList.add('tap-target'));
+
+    // Auto-switch to calendar tab so the user can tap a day
+    const calTab = document.querySelector('.mobile-tab[data-tab="calendar"]');
+    if (calTab) calTab.click();
+}
+
+function handleDayTap(dayColEl) {
+    if (!isMobile() || !mobilePendingMeal) return;
+
+    const { mealId, cardEl } = mobilePendingMeal;
+    const fromGrid = cardEl.parentElement?.id === 'meal-grid';
+    const mealSlot = dayColEl.querySelector('.meal-slot');
+
+    if (mealSlot) {
+        if (fromGrid) {
+            // Clone from sidebar so the original stays available
+            const clone = cardEl.cloneNode(true);
+            clone.id = cardEl.id + '-clone-' + Date.now();
+            clone.classList.remove('selected', 'dragging', 'pending-tap');
+            clone.dataset.placedDate = dayColEl.dataset.date;
+            attachMealTouchListeners(clone, mealId);
+            mealSlot.appendChild(clone);
+        } else {
+            // Moving between slots
+            cardEl.dataset.placedDate = dayColEl.dataset.date;
+            mealSlot.appendChild(cardEl);
+        }
+        updateActionBar();
+    }
+
+    cancelMobileTapSelection();
+}
+
+function cancelMobileTapSelection() {
+    if (mobilePendingMeal) {
+        mobilePendingMeal.cardEl.classList.remove('pending-tap');
+        mobilePendingMeal = null;
+    }
+    document.querySelectorAll('.day-col').forEach(col => col.classList.remove('tap-target'));
+    const banner = document.getElementById('mobile-selected-meal-banner');
+    if (banner) banner.classList.add('hidden');
+}
+
+function attachMealTouchListeners(cardEl, mealId) {
+    cardEl.addEventListener('touchend', (e) => {
+        if (!isMobile()) return;
+        e.preventDefault(); // suppress ghost click
+        handleMealTap(mealId, cardEl);
+    }, { passive: false });
+}
+
+function attachDayTouchListeners(dayColEl) {
+    if (dayColEl.dataset.touchBound) return; // guard against double-registration
+    dayColEl.dataset.touchBound = '1';
+    dayColEl.addEventListener('touchend', (e) => {
+        if (!isMobile() || !mobilePendingMeal) return;
+        e.preventDefault();
+        handleDayTap(dayColEl);
+    }, { passive: false });
 }
 
 function updateActionBar() {
@@ -841,6 +954,7 @@ function initializeWeekDates() {
             dayCol.dataset.date = `${y}-${m}-${d}`;
 
             dayCol.classList.toggle('today', currentDate.getTime() === today.getTime());
+            attachDayTouchListeners(dayCol);
         }
     });
 }
