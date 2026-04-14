@@ -14,7 +14,7 @@ class CalendarService {
     explicit CalendarService(std::shared_ptr<GoogleOAuth> oauth);
 
     /**
-     * @brief Creates a new event in the user's primary calendar.
+     * @brief Creates a new event in the user's Family calendar (falls back to primary).
      * @param summary The title of the event.
      * @param description The description of the event.
      * @param startTime ISO 8601 formatted start time (e.g., "2026-03-23T09:00:00Z").
@@ -49,4 +49,9 @@ class CalendarService {
 
     std::string makeAuthorizedRequest(const std::string &url, const std::string &method = "GET",
                                       const std::string &postData = "");
+
+    /**
+     * @brief Returns the ID of the "Family" calendar, or "primary" if not found.
+     */
+    std::string getFamilyCalendarId();
 };
