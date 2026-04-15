@@ -131,6 +131,10 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
         }
     }
 
+    for (const auto &cal : results) {
+        std::cout << "Calendar loaded: " << cal.summary << std::endl;
+    }
+
     return results;
 }
 
