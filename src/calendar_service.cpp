@@ -3,6 +3,7 @@
 #include <crow.h>
 #include <curl/curl.h>
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
@@ -28,8 +29,11 @@ std::string CalendarService::createEvent(const std::string &summary, const std::
         body["reminders"]["overrides"][1]["minutes"] = 1440;  // 1 day prior
     }
 
+    std::string calId = getFamilyCalendarId();
     std::string response = makeAuthorizedRequest(
-        "https://www.googleapis.com/calendar/v3/calendars/primary/events", "POST", body.dump());
+        "https://www.googleapis.com/calendar/v3/calendars/" + curl_utils::urlEncode(calId) +
+            "/events",
+        "POST", body.dump());
 
     if (response.empty()) {
         std::cerr << "Calendar API returned empty response for createEvent" << std::endl;
@@ -49,7 +53,9 @@ bool CalendarService::deleteEvent(const std::string &eventId) {
     std::string token = d_oauth->getAccessToken();
     if (token.empty()) return false;
 
-    std::string url = "https://www.googleapis.com/calendar/v3/calendars/primary/events/" + eventId;
+    std::string calId = getFamilyCalendarId();
+    std::string url = "https://www.googleapis.com/calendar/v3/calendars/" +
+                      curl_utils::urlEncode(calId) + "/events/" + eventId;
 
     CURL *curl = curl_easy_init();
     if (!curl) return false;
@@ -130,6 +136,28 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
     }
 
     return results;
+}
+
+std::string CalendarService::getFamilyCalendarId() {
+    std::string listResponse =
+        makeAuthorizedRequest("https://www.googleapis.com/calendar/v3/users/me/calendarList");
+    if (listResponse.empty()) return "primary";
+
+    auto listJson = crow::json::load(listResponse);
+    if (!listJson || !listJson.has("items")) return "primary";
+
+    for (const auto &cal : listJson["items"]) {
+        if (!cal.has("summary") || !cal.has("id")) continue;
+        std::string summary = cal["summary"].s();
+        // Case-insensitive match for "Family"
+        std::string summaryLower = summary;
+        std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(), ::tolower);
+        if (summaryLower == "family calendar") {
+            return std::string(cal["id"].s());
+        }
+    }
+
+    return "primary";
 }
 
 std::string CalendarService::makeAuthorizedRequest(const std::string &url,
