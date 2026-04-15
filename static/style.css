@@ -202,6 +202,45 @@ header p {
     padding-right: 0.5rem;
 }
 
+.category-header {
+    width: 100%;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.15s;
+}
+
+.category-header:hover {
+    color: var(--text-primary);
+}
+
+.category-chevron {
+    display: inline-block;
+    font-size: 0.65rem;
+    transition: transform 0.2s ease;
+    transform: rotate(90deg);
+}
+
+.category-header.collapsed .category-chevron {
+    transform: rotate(0deg);
+}
+
+.category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
 .meal-card {
     background: var(--surface-hover);
     border: 1px solid var(--border-color);

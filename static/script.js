@@ -88,15 +88,32 @@ function renderMeals(meals) {
     let index = 0;
     for (const [category, mealNames] of Object.entries(grouped)) {
         const header = document.createElement('h3');
-        header.className = 'category-header';
-        header.textContent = category;
-        header.style.width = '100%';
-        header.style.marginTop = '1rem';
-        header.style.marginBottom = '0.5rem';
-        header.style.color = 'var(--primary-color)';
-        header.style.borderBottom = '1px solid var(--border-color)';
-        header.style.paddingBottom = '0.5rem';
+        header.className = 'category-header collapsed';
+        header.innerHTML = `<span class="category-chevron">&#9654;</span> ${category}`;
         grid.appendChild(header);
+
+        const group = document.createElement('div');
+        group.className = 'category-group hidden';
+        grid.appendChild(group);
+
+        header.addEventListener('click', () => {
+            const isCollapsed = header.classList.toggle('collapsed');
+            group.classList.toggle('hidden', isCollapsed);
+        });
+
+        // Touch tap on header — same scroll-guard
+        let hTouchStartX = 0, hTouchStartY = 0;
+        header.addEventListener('touchstart', (e) => {
+            hTouchStartX = e.touches[0].clientX;
+            hTouchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        header.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - hTouchStartX;
+            const dy = e.changedTouches[0].clientY - hTouchStartY;
+            if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return;
+            e.preventDefault();
+            header.click();
+        }, { passive: false });
 
         mealNames.forEach((mealId) => {
             const card = document.createElement('div');
@@ -137,7 +154,7 @@ function renderMeals(meals) {
                 updateActionBar();
             });
 
-            grid.appendChild(card);
+            group.appendChild(card);
             attachMealTouchListeners(card, mealId);
         });
     }
@@ -308,8 +325,17 @@ function cancelMobileTapSelection() {
 }
 
 function attachMealTouchListeners(cardEl, mealId) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    cardEl.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
     cardEl.addEventListener('touchend', (e) => {
         if (!isMobile()) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return; // was a scroll, not a tap
         e.preventDefault(); // suppress ghost click
         handleMealTap(mealId, cardEl);
     }, { passive: false });
@@ -318,8 +344,17 @@ function attachMealTouchListeners(cardEl, mealId) {
 function attachDayTouchListeners(dayColEl) {
     if (dayColEl.dataset.touchBound) return; // guard against double-registration
     dayColEl.dataset.touchBound = '1';
+    let touchStartX = 0;
+    let touchStartY = 0;
+    dayColEl.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
     dayColEl.addEventListener('touchend', (e) => {
         if (!isMobile() || !mobilePendingMeal) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return;
         e.preventDefault();
         handleDayTap(dayColEl);
     }, { passive: false });
