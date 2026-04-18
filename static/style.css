@@ -926,6 +926,11 @@ header p {
     /* Calendar grid: 3 columns fill the viewport */
     .calendar-grid {
         min-width: unset;
+        min-height: 160px;
+    }
+
+    .meal-slot {
+        min-height: 60px;
     }
 
     .day-col {
