@@ -268,10 +268,14 @@ function handleMealTap(mealId, cardEl) {
         return;
     }
 
-    if (mobilePendingMeal) mobilePendingMeal.cardEl.classList.remove('pending-tap');
+    if (mobilePendingMeal) {
+        mobilePendingMeal.cardEl.classList.remove('pending-tap');
+        selectedMeals.delete(mobilePendingMeal.mealId);
+    }
 
     mobilePendingMeal = { mealId, cardEl };
     cardEl.classList.add('pending-tap');
+    selectedMeals.add(mealId);
 
     const banner = document.getElementById('mobile-selected-meal-banner');
     const nameSpan = document.getElementById('mobile-selected-meal-name');
@@ -281,6 +285,7 @@ function handleMealTap(mealId, cardEl) {
     }
 
     document.querySelectorAll('.day-col').forEach(col => col.classList.add('tap-target'));
+    updateActionBar();
 
     // Auto-switch to calendar tab so the user can tap a day
     const calTab = document.querySelector('.mobile-tab[data-tab="calendar"]');
@@ -317,11 +322,13 @@ function handleDayTap(dayColEl) {
 function cancelMobileTapSelection() {
     if (mobilePendingMeal) {
         mobilePendingMeal.cardEl.classList.remove('pending-tap');
+        selectedMeals.delete(mobilePendingMeal.mealId);
         mobilePendingMeal = null;
     }
     document.querySelectorAll('.day-col').forEach(col => col.classList.remove('tap-target'));
     const banner = document.getElementById('mobile-selected-meal-banner');
     if (banner) banner.classList.add('hidden');
+    updateActionBar();
 }
 
 function attachMealTouchListeners(cardEl, mealId) {
