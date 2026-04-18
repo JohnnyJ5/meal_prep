@@ -268,10 +268,14 @@ function handleMealTap(mealId, cardEl) {
         return;
     }
 
-    if (mobilePendingMeal) mobilePendingMeal.cardEl.classList.remove('pending-tap');
+    if (mobilePendingMeal) {
+        mobilePendingMeal.cardEl.classList.remove('pending-tap');
+        selectedMeals.delete(mobilePendingMeal.mealId);
+    }
 
     mobilePendingMeal = { mealId, cardEl };
     cardEl.classList.add('pending-tap');
+    selectedMeals.add(mealId);
 
     const banner = document.getElementById('mobile-selected-meal-banner');
     const nameSpan = document.getElementById('mobile-selected-meal-name');
@@ -281,6 +285,7 @@ function handleMealTap(mealId, cardEl) {
     }
 
     document.querySelectorAll('.day-col').forEach(col => col.classList.add('tap-target'));
+    updateActionBar();
 
     // Auto-switch to calendar tab so the user can tap a day
     const calTab = document.querySelector('.mobile-tab[data-tab="calendar"]');
@@ -317,11 +322,13 @@ function handleDayTap(dayColEl) {
 function cancelMobileTapSelection() {
     if (mobilePendingMeal) {
         mobilePendingMeal.cardEl.classList.remove('pending-tap');
+        selectedMeals.delete(mobilePendingMeal.mealId);
         mobilePendingMeal = null;
     }
     document.querySelectorAll('.day-col').forEach(col => col.classList.remove('tap-target'));
     const banner = document.getElementById('mobile-selected-meal-banner');
     if (banner) banner.classList.add('hidden');
+    updateActionBar();
 }
 
 function attachMealTouchListeners(cardEl, mealId) {
@@ -963,35 +970,46 @@ function getMondayOfCurrentWeek() {
     return monday;
 }
 
-// Tracks the first day shown in the 7-column calendar window
+// Tracks the first day shown in the calendar window
 let windowStart = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+
+function visibleColumnCount() {
+    return isMobile() ? 3 : 7;
+}
 
 function initializeWeekDates() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const visibleCount = visibleColumnCount();
 
     daysOfWeek.forEach((colId, index) => {
+        const dayCol = document.getElementById(`day-${colId}`);
+        if (!dayCol) return;
+
+        if (index >= visibleCount) {
+            dayCol.style.display = 'none';
+            return;
+        }
+        dayCol.style.display = '';
+
         const currentDate = new Date(windowStart);
         currentDate.setDate(windowStart.getDate() + index);
 
-        const dayCol = document.getElementById(`day-${colId}`);
-        if (dayCol) {
-            const dayNameSpan = dayCol.querySelector('.day-name');
-            if (dayNameSpan) {
-                dayNameSpan.textContent = dayNamesLong[currentDate.getDay()];
-            }
-            const dateLabel = dayCol.querySelector('.date-label');
-            if (dateLabel) {
-                dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            }
-            const y = currentDate.getFullYear();
-            const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-            const d = String(currentDate.getDate()).padStart(2, '0');
-            dayCol.dataset.date = `${y}-${m}-${d}`;
-
-            dayCol.classList.toggle('today', currentDate.getTime() === today.getTime());
-            attachDayTouchListeners(dayCol);
+        const dayNameSpan = dayCol.querySelector('.day-name');
+        if (dayNameSpan) {
+            dayNameSpan.textContent = dayNamesLong[currentDate.getDay()];
         }
+        const dateLabel = dayCol.querySelector('.date-label');
+        if (dateLabel) {
+            dateLabel.textContent = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        const y = currentDate.getFullYear();
+        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const d = String(currentDate.getDate()).padStart(2, '0');
+        dayCol.dataset.date = `${y}-${m}-${d}`;
+
+        dayCol.classList.toggle('today', currentDate.getTime() === today.getTime());
+        attachDayTouchListeners(dayCol);
     });
 }
 

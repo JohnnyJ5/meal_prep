@@ -30,10 +30,10 @@ std::string CalendarService::createEvent(const std::string &summary, const std::
     }
 
     std::string calId = getFamilyCalendarId();
-    std::string response = makeAuthorizedRequest(
-        "https://www.googleapis.com/calendar/v3/calendars/" + curl_utils::urlEncode(calId) +
-            "/events",
-        "POST", body.dump());
+    std::string response =
+        makeAuthorizedRequest("https://www.googleapis.com/calendar/v3/calendars/" +
+                                  curl_utils::urlEncode(calId) + "/events",
+                              "POST", body.dump());
 
     if (response.empty()) {
         std::cerr << "Calendar API returned empty response for createEvent" << std::endl;
