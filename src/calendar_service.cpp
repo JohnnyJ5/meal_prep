@@ -107,9 +107,13 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
         calData.foregroundColor =
             cal.has("foregroundColor") ? std::string(cal["foregroundColor"].s()) : "#ffffff";
 
-        // Filter out the birthday/contacts calendar
-        if (calId == "addressbook#contacts@group.v.calendar.google.com" ||
-            calData.summary == "Birthdays" || calData.summary == "Contacts") {
+        // Filter out the birthday/contacts calendar.
+        // The calendar ID suffix varies by account but always ends with
+        // "#contacts@group.v.calendar.google.com".
+        bool isBirthdaysCalendar =
+            calId.find("#contacts@group.v.calendar.google.com") != std::string::npos ||
+            calData.summary == "Birthdays" || calData.summary == "Contacts";
+        if (isBirthdaysCalendar) {
             continue;
         }
 
