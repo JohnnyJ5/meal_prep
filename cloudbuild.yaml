@@ -33,7 +33,7 @@ steps:
       - '--add-volume-mount'
       - 'volume=db-volume,mount-path=/mnt/db'
       - '--update-secrets'
-      - '/secrets_calendar/calendar_credentials.json=calendar-credentials:latest'
+      - '/secrets_calendar/calendar_credentials.json=calendar-credentials:latest,MEAL_PREP_TOKEN_KEY=meal-prep-token-key:latest'
 
   # 4. Build the db-dump-job image (runs in parallel with main build)
   - id: 'build-db-job'
