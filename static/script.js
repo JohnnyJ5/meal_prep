@@ -85,8 +85,8 @@ function renderMeals(meals) {
         grouped[cat].push(meal.name);
     });
 
-    let index = 0;
     for (const [category, mealNames] of Object.entries(grouped)) {
+        let index = 0;
         const header = document.createElement('h3');
         header.className = 'category-header collapsed';
         header.innerHTML = `<span class="category-chevron">&#9654;</span> ${category}`;
