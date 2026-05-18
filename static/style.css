@@ -640,6 +640,26 @@ h1 {
     padding: 5px 10px;
 }
 
+.btn-google {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    text-decoration: none;
+    gap: 8px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.btn-google:hover {
+    background: var(--bg-2);
+    border-color: var(--line-2);
+}
+
+.btn-google img {
+    display: block;
+}
+
 /* ── Loading / error states ──────────────────────────────────────────────── */
 
 .spinner {
