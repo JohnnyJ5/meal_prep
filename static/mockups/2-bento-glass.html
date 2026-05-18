@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Meal Prep — Bento Glass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-0: #07060F;
+    --ink: #F5F7FF;
+    --ink-2: #8C92B5;
+    --line: rgba(255,255,255,0.10);
+    --line-2: rgba(255,255,255,0.06);
+    --glass: rgba(255,255,255,0.05);
+    --glass-2: rgba(255,255,255,0.025);
+    --cyan: #22D3EE;
+    --violet: #A78BFA;
+    --pink: #F472B6;
+    --lime: #BEF264;
+  }
+  html, body {
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  body {
+    width: 1440px;
+    height: 900px;
+    padding: 24px;
+    position: relative;
+  }
+  /* Animated mesh background */
+  body::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(167,139,250,0.35), transparent 40%),
+      radial-gradient(circle at 88% 12%, rgba(34,211,238,0.30), transparent 42%),
+      radial-gradient(circle at 78% 92%, rgba(244,114,182,0.25), transparent 45%),
+      radial-gradient(circle at 22% 80%, rgba(190,242,100,0.16), transparent 40%),
+      linear-gradient(180deg, #0B0820, #07060F 80%);
+    z-index: 0;
+  }
+  body::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse at center, black, transparent 70%);
+  }
+  .wrap {
+    position: relative; z-index: 2;
+    height: 852px;
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: 64px 1fr 90px;
+    grid-template-areas:
+      "head head head"
+      "lib  cal  side"
+      "lib  cal  side";
+    gap: 16px;
+  }
+  /* glass mixin */
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 20px 40px -20px rgba(0,0,0,0.6);
+    padding: 18px 20px;
+  }
+  /* Header */
+  .head { grid-area: head; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo .badge {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    box-shadow: 0 8px 24px -8px var(--cyan);
+    display: grid; place-items: center;
+    font-weight: 800; color: #07060F; font-size: 16px;
+  }
+  .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .logo .sub { font-size: 11px; color: var(--ink-2); letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill-nav {
+    display: flex; gap: 4px;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    padding: 4px;
+    border-radius: 999px;
+    backdrop-filter: blur(20px);
+  }
+  .pill-nav a {
+    color: var(--ink-2); text-decoration: none;
+    font-size: 12px; font-weight: 500;
+    padding: 8px 14px; border-radius: 999px;
+  }
+  .pill-nav a.active {
+    background: rgba(255,255,255,0.10); color: var(--ink);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .head-r { display: flex; align-items: center; gap: 10px; }
+  .iconbtn {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: var(--glass); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-2);
+    font-size: 14px;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--violet), var(--pink));
+    display: grid; place-items: center; font-weight: 700; font-size: 12px;
+    color: #07060F;
+  }
+  /* Library */
+  .lib { grid-area: lib; display: flex; flex-direction: column; min-height: 0; }
+  .panel-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .panel-h h2 { font-size: 14px; font-weight: 600; }
+  .panel-h .tag {
+    font-size: 10px; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .search {
+    background: var(--glass-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 9px 12px;
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .search input { background: transparent; border: 0; outline: 0; color: var(--ink); flex: 1; font: inherit; }
+  .search input::placeholder { color: var(--ink-2); }
+  .meal {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    background: var(--glass-2);
+    border-radius: 14px;
+    margin-bottom: 8px;
+    cursor: grab;
+    position: relative;
+    overflow: hidden;
+  }
+  .meal .ic {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 14px; font-weight: 700;
+  }
+  .ic.c1 { background: rgba(34,211,238,0.18); color: var(--cyan); }
+  .ic.c2 { background: rgba(167,139,250,0.20); color: var(--violet); }
+  .ic.c3 { background: rgba(244,114,182,0.18); color: var(--pink); }
+  .ic.c4 { background: rgba(190,242,100,0.18); color: var(--lime); }
+  .meal .n { font-size: 13px; font-weight: 500; }
+  .meal .t { font-size: 10.5px; color: var(--ink-2); }
+  .meal.featured {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--glass), var(--glass)) padding-box,
+      linear-gradient(135deg, var(--cyan), var(--violet)) border-box;
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.0), 0 12px 32px -16px rgba(34,211,238,0.6);
+  }
+  /* Calendar */
+  .cal { grid-area: cal; display: flex; flex-direction: column; min-height: 0; }
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-head h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .cal-head .sub { font-size: 11px; color: var(--ink-2); display: block; margin-top: 2px; }
+  .cal-nav { display: flex; align-items: center; gap: 6px; }
+  .navbtn {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: var(--glass-2); border: 1px solid var(--line);
+    color: var(--ink-2); display: grid; place-items: center;
+    font-size: 12px;
+  }
+  .today {
+    padding: 6px 14px; border-radius: 999px;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    color: #07060F; font-size: 11.5px; font-weight: 700;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 10px; flex: 1; min-height: 0;
+  }
+  .day {
+    background: var(--glass-2);
+    border: 1px solid var(--line-2);
+    border-radius: 16px;
+    padding: 12px 10px;
+    display: flex; flex-direction: column; gap: 8px;
+    min-height: 0;
+  }
+  .day.today {
+    border-color: rgba(34,211,238,0.45);
+    background: linear-gradient(180deg, rgba(34,211,238,0.10), var(--glass-2) 50%);
+  }
+  .day .dow { font-size: 9.5px; color: var(--ink-2); letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; }
+  .day .dnum { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .day.today .dnum { color: var(--cyan); }
+  .ev {
+    border-left: 3px solid var(--cyan);
+    background: rgba(34,211,238,0.08);
+    padding: 8px 10px;
+    border-radius: 0 12px 12px 0;
+  }
+  .ev .et { font-size: 9.5px; color: var(--ink-2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+  .ev .en { font-size: 12px; font-weight: 600; line-height: 1.25; }
+  .ev.violet { border-left-color: var(--violet); background: rgba(167,139,250,0.10); }
+  .ev.pink   { border-left-color: var(--pink);   background: rgba(244,114,182,0.10); }
+  .ev.lime   { border-left-color: var(--lime);   background: rgba(190,242,100,0.10); color: var(--ink); }
+  .drop {
+    flex: 1;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    color: var(--ink-2);
+    font-size: 10px;
+    display: grid; place-items: center;
+    opacity: 0.55;
+  }
+  /* Sidebar (right) — bento stats */
+  .side { grid-area: side; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .stat-card {
+    padding: 18px;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    backdrop-filter: blur(20px);
+  }
+  .stat-card .lbl {
+    font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-2); margin-bottom: 8px;
+  }
+  .stat-card .big {
+    font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat-card .meta { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
+  .progress {
+    height: 6px; border-radius: 999px; background: rgba(255,255,255,0.06); margin-top: 12px;
+    overflow: hidden;
+  }
+  .progress > i {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    width: 64%;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-size: 10.5px; color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 9px;
+  }
+  .chip.on { color: var(--ink); border-color: rgba(34,211,238,0.5); background: rgba(34,211,238,0.08); }
+  /* Action bar (across bottom) */
+  .actionbar {
+    grid-column: 1 / -1;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 14px 22px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(24px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .actionbar-l { display: flex; align-items: center; gap: 14px; }
+  .pulse {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--lime);
+    box-shadow: 0 0 0 3px rgba(190,242,100,0.18);
+  }
+  .actionbar-l .t { font-size: 13px; }
+  .actionbar-l .t b { color: var(--cyan); font-weight: 700; }
+  .actions { display: flex; gap: 10px; }
+  .btn {
+    padding: 10px 16px; border-radius: 12px; font-size: 12.5px; font-weight: 600;
+    border: 1px solid var(--line); background: var(--glass-2); color: var(--ink); cursor: pointer;
+  }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    color: #07060F; border: 0;
+    box-shadow: 0 10px 30px -10px var(--cyan);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Header -->
+    <div class="head">
+      <div class="logo">
+        <div class="badge">K</div>
+        <div>
+          <h1>Kitchen OS</h1>
+          <div class="sub">Plan · Cook · Restock</div>
+        </div>
+      </div>
+      <nav class="pill-nav">
+        <a class="active" href="#">Planner</a>
+        <a href="#">Recipes</a>
+        <a href="#">Pantry</a>
+        <a href="#">Insights</a>
+      </nav>
+      <div class="head-r">
+        <button class="iconbtn">⌕</button>
+        <button class="iconbtn">⚡︎</button>
+        <div class="avatar">JJ</div>
+      </div>
+    </div>
+
+    <!-- Library tile -->
+    <aside class="lib glass">
+      <div class="panel-h">
+        <h2>Recipe Library</h2>
+        <span class="tag">24</span>
+      </div>
+      <div class="search">
+        <span style="color:var(--ink-2)">⌕</span>
+        <input placeholder="Search..." />
+      </div>
+      <div class="meal featured">
+        <div class="ic c1">S</div>
+        <div>
+          <div class="n">Sheet-Pan Salmon</div>
+          <div class="t">Pescatarian · 35 min</div>
+        </div>
+      </div>
+      <div class="meal">
+        <div class="ic c2">C</div>
+        <div>
+          <div class="n">Chicken Stir-Fry</div>
+          <div class="t">High protein · 25 min</div>
+        </div>
+      </div>
+      <div class="meal">
+        <div class="ic c3">B</div>
+        <div>
+          <div class="n">Beef Tacos</div>
+          <div class="t">Comfort · 30 min</div>
+        </div>
+      </div>
+      <div class="meal">
+        <div class="ic c4">T</div>
+        <div>
+          <div class="n">Tofu Curry</div>
+          <div class="t">Vegan · 40 min</div>
+        </div>
+      </div>
+      <div class="meal">
+        <div class="ic c2">P</div>
+        <div>
+          <div class="n">Pasta Primavera</div>
+          <div class="t">Vegetarian · 20 min</div>
+        </div>
+      </div>
+      <div class="meal">
+        <div class="ic c1">G</div>
+        <div>
+          <div class="n">Greek Bowls</div>
+          <div class="t">Mediterranean · 25 min</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Calendar tile -->
+    <main class="cal glass">
+      <div class="cal-head">
+        <div>
+          <h2>This Week</h2>
+          <span class="sub">May 18 — 24 · 2026</span>
+        </div>
+        <div class="cal-nav">
+          <button class="navbtn">‹</button>
+          <button class="navbtn">›</button>
+          <span class="today">TODAY</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="day">
+          <div class="dow">Mon</div><div class="dnum">18</div>
+          <div class="ev violet"><div class="et">Dinner</div><div class="en">Chicken Stir-Fry</div></div>
+          <div class="drop">drop here</div>
+        </div>
+        <div class="day today">
+          <div class="dow">Tue · NOW</div><div class="dnum">19</div>
+          <div class="ev"><div class="et">Lunch · 12:30</div><div class="en">Pasta Primavera</div></div>
+          <div class="ev pink"><div class="et">Dinner · 19:00</div><div class="en">Sheet-Pan Salmon</div></div>
+          <div class="drop">drop here</div>
+        </div>
+        <div class="day">
+          <div class="dow">Wed</div><div class="dnum">20</div>
+          <div class="ev pink"><div class="et">Dinner</div><div class="en">Beef Tacos</div></div>
+          <div class="drop">drop here</div>
+        </div>
+        <div class="day">
+          <div class="dow">Thu</div><div class="dnum">21</div>
+          <div class="drop">drag a recipe<br>here</div>
+        </div>
+        <div class="day">
+          <div class="dow">Fri</div><div class="dnum">22</div>
+          <div class="ev lime"><div class="et">Dinner</div><div class="en">Tofu Curry</div></div>
+          <div class="drop">drop here</div>
+        </div>
+        <div class="day">
+          <div class="dow">Sat</div><div class="dnum">23</div>
+          <div class="drop">weekend</div>
+        </div>
+        <div class="day">
+          <div class="dow">Sun</div><div class="dnum">24</div>
+          <div class="ev"><div class="et">Dinner</div><div class="en">Greek Bowls</div></div>
+          <div class="drop">drop here</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Side bento stack -->
+    <aside class="side">
+      <div class="stat-card">
+        <div class="lbl">Meals planned</div>
+        <div class="big">5 / 7</div>
+        <div class="meta">2 dinners still open</div>
+        <div class="progress"><i></i></div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">Grocery preview</div>
+        <div class="big">14</div>
+        <div class="meta">unique ingredients · ~$58</div>
+        <div class="chips">
+          <span class="chip on">Produce 6</span>
+          <span class="chip">Protein 3</span>
+          <span class="chip">Pantry 5</span>
+        </div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, rgba(34,211,238,0.18), rgba(167,139,250,0.18)); border-color: rgba(34,211,238,0.35)">
+        <div class="lbl" style="color:#D7F3FA">Smart suggestion</div>
+        <div style="font-size:14px; font-weight:600; margin-top:4px; line-height:1.35;">You have salmon in 2 meals — buy a 2 lb fillet to save $4.</div>
+      </div>
+    </aside>
+
+    <!-- Action bar -->
+    <footer class="actionbar">
+      <div class="actionbar-l">
+        <span class="pulse"></span>
+        <span class="t"><b>5 meals</b> · 14 ingredients · 4 days covered</span>
+      </div>
+      <div class="actions">
+        <button class="btn">View ingredients</button>
+        <button class="btn">Email grocery list</button>
+        <button class="btn primary">Sync to calendar →</button>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

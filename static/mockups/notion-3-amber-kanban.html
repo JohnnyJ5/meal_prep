@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Notion Clean — Amber Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #FFFFFF;
+    --bg: #FBF9F5;
+    --bg-2: #F2EFE7;
+    --line: #ECE7DA;
+    --line-2: #E0DAC8;
+    --ink: #1C1A14;
+    --ink-2: #5E594B;
+    --ink-3: #9C9684;
+    --accent: #B45309;
+    --accent-2: #D97706;
+    --accent-soft: #FBEEDB;
+    --accent-mid: #ECCFA1;
+    --sage: #3E5C44;
+    --rose: #B91C5C;
+  }
+  html, body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { width: 1440px; height: 900px; display: grid; grid-template-columns: 248px 1fr; overflow: hidden; }
+  .sidebar {
+    background: var(--bg); border-right: 1px solid var(--line);
+    padding: 16px 12px; display: flex; flex-direction: column; min-height: 0;
+  }
+  .ws { display: flex; align-items: center; gap: 10px; padding: 4px 8px; margin-bottom: 14px; }
+  .ws .ico { width: 26px; height: 26px; border-radius: 6px; background: var(--accent); color: white; display: grid; place-items: center; font-weight: 700; font-size: 12.5px; }
+  .ws .name { font-weight: 600; font-size: 14px; }
+  .ws .sub { font-size: 11px; color: var(--ink-3); }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; background: var(--paper);
+    border: 1px solid var(--line); border-radius: 7px;
+    color: var(--ink-3); font-size: 12.5px; margin-bottom: 14px;
+  }
+  .search .k { margin-left: auto; font-size: 10.5px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; }
+  .nav-section {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-3); padding: 12px 8px 4px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-section .plus { font-size: 14px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: 5px;
+    font-size: 13px; color: var(--ink-2);
+  }
+  .nav-item:hover { background: var(--bg-2); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-item .chev { color: var(--ink-3); width: 12px; }
+  .nav-item .ico { width: 16px; text-align: center; font-size: 12px; }
+  .nav-item .ct { margin-left: auto; font-size: 11px; color: var(--ink-3); }
+  .nav-children { margin-left: 18px; border-left: 1px solid var(--line); padding-left: 6px; }
+  .nav-children .nav-item { font-size: 12.5px; padding: 4px 8px; }
+  .upgrade {
+    margin-top: auto; border-radius: 9px; padding: 12px;
+    background: var(--ink); color: white;
+  }
+  .upgrade .h { font-weight: 600; font-size: 12.5px; margin-bottom: 2px; }
+  .upgrade .s { color: rgba(255,255,255,0.7); font-size: 11.5px; margin-bottom: 8px; line-height: 1.35; }
+  .upgrade button {
+    width: 100%; padding: 7px; border: 0; background: var(--accent);
+    color: white; border-radius: 6px; font: 600 12px 'Inter', sans-serif;
+  }
+
+  .main { background: var(--paper); display: grid; grid-template-rows: 52px auto 1fr; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); }
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .crumbs b { font-weight: 500; color: var(--ink); }
+  .crumbs span { color: var(--ink-3); }
+  .topbar-r { display: flex; align-items: center; gap: 8px; }
+  .seg { display: flex; padding: 2px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px; }
+  .seg button { background: transparent; border: 0; padding: 4px 10px; font: 500 12px 'Inter', sans-serif; color: var(--ink-2); border-radius: 5px; }
+  .seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .btn { padding: 6px 12px; border-radius: 7px; font: 500 12px 'Inter', sans-serif; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; display: grid; place-items: center; font-weight: 600; font-size: 11.5px; }
+
+  .page-h { padding: 22px 28px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-end; justify-content: space-between; }
+  .page-h .ic { font-size: 22px; margin-bottom: 6px; }
+  .page-h h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-h .desc { color: var(--ink-2); margin-top: 4px; font-size: 13.5px; }
+  .meta-row { display: flex; gap: 22px; margin-top: 12px; }
+  .meta-row .item { display: flex; flex-direction: column; font-size: 12px; color: var(--ink-3); }
+  .meta-row .item b { color: var(--ink); font-weight: 600; font-size: 14px; margin-top: 2px; }
+  .week-nav { display: flex; align-items: center; gap: 6px; }
+  .iconbtn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); font-size: 13px; }
+
+  /* Kanban body */
+  .body { padding: 16px 28px 22px; display: grid; grid-template-columns: 280px 1fr; gap: 20px; min-height: 0; }
+  .lib h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); font-weight: 600; padding: 4px 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .lib h3 .ct { color: var(--ink-3); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 11.5px; }
+  .recipe { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; }
+  .recipe:hover { background: var(--bg); }
+  .recipe .h { color: var(--ink-3); font-size: 11px; opacity: 0.6; width: 14px; }
+  .recipe .em { font-size: 14px; width: 18px; text-align: center; }
+  .recipe .n { font-size: 13px; }
+  .recipe .tag { margin-left: auto; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--bg-2); color: var(--ink-2); }
+  .recipe .tag.acc { background: var(--accent-soft); color: var(--accent); }
+  .recipe .tag.sage { background: #ECF1ED; color: var(--sage); }
+  .recipe .tag.rose { background: #FCE7EE; color: var(--rose); }
+
+  .kanban {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;
+    flex: 1; min-height: 0;
+  }
+  .col {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 8px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 0;
+  }
+  .col.today {
+    background: var(--accent-soft);
+    border-color: var(--accent-mid);
+  }
+  .col-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 6px; border-bottom: 1px dashed var(--line-2); margin-bottom: 4px; }
+  .col-h .dow { font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+  .col-h .dn { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .col.today .dn { color: var(--accent); }
+  .col.today .dow { color: var(--accent); }
+  .col-h .count { font-size: 10.5px; color: var(--ink-3); }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    cursor: grab;
+  }
+  .card .stripe {
+    height: 3px; border-radius: 2px; margin: -8px -10px 7px;
+    background: var(--accent);
+  }
+  .card.sage .stripe { background: var(--sage); }
+  .card.rose .stripe { background: var(--rose); }
+  .card.amber .stripe { background: var(--accent-2); }
+  .card .t { font-size: 9.5px; color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
+  .card .n { font-size: 13px; font-weight: 600; line-height: 1.25; margin-bottom: 5px; }
+  .card .foot { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--ink-3); }
+  .card .foot .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .card.sage .foot .pip { background: var(--sage); }
+  .card.rose .foot .pip { background: var(--rose); }
+  .card.amber .foot .pip { background: var(--accent-2); }
+  .drop { border: 1px dashed var(--line-2); border-radius: 6px; padding: 12px; color: var(--ink-3); font-size: 10.5px; text-align: center; opacity: 0.75; }
+  .col-add { color: var(--ink-3); font-size: 11px; text-align: center; padding: 6px; cursor: pointer; }
+  .col-add:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="ws"><div class="ico">M</div><div><div class="name">Meal Prep</div><div class="sub">johnny's kitchen</div></div></div>
+    <div class="search"><span>⌕</span><span>Search</span><span class="k">⌘K</span></div>
+
+    <div class="nav-item active"><span class="chev">▾</span><span class="ico">▤</span> Weekly Planner</div>
+    <div class="nav-item"><span class="chev"></span><span class="ico">▦</span> Recipes <span class="ct">24</span></div>
+    <div class="nav-item"><span class="chev"></span><span class="ico">▥</span> Grocery list</div>
+    <div class="nav-item"><span class="chev"></span><span class="ico">▨</span> Pantry</div>
+
+    <div class="nav-section">Categories <span class="plus">+</span></div>
+    <div class="nav-item"><span class="chev">▸</span><span class="ico">●</span> Mains <span class="ct">12</span></div>
+    <div class="nav-children">
+      <div class="nav-item"><span class="ico">○</span> Sheet-Pan Salmon</div>
+      <div class="nav-item"><span class="ico">○</span> Chicken Stir-Fry</div>
+      <div class="nav-item"><span class="ico">○</span> Pasta Primavera</div>
+      <div class="nav-item"><span class="ico">○</span> Beef Tacos</div>
+      <div class="nav-item"><span class="ico">○</span> Tofu Curry</div>
+    </div>
+    <div class="nav-item"><span class="chev">▸</span><span class="ico">●</span> Sides <span class="ct">6</span></div>
+    <div class="nav-item"><span class="chev">▸</span><span class="ico">●</span> Breakfast <span class="ct">4</span></div>
+    <div class="nav-item"><span class="chev">▸</span><span class="ico">●</span> Snacks <span class="ct">2</span></div>
+
+    <div class="nav-section">Workspaces</div>
+    <div class="nav-item"><span class="ico">⚙</span> Settings</div>
+    <div class="nav-item"><span class="ico">↗</span> Google Calendar</div>
+
+    <div class="upgrade">
+      <div class="h">5 meals queued</div>
+      <div class="s">Ready to push to Google Calendar.</div>
+      <button>Sync now</button>
+    </div>
+  </aside>
+
+  <section class="main">
+    <header class="topbar">
+      <div class="crumbs"><span>Workspace</span><span>/</span><b>Weekly Planner</b><span>/</span><span>May 18 — 24</span></div>
+      <div class="topbar-r">
+        <div class="seg"><button>Day</button><button class="on">Week</button><button>Month</button></div>
+        <button class="btn">Filters</button>
+        <button class="btn">Share</button>
+        <button class="btn primary">Generate plan</button>
+        <div class="avatar">JJ</div>
+      </div>
+    </header>
+
+    <div class="page-h">
+      <div>
+        <div class="ic">▤</div>
+        <h1>Week of May 18, 2026</h1>
+        <div class="desc">Kanban-style planner. Drag recipes between days.</div>
+        <div class="meta-row">
+          <div class="item">Planned <b>5 / 7</b></div>
+          <div class="item">Ingredients <b>14</b></div>
+          <div class="item">Estimated cost <b>$58.40</b></div>
+          <div class="item">Last synced <b>2 hrs ago</b></div>
+        </div>
+      </div>
+      <div class="week-nav">
+        <button class="iconbtn">‹</button>
+        <button class="btn">Today</button>
+        <button class="iconbtn">›</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="lib">
+        <h3>Recipes <span class="ct">24 total</span></h3>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Sheet-Pan Salmon</span><span class="tag rose">35m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Chicken Stir-Fry</span><span class="tag acc">25m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Pasta Primavera</span><span class="tag acc">20m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Beef Tacos</span><span class="tag rose">30m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Tofu Curry</span><span class="tag sage">40m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Greek Bowls</span><span class="tag acc">25m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Lentil Soup</span><span class="tag sage">45m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Pesto Gnocchi</span><span class="tag acc">15m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Miso Cod</span><span class="tag rose">30m</span></div>
+        <div class="recipe"><span class="h">⋮⋮</span><span class="em">▤</span><span class="n">Roasted Broccoli</span><span class="tag sage">20m</span></div>
+        <div style="margin-top:10px; font-size:12px; color:var(--accent); font-weight:600; padding: 6px 8px;">+ New recipe</div>
+      </div>
+
+      <div class="kanban">
+        <div class="col">
+          <div class="col-h"><span class="dow">Mon</span><span class="dn">18</span><span class="count">1</span></div>
+          <div class="card amber">
+            <div class="stripe"></div>
+            <div class="t">Dinner</div>
+            <div class="n">Chicken Stir-Fry</div>
+            <div class="foot"><span class="pip"></span>25m · 4 srv</div>
+          </div>
+          <div class="col-add">+ add</div>
+        </div>
+
+        <div class="col today">
+          <div class="col-h"><span class="dow">Tue · today</span><span class="dn">19</span><span class="count">2</span></div>
+          <div class="card amber">
+            <div class="stripe"></div>
+            <div class="t">Lunch · 12:30</div>
+            <div class="n">Pasta Primavera</div>
+            <div class="foot"><span class="pip"></span>20m · 2 srv</div>
+          </div>
+          <div class="card rose">
+            <div class="stripe"></div>
+            <div class="t">Dinner · 19:00</div>
+            <div class="n">Sheet-Pan Salmon</div>
+            <div class="foot"><span class="pip"></span>35m · 4 srv</div>
+          </div>
+          <div class="col-add">+ add</div>
+        </div>
+
+        <div class="col">
+          <div class="col-h"><span class="dow">Wed</span><span class="dn">20</span><span class="count">1</span></div>
+          <div class="card rose">
+            <div class="stripe"></div>
+            <div class="t">Dinner</div>
+            <div class="n">Beef Tacos</div>
+            <div class="foot"><span class="pip"></span>30m · 4 srv</div>
+          </div>
+          <div class="col-add">+ add</div>
+        </div>
+
+        <div class="col">
+          <div class="col-h"><span class="dow">Thu</span><span class="dn">21</span><span class="count">0</span></div>
+          <div class="drop">drag a recipe<br>onto this day</div>
+        </div>
+
+        <div class="col">
+          <div class="col-h"><span class="dow">Fri</span><span class="dn">22</span><span class="count">1</span></div>
+          <div class="card sage">
+            <div class="stripe"></div>
+            <div class="t">Dinner</div>
+            <div class="n">Tofu Curry</div>
+            <div class="foot"><span class="pip"></span>40m · 3 srv</div>
+          </div>
+          <div class="col-add">+ add</div>
+        </div>
+
+        <div class="col">
+          <div class="col-h"><span class="dow">Sat</span><span class="dn">23</span><span class="count">0</span></div>
+          <div class="drop">weekend</div>
+        </div>
+
+        <div class="col">
+          <div class="col-h"><span class="dow">Sun</span><span class="dn">24</span><span class="count">1</span></div>
+          <div class="card amber">
+            <div class="stripe"></div>
+            <div class="t">Dinner</div>
+            <div class="n">Greek Bowls</div>
+            <div class="foot"><span class="pip"></span>25m · 2 srv</div>
+          </div>
+          <div class="col-add">+ add</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

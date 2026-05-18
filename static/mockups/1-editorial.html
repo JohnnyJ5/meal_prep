@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Meal Prep — Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #FAF7F2;
+    --cream-2: #F2EDE3;
+    --ink: #1F1B16;
+    --ink-2: #5C544A;
+    --line: #E3DCCB;
+    --terracotta: #C2410C;
+    --sage: #65806B;
+    --butter: #E9C46A;
+    --berry: #9D2A4B;
+    --paper: #FFFFFF;
+  }
+  html, body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    width: 1440px;
+    height: 900px;
+    padding: 28px 40px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    overflow: hidden;
+  }
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; }
+  .brand {
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .brand h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 34px;
+    letter-spacing: -0.01em;
+  }
+  .brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--terracotta); display: inline-block;
+    transform: translateY(-4px);
+  }
+  .brand .sub {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--ink-2);
+    font-size: 16px;
+  }
+  .nav { display: flex; gap: 8px; align-items: center; }
+  .nav a {
+    text-decoration: none; color: var(--ink-2);
+    font-size: 13px; padding: 8px 14px; border-radius: 999px;
+  }
+  .nav a.active { background: var(--ink); color: var(--cream); }
+  .nav a:hover:not(.active) { background: var(--cream-2); }
+  .topbar .right { display: flex; align-items: center; gap: 14px; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--terracotta), var(--berry));
+    color: var(--cream); display: grid; place-items: center;
+    font-weight: 600; font-size: 13px;
+  }
+  /* ---------- Main two-pane ---------- */
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    min-height: 0;
+  }
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .panel header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .panel .meta {
+    font-size: 12px; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  /* ---------- Sidebar (meals) ---------- */
+  .search {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 18px;
+    background: var(--cream);
+  }
+  .search input {
+    border: 0; outline: 0; background: transparent;
+    flex: 1; font: inherit; color: var(--ink);
+  }
+  .search input::placeholder { color: var(--ink-2); }
+  .cat-label {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--ink-2);
+    font-size: 13px;
+    margin: 14px 0 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .cat-label::after {
+    content: ""; flex: 1; border-bottom: 1px solid var(--line);
+  }
+  .meals { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .meal {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 500;
+    background: var(--paper);
+    cursor: grab;
+  }
+  .meal .pip { width: 8px; height: 8px; border-radius: 50%; }
+  .meal .pip.terr { background: var(--terracotta); }
+  .meal .pip.sage { background: var(--sage); }
+  .meal .pip.butter { background: var(--butter); }
+  .meal .pip.berry { background: var(--berry); }
+  .meal .count { margin-left: auto; color: var(--ink-2); font-size: 12px; }
+  /* ---------- Calendar ---------- */
+  .week-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .week-nav { display: flex; gap: 6px; align-items: center; }
+  .iconbtn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--paper);
+    display: grid; place-items: center; color: var(--ink-2);
+    cursor: pointer; font-size: 14px;
+  }
+  .today-pill {
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; font-size: 12px; color: var(--ink);
+    font-weight: 500;
+  }
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+  }
+  .day {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 10px;
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--paper);
+    min-height: 0;
+  }
+  .day.today { background: #FBF6EB; }
+  .day .d-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .d-dow {
+    font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-2);
+    font-weight: 600;
+  }
+  .d-num {
+    font-family: 'Fraunces', serif;
+    font-size: 22px; font-weight: 500;
+  }
+  .day.today .d-num { color: var(--terracotta); }
+  .event {
+    border-left: 3px solid var(--sage);
+    background: var(--cream);
+    padding: 8px 10px;
+    border-radius: 0 8px 8px 0;
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .event.terr { border-left-color: var(--terracotta); }
+  .event.butter { border-left-color: var(--butter); }
+  .event.berry { border-left-color: var(--berry); }
+  .event .t { font-size: 10px; color: var(--ink-2); margin-bottom: 2px; letter-spacing: 0.05em; }
+  .event .n { font-weight: 600; font-family: 'Fraunces', serif; font-size: 14px; }
+  .empty-hint {
+    flex: 1;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--ink-2);
+    font-size: 11px; font-style: italic;
+    font-family: 'Fraunces', serif;
+    opacity: 0.7;
+  }
+  /* ---------- Action bar ---------- */
+  .actionbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px;
+    background: var(--ink);
+    color: var(--cream);
+    border-radius: 14px;
+  }
+  .count-pill {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+  }
+  .count-pill b {
+    font-style: normal; font-weight: 600;
+    color: var(--butter); margin-right: 4px;
+    font-family: 'Inter', sans-serif;
+  }
+  .actions { display: flex; gap: 10px; }
+  .btn {
+    padding: 10px 18px; border-radius: 999px; font-weight: 500;
+    border: 1px solid transparent; cursor: pointer; font: 500 13px 'Inter', sans-serif;
+  }
+  .btn.ghost { background: transparent; color: var(--cream); border-color: rgba(255,255,255,0.25); }
+  .btn.primary { background: var(--terracotta); color: white; }
+  .btn.warm { background: var(--butter); color: var(--ink); }
+</style>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <h1>Tidy Kitten<span class="dot"></span></h1>
+      <span class="sub">a weekly meal journal</span>
+    </div>
+    <nav class="nav">
+      <a href="#" class="active">Plan</a>
+      <a href="#">Pantry</a>
+      <a href="#">Recipes</a>
+      <a href="#">Groceries</a>
+    </nav>
+    <div class="right">
+      <a class="btn ghost" style="color:var(--ink); border-color:var(--line)">+ New recipe</a>
+      <div class="avatar">JJ</div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <section class="main">
+    <!-- Sidebar -->
+    <aside class="panel">
+      <header>
+        <h2>Library</h2>
+        <span class="meta">24 recipes</span>
+      </header>
+      <div class="search">
+        <span style="color:var(--ink-2)">⌕</span>
+        <input placeholder="Search recipes..." />
+      </div>
+
+      <div class="cat-label">Mains</div>
+      <div class="meals">
+        <div class="meal"><span class="pip terr"></span>Sheet-Pan Salmon<span class="count">3×</span></div>
+        <div class="meal"><span class="pip sage"></span>Chicken Stir-Fry<span class="count">5×</span></div>
+        <div class="meal"><span class="pip butter"></span>Pasta Primavera<span class="count">2×</span></div>
+        <div class="meal"><span class="pip berry"></span>Beef Tacos<span class="count">4×</span></div>
+        <div class="meal"><span class="pip sage"></span>Tofu Curry<span class="count">1×</span></div>
+      </div>
+
+      <div class="cat-label">Sides</div>
+      <div class="meals">
+        <div class="meal"><span class="pip butter"></span>Lemon Couscous<span class="count">2×</span></div>
+        <div class="meal"><span class="pip sage"></span>Roasted Broccoli<span class="count">7×</span></div>
+      </div>
+    </aside>
+
+    <!-- Calendar -->
+    <section class="panel">
+      <header>
+        <h2>Week of May 18</h2>
+        <span class="meta">5 meals planned · 14 ingredients</span>
+      </header>
+
+      <div class="week-head">
+        <div class="week-nav">
+          <button class="iconbtn">‹</button>
+          <button class="iconbtn">›</button>
+          <span class="today-pill">Today</span>
+        </div>
+        <span class="meta">May · 2026</span>
+      </div>
+
+      <div class="calendar">
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Mon</span><span class="d-num">18</span></div>
+          <div class="event sage"><div class="t">DINNER</div><div class="n">Chicken Stir-Fry</div></div>
+          <div class="empty-hint">+ add</div>
+        </div>
+        <div class="day today">
+          <div class="d-head"><span class="d-dow">Tue · today</span><span class="d-num">19</span></div>
+          <div class="event terr"><div class="t">DINNER</div><div class="n">Sheet-Pan Salmon</div></div>
+          <div class="event butter"><div class="t">LUNCH</div><div class="n">Pasta Primavera</div></div>
+          <div class="empty-hint">+ add</div>
+        </div>
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Wed</span><span class="d-num">20</span></div>
+          <div class="event berry"><div class="t">DINNER</div><div class="n">Beef Tacos</div></div>
+          <div class="empty-hint">+ add</div>
+        </div>
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Thu</span><span class="d-num">21</span></div>
+          <div class="empty-hint">drag a recipe here</div>
+        </div>
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Fri</span><span class="d-num">22</span></div>
+          <div class="event sage"><div class="t">DINNER</div><div class="n">Tofu Curry</div></div>
+          <div class="empty-hint">+ add</div>
+        </div>
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Sat</span><span class="d-num">23</span></div>
+          <div class="empty-hint">weekend</div>
+        </div>
+        <div class="day">
+          <div class="d-head"><span class="d-dow">Sun</span><span class="d-num">24</span></div>
+          <div class="event terr"><div class="t">DINNER</div><div class="n">Sheet-Pan Salmon</div></div>
+          <div class="empty-hint">+ add</div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- Action bar -->
+  <footer class="actionbar">
+    <div class="count-pill"><b>5</b> meals on the menu this week</div>
+    <div class="actions">
+      <button class="btn ghost">View ingredients</button>
+      <button class="btn warm">Send grocery list</button>
+      <button class="btn primary">Sync to calendar →</button>
+    </div>
+  </footer>
+</body>
+</html>
