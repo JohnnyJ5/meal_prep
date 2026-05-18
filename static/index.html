@@ -4,30 +4,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Prep Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Meal Prep</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div class="background-mesh"></div>
+    <aside class="app-sidebar">
+        <div class="ws">
+            <div class="ws-ico">M</div>
+            <div>
+                <div class="ws-name">Meal Prep</div>
+                <div class="ws-sub">weekly planner</div>
+            </div>
+        </div>
 
-    <main class="container">
-        <header>
-            <div class="header-content">
-                <div>
-                    <h1>Weekly Meal Prep</h1>
-                    <p>Select your meals for the week below to generate your grocery list and schedule.</p>
-                </div>
-                <div class="auth-buttons">
-                    <button id="manage-btn" class="btn btn-secondary" onclick="openManageModal()">Manage Meals</button>
-                    <a href="/auth/google" class="btn btn-google">
-                        <img src="https://www.google.com/favicon.ico" width="16" height="16" alt="Google">
-                        Link Calendar
-                    </a>
+        <nav class="sidebar-nav">
+            <div class="nav-item active">
+                <span class="nav-chev">▾</span>
+                <span class="nav-ico">▤</span>
+                <span>Weekly Planner</span>
+            </div>
+            <button type="button" class="nav-item nav-item-btn" onclick="openManageModal()">
+                <span class="nav-chev"></span>
+                <span class="nav-ico">▦</span>
+                <span>Manage Recipes</span>
+            </button>
+            <button type="button" class="nav-item nav-item-btn" onclick="viewIngredients()">
+                <span class="nav-chev"></span>
+                <span class="nav-ico">▥</span>
+                <span>Grocery List</span>
+            </button>
+        </nav>
+
+        <div class="nav-section">Workspaces</div>
+        <a class="nav-item" href="/auth/google">
+            <span class="nav-chev"></span>
+            <span class="nav-ico">↗</span>
+            <span>Google Calendar</span>
+        </a>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-cta">
+            <div class="cta-h">Ready to sync</div>
+            <div class="cta-s">Drop meals on the planner, then push the week to Google Calendar.</div>
+            <button type="button" class="cta-btn" onclick="planMeals()">Sync week</button>
+        </div>
+    </aside>
+
+    <main class="app-main">
+        <header class="topbar">
+            <div class="crumbs">
+                <span>Workspace</span>
+                <span class="sep">/</span>
+                <b>Weekly Planner</b>
+                <span class="sep">/</span>
+                <span id="week-label">This week</span>
+            </div>
+            <div class="topbar-r">
+                <div class="topbar-actions hidden" id="action-bar">
+                    <span class="selection-count"><b id="selected-count">0</b> selected</span>
+                    <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()">
+                        View Ingredients
+                    </button>
+                    <button id="plan-btn" type="button" class="btn btn-primary" onclick="planMeals()" disabled>
+                        <span class="btn-text">Generate Plan</span>
+                        <div class="btn-loader hidden"></div>
+                    </button>
                 </div>
             </div>
         </header>
+
+        <section class="page-h">
+            <div>
+                <div class="page-icon">▤</div>
+                <h1>Weekly Meal Prep</h1>
+                <p class="page-desc">Drag a recipe onto any day, then generate a plan and grocery list for the week.</p>
+            </div>
+            <div class="week-nav">
+                <button class="iconbtn" onclick="shiftWindow(-1)" title="Previous day">‹</button>
+                <button class="btn btn-sm" onclick="shiftWindow(0)" title="Back to today">Today</button>
+                <button class="iconbtn" onclick="shiftWindow(1)" title="Next day">›</button>
+            </div>
+        </section>
 
         <section id="loading" class="loading-state">
             <div class="spinner"></div>
@@ -36,37 +98,30 @@
 
         <section id="error" class="error-state hidden">
             <p id="error-message">Failed to load meals.</p>
-            <button onclick="fetchMeals()" class="btn btn-secondary">Retry</button>
+            <button onclick="fetchMeals()" class="btn">Retry</button>
         </section>
 
-        <section class="planner-layout hidden" id="planner-layout">
+        <section id="planner-layout" class="planner-body hidden">
             <div class="mobile-tab-bar">
-                <button class="mobile-tab active" data-tab="meals">Meals</button>
+                <button class="mobile-tab active" data-tab="meals">Recipes</button>
                 <button class="mobile-tab" data-tab="calendar">Calendar</button>
             </div>
-            <div class="sidebar-container" data-panel="meals">
-                <h2>Available Meals</h2>
-                <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1rem;">Drag meals below to plan your
-                    week.</p>
-                <p class="text-secondary touch-hint" style="font-size: 0.9rem; margin-bottom: 1rem;">Tap a meal to select it, then tap a day to assign it.</p>
-                <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
-                    <!-- Meal cards will be injected here by JS -->
-                </div>
-            </div>
 
-            <div class="calendar-container" data-panel="calendar">
-                <div class="calendar-header">
-                    <h2>Weekly Schedule</h2>
-                    <div class="calendar-nav">
-                        <button class="btn-nav" onclick="shiftWindow(-1)" title="Previous day">&#8249;</button>
-                        <button class="btn-nav btn-nav-today" onclick="shiftWindow(0)" title="Back to today">Today</button>
-                        <button class="btn-nav" onclick="shiftWindow(1)" title="Next day">&#8250;</button>
-                    </div>
+            <aside class="recipe-library sidebar-container" data-panel="meals">
+                <div class="recipe-library-h">
+                    <h2>Recipes</h2>
                 </div>
+                <p class="touch-hint">Tap a recipe, then tap a day to assign it.</p>
+                <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- Meal cards injected by JS -->
+                </div>
+            </aside>
+
+            <div class="kanban-week calendar-container" data-panel="calendar">
                 <div id="calendar-legend" class="calendar-legend hidden"></div>
                 <div id="mobile-selected-meal-banner" class="hidden">
                     <span id="mobile-selected-meal-name"></span>
-                    <button onclick="cancelMobileTapSelection()">Cancel</button>
+                    <button type="button" onclick="cancelMobileTapSelection()">Cancel</button>
                 </div>
                 <div class="calendar-grid">
                     <div class="day-col" id="day-Monday" data-day="Monday" ondrop="drop(event)"
@@ -115,34 +170,22 @@
             </div>
         </section>
 
-        <div class="action-bar hidden" id="action-bar">
-            <div class="selection-count">
-                <span id="selected-count">0</span> meals selected
-            </div>
-            <button id="view-ingredients-btn" class="btn btn-secondary" onclick="viewIngredients()"
-                style="margin-left: auto; margin-right: 1rem;">
-                View Ingredients
-            </button>
-            <button id="plan-btn" class="btn btn-primary" onclick="planMeals()" disabled>
-                <span class="btn-text">Generate Plan</span>
-                <div class="btn-loader hidden"></div>
-            </button>
-        </div>
-
         <!-- Whole Foods Order Modal -->
         <div id="order-modal" class="modal hidden">
             <div class="modal-content">
-                <h2>Schedule Whole Foods Order</h2>
-                <p>When would you like to place your order?</p>
+                <div class="modal-header">
+                    <h2>Schedule Whole Foods Order</h2>
+                </div>
+                <p class="text-secondary">When would you like to place your order?</p>
                 <div class="form-group mt-2">
                     <label for="order-datetime">Date &amp; Time</label>
                     <input type="datetime-local" id="order-datetime" class="form-control">
                 </div>
                 <div class="mt-2">
-                    <p style="font-size:0.85rem; color: var(--text-secondary); margin-bottom:0.4rem;">Ingredients list</p>
-                    <pre id="order-ingredients" style="font-size:0.8rem; max-height:200px; overflow-y:auto;"></pre>
+                    <p class="text-secondary" style="margin-bottom: 0.4rem;">Ingredients list</p>
+                    <pre id="order-ingredients"></pre>
                 </div>
-                <div id="order-status" class="hidden" style="margin-top:0.75rem; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.9rem;"></div>
+                <div id="order-status" class="hidden" style="margin-top:0.75rem; padding:0.6rem 0.9rem; border-radius:6px; font-size:0.9rem;"></div>
                 <div class="form-actions mt-4">
                     <button onclick="cancelPlan()" class="btn btn-danger">Cancel</button>
                     <button onclick="skipOrderModal()" class="btn btn-secondary">Skip</button>
@@ -152,14 +195,14 @@
         </div>
 
         <!-- Toast notification -->
-        <div id="toast" class="hidden" style="position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); padding:0.75rem 1.5rem; border-radius:10px; font-size:0.9rem; z-index:1000; pointer-events:none;"></div>
+        <div id="toast" class="hidden"></div>
 
         <!-- Ingredients Modal -->
         <div id="ingredients-modal" class="modal hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
                     <h2>Ingredients</h2>
-                    <button onclick="closeModal('ingredients-modal')" class="btn-close">&times;</button>
+                    <button onclick="closeModal('ingredients-modal')" class="btn-close" type="button">&times;</button>
                 </div>
 
                 <div class="ingredients-layout">
@@ -180,27 +223,26 @@
             </div>
         </div>
 
-
         <!-- Management Modal -->
         <div id="manage-modal" class="modal hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h2>Manage Meals</h2>
-                    <button onclick="closeModal('manage-modal')" class="btn-close">&times;</button>
+                    <h2>Manage Recipes</h2>
+                    <button onclick="closeModal('manage-modal')" class="btn-close" type="button">&times;</button>
                 </div>
 
                 <div id="manage-list-view">
-                    <button onclick="openEditView()" class="btn btn-primary mb-4">+ Add New Meal</button>
+                    <button onclick="openEditView()" class="btn btn-primary mb-4" type="button">+ Add Recipe</button>
                     <div id="manage-meal-list" class="manage-list">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
                 <div id="manage-edit-view" class="hidden">
-                    <h3 id="edit-view-title">Add Meal</h3>
+                    <h3 id="edit-view-title">Add Recipe</h3>
                     <form id="meal-form" onsubmit="saveMeal(event)">
                         <div class="form-group">
-                            <label for="meal-name">Meal Name (e.g., spicy-chicken)</label>
+                            <label for="meal-name">Recipe Name (e.g., spicy-chicken)</label>
                             <input type="text" id="meal-name" required class="form-control">
                         </div>
                         <div class="form-group mt-2">
@@ -213,12 +255,11 @@
                         <div id="ingredients-list" class="ingredients-list">
                             <!-- Populated by JS -->
                         </div>
-                        <button type="button" onclick="addIngredientRow()" class="btn btn-secondary mt-2 mb-4 btn-sm">+
-                            Add Ingredient</button>
+                        <button type="button" onclick="addIngredientRow()" class="btn btn-secondary mt-2 mb-4 btn-sm">+ Add Ingredient</button>
 
                         <div class="form-actions">
                             <button type="button" onclick="closeEditView()" class="btn btn-secondary">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Meal</button>
+                            <button type="submit" class="btn btn-primary">Save Recipe</button>
                         </div>
                     </form>
                 </div>
@@ -230,7 +271,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Add New Ingredient</h2>
-                    <button onclick="closeModal('add-ingredient-modal')" class="btn-close">&times;</button>
+                    <button onclick="closeModal('add-ingredient-modal')" class="btn-close" type="button">&times;</button>
                 </div>
                 <form id="new-ingredient-form" onsubmit="createNewIngredient(event)">
                     <div class="form-group">
@@ -255,8 +296,7 @@
                         </datalist>
                     </div>
                     <div class="form-actions mt-4">
-                        <button type="button" onclick="closeModal('add-ingredient-modal')"
-                            class="btn btn-secondary">Cancel</button>
+                        <button type="button" onclick="closeModal('add-ingredient-modal')" class="btn btn-secondary">Cancel</button>
                         <button type="submit" class="btn btn-primary">Add Ingredient</button>
                     </div>
                 </form>
@@ -266,7 +306,6 @@
         <datalist id="available-ingredients">
             <!-- Populated by JS -->
         </datalist>
-
     </main>
 
     <script src="script.js"></script>
