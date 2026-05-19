@@ -21,6 +21,7 @@
             </div>
         </div>
 
+        <div class="nav-section">Plan</div>
         <nav class="sidebar-nav">
             <div class="nav-item active">
                 <span class="nav-chev">▾</span>
@@ -32,27 +33,20 @@
                 <span class="nav-ico">▦</span>
                 <span>Manage Recipes</span>
             </button>
-            <button type="button" class="nav-item nav-item-btn" onclick="viewIngredients()">
-                <span class="nav-chev"></span>
-                <span class="nav-ico">▥</span>
-                <span>Grocery List</span>
-            </button>
         </nav>
 
-        <div class="nav-section">Workspaces</div>
-        <a class="nav-item" href="/auth/google">
+        <div class="nav-section">Integrations</div>
+        <a class="nav-item nav-item-stack" href="/auth/google" id="sidebar-calendar-link">
             <span class="nav-chev"></span>
             <span class="nav-ico">↗</span>
-            <span>Google Calendar</span>
+            <span class="nav-item-body">
+                <span>Google Calendar</span>
+                <span class="nav-item-meta" id="sidebar-calendar-meta">Checking…</span>
+            </span>
+            <span class="nav-status-dot" id="sidebar-calendar-dot" aria-hidden="true"></span>
         </a>
 
         <div class="sidebar-spacer"></div>
-
-        <div class="sidebar-cta">
-            <div class="cta-h">Ready to sync</div>
-            <div class="cta-s">Drop meals on the planner, then push the week to Google Calendar.</div>
-            <button type="button" class="cta-btn" onclick="planMeals()">Sync week</button>
-        </div>
     </aside>
 
     <main class="app-main">
@@ -65,13 +59,9 @@
                 <span id="week-label">This week</span>
             </div>
             <div class="topbar-r">
-                <a href="/auth/google" class="btn btn-google" id="link-calendar-btn">
-                    <img src="https://www.google.com/favicon.ico" width="14" height="14" alt="">
-                    Link Calendar
-                </a>
                 <div class="topbar-actions hidden" id="action-bar">
-                    <span class="selection-count"><b id="selected-count">0</b> selected</span>
-                    <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()">
+                    <span class="selection-count" id="selection-chip" hidden><b id="selected-count">0</b> selected</span>
+                    <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()" disabled>
                         View Ingredients
                     </button>
                     <button id="plan-btn" type="button" class="btn btn-primary" onclick="planMeals()" disabled>

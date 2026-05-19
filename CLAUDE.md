@@ -75,3 +75,7 @@ CMake (C++17) with FetchContent for: Crow, Asio, GoogleTest. System deps: Boost,
 ## Cloud Deployment
 
 `cloudbuild.yaml` defines a 3-step pipeline: build image → push to Artifact Registry → deploy to Cloud Run. The GCS bucket `meal-prep-db-bucket` is mounted for persistent SQLite storage. Secrets for email/calendar credentials are injected via Cloud Secrets Manager. See `docs/GCP_COMMANDS.md` for deployment and database management commands.
+
+## Working with the UI
+
+When making any UI/frontend changes (HTML, CSS, JS in `static/`), always produce screenshot images of the result and attach them via `SendUserFile` so the user can see before/after visuals. This applies to every UI change, not just when explicitly requested.

@@ -11,7 +11,36 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchMeals();
     fetchIngredients();
     fetchCalendarEventsForWeek();
+    refreshCalendarLinkStatus();
 });
+
+async function refreshCalendarLinkStatus() {
+    const meta = document.getElementById('sidebar-calendar-meta');
+    const dot = document.getElementById('sidebar-calendar-dot');
+    const link = document.getElementById('sidebar-calendar-link');
+    if (!meta || !dot || !link) return;
+    try {
+        const probeStart = new Date();
+        const probeEnd = new Date(probeStart);
+        probeEnd.setDate(probeStart.getDate() + 1);
+        const url = `/api/calendar/events?timeMin=${encodeURIComponent(probeStart.toISOString())}&timeMax=${encodeURIComponent(probeEnd.toISOString())}`;
+        const response = await fetch(url);
+        if (response.ok) {
+            meta.textContent = 'Linked';
+            dot.classList.remove('is-unlinked');
+            dot.classList.add('is-linked');
+            link.setAttribute('title', 'Calendar linked — click to re-authenticate');
+        } else {
+            meta.textContent = 'Click to connect';
+            dot.classList.remove('is-linked');
+            dot.classList.add('is-unlinked');
+            link.setAttribute('title', 'Connect your Google Calendar');
+        }
+    } catch (e) {
+        meta.textContent = 'Click to connect';
+        dot.classList.add('is-unlinked');
+    }
+}
 
 let availableIngredients = [];
 
@@ -369,6 +398,7 @@ function attachDayTouchListeners(dayColEl) {
 
 function updateActionBar() {
     const countSpan = document.getElementById('selected-count');
+    const chip = document.getElementById('selection-chip');
     const planBtn = document.getElementById('plan-btn');
     const viewBtn = document.getElementById('view-ingredients-btn');
 
@@ -383,16 +413,16 @@ function updateActionBar() {
 
     const totalSelected = count + selectedMeals.size;
     countSpan.textContent = totalSelected;
+    if (chip) chip.hidden = totalSelected === 0;
 
     if (totalSelected > 0) {
         planBtn.removeAttribute('disabled');
-        if (selectedMeals.size > 0) {
-            viewBtn.removeAttribute('disabled');
-        } else {
-            viewBtn.setAttribute('disabled', 'true');
-        }
     } else {
         planBtn.setAttribute('disabled', 'true');
+    }
+    if (selectedMeals.size > 0) {
+        viewBtn.removeAttribute('disabled');
+    } else {
         viewBtn.setAttribute('disabled', 'true');
     }
 }
