@@ -208,9 +208,9 @@ function renderMeals(meals) {
 
 // ── Add-on (optional ingredient) picker ─────────────────────────────────────
 
-let addonsModalState = null; // { cardEl, mealId, initialAddons }
+let addonsModalState = null; // { cardEl, mealId, initialAddons, onConfirm }
 
-async function openAddonsModal(cardEl, mealId) {
+async function openAddonsModal(cardEl, mealId, onConfirm = null) {
     // Fetch the full meal so we know which ingredients are optional
     let meal;
     try {
@@ -225,8 +225,9 @@ async function openAddonsModal(cardEl, mealId) {
 
     const optionalIngs = (meal.ingredients || []).filter(i => i.optional);
     if (optionalIngs.length === 0) {
-        // Shouldn't normally happen if has_optional_ingredients was true, but
-        // guard against drift between cached meta and current DB state.
+        // Drift between cached has_optional_ingredients and current DB state:
+        // still run the confirm callback so callers aren't stranded.
+        if (typeof onConfirm === 'function') onConfirm();
         return;
     }
 
@@ -254,6 +255,7 @@ async function openAddonsModal(cardEl, mealId) {
         cardEl,
         mealId,
         initialAddons: Array.from(currentSelections),
+        onConfirm,
     };
     document.getElementById('addons-modal').classList.remove('hidden');
 }
@@ -263,9 +265,11 @@ function confirmAddonsModal() {
     const checks = document.querySelectorAll('#addons-list .addon-check');
     const selected = [];
     checks.forEach(c => { if (c.checked) selected.push(c.dataset.name); });
-    writeAddonsToCard(addonsModalState.cardEl, selected);
+    const { cardEl, onConfirm } = addonsModalState;
+    writeAddonsToCard(cardEl, selected);
     closeModal('addons-modal');
     addonsModalState = null;
+    if (typeof onConfirm === 'function') onConfirm();
 }
 
 function cancelAddonsModal() {
@@ -354,7 +358,7 @@ function drop(ev) {
     document.querySelectorAll('.day-col').forEach(col => col.classList.remove('drag-over'));
 
     if (dropTarget && draggedElt) {
-        const fromGrid = draggedElt.parentElement && draggedElt.parentElement.id === 'meal-grid';
+        const fromGrid = !!draggedElt.closest('#meal-grid');
         const toGrid = dropTarget.id === 'meal-grid';
         const toSlot = dropTarget.classList.contains('meal-slot');
 
@@ -417,6 +421,17 @@ function handleMealTap(mealId, cardEl) {
         return;
     }
 
+    // Variant meals: open the add-on picker first. The pending-tap state is
+    // only entered after the user clicks OK in the modal.
+    if (cardEl.dataset.hasOptional === '1' && readAddonsFromCard(cardEl).length === 0) {
+        openAddonsModal(cardEl, mealId, () => enterMobilePending(mealId, cardEl));
+        return;
+    }
+
+    enterMobilePending(mealId, cardEl);
+}
+
+function enterMobilePending(mealId, cardEl) {
     if (mobilePendingMeal) {
         mobilePendingMeal.cardEl.classList.remove('pending-tap');
         selectedMeals.delete(mobilePendingMeal.mealId);
@@ -429,7 +444,11 @@ function handleMealTap(mealId, cardEl) {
     const banner = document.getElementById('mobile-selected-meal-banner');
     const nameSpan = document.getElementById('mobile-selected-meal-name');
     if (banner && nameSpan) {
-        nameSpan.textContent = cardEl.querySelector('h3')?.textContent || mealId;
+        const baseName = cardEl.querySelector('h3')?.textContent || mealId;
+        const addons = readAddonsFromCard(cardEl);
+        nameSpan.textContent = addons.length > 0
+            ? `${baseName} (+ ${addons.join(', ')})`
+            : baseName;
         banner.classList.remove('hidden');
     }
 
@@ -445,7 +464,7 @@ function handleDayTap(dayColEl) {
     if (!isMobile() || !mobilePendingMeal) return;
 
     const { mealId, cardEl } = mobilePendingMeal;
-    const fromGrid = cardEl.parentElement?.id === 'meal-grid';
+    const fromGrid = !!cardEl.closest('#meal-grid');
     const mealSlot = dayColEl.querySelector('.meal-slot');
 
     if (mealSlot) {

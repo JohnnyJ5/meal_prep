@@ -436,8 +436,9 @@ h1 {
     cursor: grab;
     transition: background 0.12s, border-color 0.12s;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px 8px;
 }
 
 .meal-card h3 {
@@ -994,7 +995,8 @@ h1 {
 
 /* Badge on a recipe tile or scheduled slot when add-ons are chosen */
 .meal-card-addons {
-    margin-top: 4px;
+    flex-basis: 100%;
+    margin-top: 2px;
     padding: 2px 6px;
     border-radius: 4px;
     background: var(--accent-soft, rgba(99, 102, 241, 0.12));
