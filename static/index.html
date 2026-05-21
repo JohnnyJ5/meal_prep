@@ -104,6 +104,9 @@
             <aside class="recipe-library sidebar-container" data-panel="meals">
                 <div class="recipe-library-h">
                     <h2>Recipes</h2>
+                    <button type="button" class="btn btn-sm mobile-manage-btn" onclick="openManageModal()">
+                        Manage Recipes
+                    </button>
                 </div>
                 <p class="touch-hint">Tap a recipe, then tap a day to assign it.</p>
                 <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
