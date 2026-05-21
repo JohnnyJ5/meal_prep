@@ -31,6 +31,24 @@ RUN apt-get update && apt-get install -y \
     gosu \
     libheif-examples \
     imagemagick \
+    # --- Headless Chromium runtime deps for Playwright UI screenshots ---
+    # Required so `npx playwright install chromium` can launch in this container.
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0t64 \
+    libatk-bridge2.0-0t64 \
+    libcups2t64 \
+    libxkbcommon0 \
+    libatspi2.0-0t64 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2t64 \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user to run Claude (with sudo privileges just in case)

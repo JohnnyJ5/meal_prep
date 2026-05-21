@@ -1364,3 +1364,173 @@ h1 {
         justify-content: flex-end;
     }
 }
+
+/* ── Workouts page ───────────────────────────────────────────────────────── */
+
+.workouts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    padding-bottom: 2rem;
+}
+
+.workout-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+.workout-card:hover {
+    border-color: var(--accent-mid);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.workout-card-title {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.35rem;
+}
+
+.workout-card-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+}
+
+.workout-form-meta {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .workout-form-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+.workout-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.workout-block {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.workout-block-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.block-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.block-controls .form-control {
+    display: inline-block;
+}
+
+.block-type-toggle .form-control {
+    width: 11em;
+}
+
+.block-rounds-wrap,
+.block-rest-wrap {
+    color: var(--ink-2);
+    font-size: 0.88rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.block-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.exercise-row {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.55rem 0.65rem;
+}
+
+.exercise-row-h {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.exercise-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    align-items: center;
+    color: var(--ink-2);
+    font-size: 0.88rem;
+}
+
+.exercise-fields label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.exercise-fields .form-control {
+    display: inline-block;
+}
+
+.detail-meta {
+    display: flex;
+    gap: 1rem;
+    color: var(--ink-2);
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.detail-notes {
+    margin-bottom: 1rem;
+    color: var(--ink-2);
+}
+
+.detail-block {
+    margin-bottom: 0.9rem;
+}
+
+.detail-block h4 {
+    margin-bottom: 0.35rem;
+    color: var(--ink);
+}
+
+.detail-block ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--ink);
+}
+
+.detail-block li {
+    margin-bottom: 0.2rem;
+}
+
+.detail-block .muted {
+    color: var(--ink-3);
+}

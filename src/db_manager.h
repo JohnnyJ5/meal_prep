@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "meal.h"
+#include "workout.h"
 
 /**
  * @brief Manages SQLite database operations for the Meal Prep application.
@@ -124,6 +125,37 @@ class DBManager {
      * @return true if tokens were found, false otherwise.
      */
     bool getGoogleTokens(std::string &accessToken, std::string &refreshToken, int64_t &expiryTime);
+
+    // --- Workouts ---
+
+    /**
+     * @brief Inserts a workout (with its blocks and exercises) atomically.
+     * @param workout Input/output. On success, workout.id is set to the new row id.
+     * @return true on success, false on failure (transaction rolled back).
+     */
+    bool addWorkout(Workout &workout);
+
+    /**
+     * @brief Replaces an existing workout. Blocks/exercises are wiped and re-inserted.
+     * @return true on success, false on failure (transaction rolled back).
+     */
+    bool updateWorkout(const Workout &workout);
+
+    /**
+     * @brief Deletes a workout by id. Cascades to blocks and exercises.
+     */
+    bool deleteWorkout(int id);
+
+    /**
+     * @brief Loads a single workout including its blocks and exercises.
+     * @return populated Workout with id != 0 on success; id == 0 if not found.
+     */
+    Workout getWorkout(int id);
+
+    /**
+     * @brief Lists all workouts, most recent first.
+     */
+    std::vector<WorkoutSummary> listWorkouts();
 
    private:
     sqlite3 *d_db{nullptr};

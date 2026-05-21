@@ -23,10 +23,19 @@
 
         <div class="nav-section">Plan</div>
         <nav class="sidebar-nav">
-            <div class="nav-item active">
+            <div class="nav-item active" id="nav-planner" onclick="showPage('planner')">
                 <span class="nav-chev">▾</span>
                 <span class="nav-ico">▤</span>
                 <span>Weekly Planner</span>
+            </div>
+        </nav>
+
+        <div class="nav-section">Train</div>
+        <nav class="sidebar-nav">
+            <div class="nav-item" id="nav-workouts" onclick="showPage('workouts')">
+                <span class="nav-chev">▾</span>
+                <span class="nav-ico">◆</span>
+                <span>Workouts</span>
             </div>
         </nav>
 
@@ -49,12 +58,13 @@
             <div class="crumbs">
                 <span>Workspace</span>
                 <span class="sep">/</span>
-                <b>Weekly Planner</b>
+                <b id="page-crumb">Weekly Planner</b>
                 <span class="sep">/</span>
                 <span id="week-label">This week</span>
             </div>
         </header>
 
+        <div id="page-planner">
         <section class="page-h">
             <div>
                 <div class="topbar-actions hidden" id="action-bar">
@@ -312,9 +322,94 @@
         <datalist id="available-ingredients">
             <!-- Populated by JS -->
         </datalist>
+        </div><!-- /#page-planner -->
+
+        <div id="page-workouts" class="hidden">
+            <section class="page-h">
+                <div>
+                    <div class="topbar-actions" id="workouts-action-bar">
+                        <button id="workout-new-btn" type="button" class="btn btn-primary" onclick="openWorkoutForm()">
+                            + Log Workout
+                        </button>
+                    </div>
+                    <h1>Workouts</h1>
+                    <p class="page-desc">Log circuit and straight-set workouts. Track date, duration, and what you did.</p>
+                </div>
+            </section>
+
+            <section id="workouts-loading" class="loading-state hidden">
+                <div class="spinner"></div>
+                <p>Loading workouts…</p>
+            </section>
+
+            <section id="workouts-empty" class="hidden" style="padding: 1.5rem 0; color: var(--ink-2);">
+                <p>No workouts logged yet. Click <b>+ Log Workout</b> to add your first one.</p>
+            </section>
+
+            <section id="workouts-list" class="workouts-list hidden"></section>
+        </div><!-- /#page-workouts -->
+
+        <!-- Workout Log/Edit Modal -->
+        <div id="workout-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2 id="workout-modal-title">Log Workout</h2>
+                    <button onclick="closeWorkoutModal()" class="btn-close" type="button">&times;</button>
+                </div>
+
+                <form id="workout-form" onsubmit="saveWorkout(event)">
+                    <div class="workout-form-meta">
+                        <div class="form-group">
+                            <label for="workout-name">Name (optional)</label>
+                            <input type="text" id="workout-name" class="form-control" placeholder="e.g., Saturday circuit">
+                        </div>
+                        <div class="form-group">
+                            <label for="workout-date">Date</label>
+                            <input type="date" id="workout-date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="workout-duration">Duration (mm:ss)</label>
+                            <input type="text" id="workout-duration" class="form-control"
+                                   placeholder="25:00" pattern="\d{1,3}:\d{2}" required>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-4">Blocks</h4>
+                    <div id="workout-blocks" class="workout-blocks"></div>
+                    <button type="button" onclick="addBlock()" class="btn btn-secondary btn-sm mt-2">+ Add Block</button>
+
+                    <div class="form-group mt-4">
+                        <label for="workout-notes">Notes (optional)</label>
+                        <textarea id="workout-notes" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-actions mt-4">
+                        <button type="button" onclick="closeWorkoutModal()" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Workout</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Workout Detail Modal -->
+        <div id="workout-detail-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2 id="workout-detail-title">Workout</h2>
+                    <button onclick="closeModal('workout-detail-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <div id="workout-detail-body"></div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="editCurrentWorkout()" class="btn btn-secondary">Edit</button>
+                    <button type="button" onclick="deleteCurrentWorkout()" class="btn btn-danger">Delete</button>
+                    <button type="button" onclick="closeModal('workout-detail-modal')" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="script.js"></script>
+    <script src="workouts.js"></script>
 </body>
 
 </html>
