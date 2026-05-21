@@ -242,3 +242,69 @@ TEST_F(DBManagerTest, AddDuplicateMealFails) {
     EXPECT_TRUE(db->addMeal(makeMeal("unique-meal")));
     EXPECT_FALSE(db->addMeal(makeMeal("unique-meal")));
 }
+
+// is_optional flag round-trips through add/get for a meal's ingredients
+TEST_F(DBManagerTest, OptionalIngredientFlagRoundTrips) {
+    std::vector<Ingredient> ings = {
+        Ingredient("All-Purpose Flour", Measurement(1.0, MeasurementUnit::CUP), "None", false),
+        Ingredient("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true),
+        Ingredient("Cottage Cheese", Measurement(1.0, MeasurementUnit::CUP), "None", true),
+    };
+    Meal meal("pancakes", ings, "Breakfast");
+    EXPECT_TRUE(db->addMeal(meal));
+
+    auto retrieved = db->getMeal("pancakes");
+    ASSERT_NE(retrieved, nullptr);
+    ASSERT_EQ(retrieved->getIngredients().size(), 3u);
+    for (const auto &ing : retrieved->getIngredients()) {
+        if (ing.getName() == "All-Purpose Flour") {
+            EXPECT_FALSE(ing.isOptional());
+        } else {
+            EXPECT_TRUE(ing.isOptional());
+        }
+    }
+}
+
+// updateMeal preserves the is_optional flag on replacement
+TEST_F(DBManagerTest, UpdateMealPreservesOptionalFlag) {
+    db->addMeal(makeMeal("update-pancakes"));
+    std::vector<Ingredient> ings = {
+        Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE), "None", false),
+        Ingredient("Pumpkin", Measurement(0.25, MeasurementUnit::CUP), "None", true),
+    };
+    Meal updated("update-pancakes", ings, "Breakfast");
+    EXPECT_TRUE(db->updateMeal(updated));
+
+    auto retrieved = db->getMeal("update-pancakes");
+    ASSERT_NE(retrieved, nullptr);
+    ASSERT_EQ(retrieved->getIngredients().size(), 2u);
+    for (const auto &ing : retrieved->getIngredients()) {
+        if (ing.getName() == "Pumpkin") EXPECT_TRUE(ing.isOptional());
+        if (ing.getName() == "Eggs") EXPECT_FALSE(ing.isOptional());
+    }
+}
+
+// getMealIdsWithOptionalIngredients identifies meals with any optional ingredient
+TEST_F(DBManagerTest, GetMealIdsWithOptionalIngredients) {
+    db->addMeal(Meal(
+        "no-options", {Ingredient("Salt", Measurement(1.0, MeasurementUnit::TEASPOON))}, "Cat"));
+    db->addMeal(Meal("with-options",
+                     {Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE)),
+                      Ingredient("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true)},
+                     "Cat"));
+
+    auto ids = db->getMealIdsWithOptionalIngredients();
+
+    std::vector<std::tuple<int, std::string, std::string>> meals;
+    db->getAllMeals(meals);
+    int noOptionsId = -1, withOptionsId = -1;
+    for (const auto &m : meals) {
+        if (std::get<1>(m) == "no-options") noOptionsId = std::get<0>(m);
+        if (std::get<1>(m) == "with-options") withOptionsId = std::get<0>(m);
+    }
+    ASSERT_NE(noOptionsId, -1);
+    ASSERT_NE(withOptionsId, -1);
+
+    EXPECT_EQ(ids.count(noOptionsId), 0u);
+    EXPECT_EQ(ids.count(withOptionsId), 1u);
+}

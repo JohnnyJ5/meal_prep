@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <set>
+#include <string>
 #include <tuple>
 
 #include "../src/db_manager.h"
@@ -69,6 +71,49 @@ TEST_F(MealFactoryTest, GetAvailableMeals) {
 
     EXPECT_TRUE(hasTurkeyBurgers);
     EXPECT_TRUE(hasChickenStirFry);
+}
+
+// createMeal without an add-on set excludes all optional ingredients
+TEST_F(MealFactoryTest, CreateMealExcludesOptionalByDefault) {
+    auto dbManager = std::make_shared<DBManager>(":memory:");
+    dbManager->initializeSchema();
+    std::vector<Ingredient> ings = {
+        Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE), "None", false),
+        Ingredient("Cottage Cheese", Measurement(1.0, MeasurementUnit::CUP), "None", true),
+        Ingredient("Pumpkin", Measurement(0.25, MeasurementUnit::CUP), "None", true),
+    };
+    dbManager->addMeal(Meal("pancakes-test", ings, "Breakfast"));
+    MealFactory localFactory(dbManager);
+
+    auto meal = localFactory.createMeal("pancakes-test");
+    ASSERT_NE(meal, nullptr);
+    EXPECT_EQ(meal->getIngredients().size(), 1u);
+    EXPECT_EQ(meal->getIngredients()[0].getName(), "Eggs");
+}
+
+// createMeal with a set of enabled add-ons includes only the matching optionals
+TEST_F(MealFactoryTest, CreateMealIncludesSelectedAddOns) {
+    auto dbManager = std::make_shared<DBManager>(":memory:");
+    dbManager->initializeSchema();
+    std::vector<Ingredient> ings = {
+        Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE), "None", false),
+        Ingredient("Cottage Cheese", Measurement(1.0, MeasurementUnit::CUP), "None", true),
+        Ingredient("Pumpkin", Measurement(0.25, MeasurementUnit::CUP), "None", true),
+        Ingredient("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true),
+    };
+    dbManager->addMeal(Meal("pancakes-test", ings, "Breakfast"));
+    MealFactory localFactory(dbManager);
+
+    auto meal = localFactory.createMeal("pancakes-test", {"Blueberry", "Pumpkin"});
+    ASSERT_NE(meal, nullptr);
+    EXPECT_EQ(meal->getIngredients().size(), 3u);
+
+    std::set<std::string> names;
+    for (const auto &i : meal->getIngredients()) names.insert(i.getName());
+    EXPECT_EQ(names.count("Eggs"), 1u);
+    EXPECT_EQ(names.count("Blueberry"), 1u);
+    EXPECT_EQ(names.count("Pumpkin"), 1u);
+    EXPECT_EQ(names.count("Cottage Cheese"), 0u);
 }
 
 // Test that all available meals can be creatable

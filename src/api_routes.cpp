@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <set>
 #include <tuple>
 
 #include "meal_planner.h"
@@ -12,14 +13,17 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                  const std::shared_ptr<CalendarService> &calendarService) {
     // Route: Get all available meals
     CROW_ROUTE(app, "/api/meals")
-    ([&factory]() {
+    ([&factory, &dbManager]() {
         std::vector<std::tuple<int, std::string, std::string>> meals;
         factory.getAvailableMeals(meals);
+        std::set<int> idsWithOptional = dbManager->getMealIdsWithOptionalIngredients();
         crow::json::wvalue res;
         for (size_t i = 0; i < meals.size(); ++i) {
-            res[i]["id"] = std::get<0>(meals[i]);
+            int id = std::get<0>(meals[i]);
+            res[i]["id"] = id;
             res[i]["name"] = std::get<1>(meals[i]);
             res[i]["category"] = std::get<2>(meals[i]);
+            res[i]["has_optional_ingredients"] = idsWithOptional.count(id) > 0;
         }
         CROW_LOG_INFO << "Successfully retrieved " << meals.size() << " available meals";
         return res;
@@ -88,9 +92,14 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                     if (ingJson.has("preparation")) {
                         prep = ingJson["preparation"].s();
                     }
+                    bool isOptional = false;
+                    if (ingJson.has("optional")) {
+                        isOptional = ingJson["optional"].b();
+                    }
 
                     ingredients.emplace_back(
-                        ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
+                        ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep,
+                        isOptional);
                 }
 
                 std::string category = "Uncategorized";
@@ -139,9 +148,14 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                         if (ingJson.has("preparation")) {
                             prep = ingJson["preparation"].s();
                         }
+                        bool isOptional = false;
+                        if (ingJson.has("optional")) {
+                            isOptional = ingJson["optional"].b();
+                        }
 
                         ingredients.emplace_back(
-                            ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
+                            ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep,
+                            isOptional);
                     }
 
                     std::string category = "Uncategorized";
@@ -192,6 +206,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                     res["ingredients"][i]["amount"] = ing.getAmount().getValue();
                     res["ingredients"][i]["unit"] = static_cast<int>(ing.getAmount().getUnit());
                     res["ingredients"][i]["preparation"] = ing.getPreparation();
+                    res["ingredients"][i]["optional"] = ing.isOptional();
                 }
                 return crow::response(std::move(res));
             } else {
@@ -219,9 +234,23 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             for (const auto &day : days) {
                 if (body.has(day)) {
                     for (const auto &mealJson : body[day]) {
-                        std::string mealName = mealJson.s();
+                        // Accept either a bare meal name string or
+                        // { "name": "...", "add_ons": ["..."] } for meals
+                        // that include selected optional ingredients.
+                        std::string mealName;
+                        std::set<std::string> addOns;
+                        if (mealJson.t() == crow::json::type::String) {
+                            mealName = mealJson.s();
+                        } else {
+                            mealName = mealJson["name"].s();
+                            if (mealJson.has("add_ons")) {
+                                for (const auto &a : mealJson["add_ons"]) {
+                                    addOns.insert(std::string(a.s()));
+                                }
+                            }
+                        }
                         schedule[day].push_back(mealName);
-                        if (auto meal = factory.createMeal(mealName)) {
+                        if (auto meal = factory.createMeal(mealName, addOns)) {
                             createdMeals.push_back(std::move(meal));
                         } else {
                             failedMeals.push_back(mealName);

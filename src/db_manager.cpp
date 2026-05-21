@@ -51,6 +51,7 @@ bool DBManager::initializeSchema() {
         "amount REAL NOT NULL, "
         "unit INTEGER NOT NULL, "
         "preparation TEXT NOT NULL, "
+        "is_optional INTEGER NOT NULL DEFAULT 0, "
         "FOREIGN KEY(meal_id) REFERENCES meals(id) ON DELETE CASCADE"
         ");";
 
@@ -94,6 +95,25 @@ bool DBManager::initializeSchema() {
     }
 
     if (!executeQuery(createIngredientsTable)) return false;
+
+    // Add is_optional column to existing ingredients tables if it doesn't exist
+    bool optionalColumnExists = false;
+    sqlite3_stmt *stmtIngCols = nullptr;
+    const std::string checkIngColumn = "PRAGMA table_info(ingredients);";
+    if (sqlite3_prepare_v2(d_db, checkIngColumn.c_str(), -1, &stmtIngCols, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmtIngCols) == SQLITE_ROW) {
+            const char *colName =
+                reinterpret_cast<const char *>(sqlite3_column_text(stmtIngCols, 1));
+            if (colName && std::string(colName) == "is_optional") {
+                optionalColumnExists = true;
+                break;
+            }
+        }
+        sqlite3_finalize(stmtIngCols);
+    }
+    if (!optionalColumnExists) {
+        executeQuery("ALTER TABLE ingredients ADD COLUMN is_optional INTEGER NOT NULL DEFAULT 0;");
+    }
 
     if (!executeQuery(createAvailableIngredientsTable)) return false;
 
@@ -146,8 +166,8 @@ bool DBManager::addMeal(const Meal &meal) {
     int mealId = static_cast<int>(sqlite3_last_insert_rowid(d_db));
 
     std::string insertIngredient =
-        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation, is_optional) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
     sqlite3_stmt *stmtIngred = nullptr;
     if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred, nullptr) != SQLITE_OK) {
         executeQuery("ROLLBACK;");
@@ -160,6 +180,7 @@ bool DBManager::addMeal(const Meal &meal) {
         sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
         sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
         sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
 
         if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
             sqlite3_finalize(stmtIngred);
@@ -215,8 +236,8 @@ bool DBManager::updateMeal(const Meal &meal) {
 
     // Insert updated ingredients
     std::string insertIngredient =
-        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation, is_optional) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
     sqlite3_stmt *stmtIngred = nullptr;
     if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred, nullptr) != SQLITE_OK) {
         executeQuery("ROLLBACK;");
@@ -228,6 +249,7 @@ bool DBManager::updateMeal(const Meal &meal) {
         sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
         sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
         sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
         if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
             sqlite3_finalize(stmtIngred);
             executeQuery("ROLLBACK;");
@@ -279,7 +301,7 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     sqlite3_finalize(stmtCat);
 
     std::string query =
-        "SELECT name, amount, unit, preparation FROM ingredients "
+        "SELECT name, amount, unit, preparation, is_optional FROM ingredients "
         "WHERE meal_id = ?;";
     sqlite3_stmt *stmt = nullptr;
     std::vector<Ingredient> ingredients;
@@ -291,9 +313,11 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
             double amount = sqlite3_column_double(stmt, 1);
             int unit = sqlite3_column_int(stmt, 2);
             std::string prep = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
+            bool isOptional = sqlite3_column_int(stmt, 4) != 0;
 
             ingredients.emplace_back(ingName,
-                                     Measurement(amount, static_cast<MeasurementUnit>(unit)), prep);
+                                     Measurement(amount, static_cast<MeasurementUnit>(unit)), prep,
+                                     isOptional);
         }
     }
     sqlite3_finalize(stmt);
@@ -322,6 +346,23 @@ bool DBManager::getAllMeals(std::vector<std::tuple<int, std::string, std::string
     }
     sqlite3_finalize(stmt);
     return true;
+}
+
+std::set<int> DBManager::getMealIdsWithOptionalIngredients() {
+    std::lock_guard<std::recursive_mutex> lock(d_mutex);
+    std::set<int> ids;
+    if (!d_db) return ids;
+
+    const std::string query =
+        "SELECT DISTINCT meal_id FROM ingredients WHERE is_optional = 1;";
+    sqlite3_stmt *stmt = nullptr;
+    if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            ids.insert(sqlite3_column_int(stmt, 0));
+        }
+    }
+    sqlite3_finalize(stmt);
+    return ids;
 }
 
 bool DBManager::getAllIngredients(std::vector<std::pair<std::string, std::string>> &ingredients) {

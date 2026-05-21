@@ -260,6 +260,24 @@
             </div>
         </div>
 
+        <!-- Add-ons (Optional Ingredients) Picker Modal -->
+        <div id="addons-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="addons-title">Add-ons</h2>
+                    <button onclick="closeModal('addons-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <p class="text-secondary">Select any add-ons to include with this recipe. Choices reset after you drag it onto the calendar.</p>
+                <div id="addons-list" class="addons-list">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="cancelAddonsModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="button" onclick="confirmAddonsModal()" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Add Ingredient Modal -->
         <div id="add-ingredient-modal" class="modal hidden">
             <div class="modal-content">
