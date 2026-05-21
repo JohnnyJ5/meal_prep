@@ -357,6 +357,10 @@ h1 {
 
 .recipe-library-h {
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .recipe-library-h h2 {
@@ -365,6 +369,10 @@ h1 {
     letter-spacing: 0.12em;
     color: var(--ink-3);
     font-weight: 600;
+}
+
+.mobile-manage-btn {
+    display: none;
 }
 
 .kanban-week {
@@ -1221,6 +1229,10 @@ h1 {
         border-right: 0;
         max-height: none;
         padding: 16px;
+    }
+
+    .mobile-manage-btn {
+        display: inline-flex;
     }
 
     /* Mobile tab bar */
