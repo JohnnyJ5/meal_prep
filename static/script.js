@@ -549,10 +549,9 @@ function attachDayTouchListeners(dayColEl) {
 }
 
 function updateActionBar() {
-    const countSpan = document.getElementById('selected-count');
-    const chip = document.getElementById('selection-chip');
     const planBtn = document.getElementById('plan-btn');
     const viewBtn = document.getElementById('view-ingredients-btn');
+    const viewBtnText = viewBtn.querySelector('.btn-text');
 
     let count = 0;
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -564,8 +563,7 @@ function updateActionBar() {
     });
 
     const totalSelected = count + selectedMeals.size;
-    countSpan.textContent = totalSelected;
-    if (chip) chip.hidden = totalSelected === 0;
+    viewBtnText.textContent = totalSelected > 1 ? `View Ingredients (${totalSelected})` : 'View Ingredients';
 
     if (totalSelected > 0) {
         planBtn.removeAttribute('disabled');
@@ -580,7 +578,7 @@ function updateActionBar() {
 }
 
 async function planMeals() {
-    if (document.getElementById('selected-count').textContent === "0" || isPlanning) return;
+    if (document.getElementById('plan-btn').hasAttribute('disabled') || isPlanning) return;
 
     isPlanning = true;
     const btn = document.getElementById('plan-btn');
