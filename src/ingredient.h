@@ -22,9 +22,15 @@ class Ingredient {
      * @param name The name of the ingredient.
      * @param amount The measurement of the ingredient.
      * @param preparation Optional preparation instructions (default is "None").
+     * @param isOptional Whether this ingredient is an optional add-on that
+     *        users select per-meal-plan (default false).
      */
-    Ingredient(const std::string &name, Measurement amount, const std::string &preparation = "None")
-        : d_name(name), d_measurement(amount), d_preparation(preparation) {}
+    Ingredient(const std::string &name, Measurement amount, const std::string &preparation = "None",
+               bool isOptional = false)
+        : d_name(name),
+          d_measurement(amount),
+          d_preparation(preparation),
+          d_isOptional(isOptional) {}
 
     // Copy constructor
     Ingredient(const Ingredient &other) = default;
@@ -41,6 +47,7 @@ class Ingredient {
     std::string getName() const { return d_name; }
     Measurement getAmount() const { return d_measurement; }
     std::string getPreparation() const { return d_preparation; }
+    bool isOptional() const { return d_isOptional; }
 
     /**
      * @brief Adds the amount of another ingredient of the same type.
@@ -70,6 +77,7 @@ class Ingredient {
     std::string d_name;
     Measurement d_measurement;
     std::string d_preparation;
+    bool d_isOptional{false};
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Ingredient &Ingredient) {

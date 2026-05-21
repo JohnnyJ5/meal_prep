@@ -928,10 +928,80 @@ h1 {
 
 .ingredient-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1fr 1fr auto auto;
     gap: 6px;
     margin-bottom: 6px;
     align-items: center;
+}
+
+.optional-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.optional-toggle input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Add-on picker modal — checkboxes for each optional ingredient */
+.addons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.addon-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.addon-row:hover {
+    background: var(--bg-alt, rgba(0, 0, 0, 0.03));
+}
+
+.addon-row input[type="checkbox"] {
+    cursor: pointer;
+}
+
+/* Recipe-tile hint that this meal has selectable add-ons */
+.meal-card-customize {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--accent-soft, rgba(99, 102, 241, 0.12));
+    color: var(--accent-color, #6366f1);
+    font-size: 10px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+/* Badge on a recipe tile or scheduled slot when add-ons are chosen */
+.meal-card-addons {
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent-soft, rgba(99, 102, 241, 0.12));
+    color: var(--accent-color, #6366f1);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
 }
 
 .form-actions {
@@ -1231,9 +1301,9 @@ h1 {
         min-height: 200px;
     }
 
-    /* Ingredient rows on mobile: name on row 1, amount/unit/del on row 2 */
+    /* Ingredient rows on mobile: name on row 1, amount/unit/optional/del on row 2 */
     .ingredient-row {
-        grid-template-columns: 1fr 1fr auto;
+        grid-template-columns: 1fr 1fr auto auto;
         grid-template-rows: auto auto;
     }
 

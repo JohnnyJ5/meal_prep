@@ -96,9 +96,12 @@ async function fetchMeals() {
     }
 }
 
+let mealMetaById = {}; // { mealId: { hasOptional: bool } }
+
 function renderMeals(meals) {
     const grid = document.getElementById('meal-grid');
     grid.innerHTML = '';
+    mealMetaById = {};
 
     // Format meal names (e.g. "baked-chicken-breast" -> "Baked Chicken Breast")
     const formatName = (str) => {
@@ -111,10 +114,11 @@ function renderMeals(meals) {
     meals.forEach(meal => {
         const cat = meal.category || 'Uncategorized';
         if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(meal.name);
+        grouped[cat].push(meal);
+        mealMetaById[meal.name] = { hasOptional: !!meal.has_optional_ingredients };
     });
 
-    for (const [category, mealNames] of Object.entries(grouped)) {
+    for (const [category, categoryMeals] of Object.entries(grouped)) {
         let index = 0;
         const header = document.createElement('h3');
         header.className = 'category-header collapsed';
@@ -144,7 +148,8 @@ function renderMeals(meals) {
             header.click();
         }, { passive: false });
 
-        mealNames.forEach((mealId) => {
+        categoryMeals.forEach((meal) => {
+            const mealId = meal.name;
             const card = document.createElement('div');
             card.className = 'meal-card';
             card.style.animationDelay = `${index * 0.05}s`;
@@ -158,20 +163,32 @@ function renderMeals(meals) {
             if (mealId.includes('burger') || mealId.includes('hamburger')) emoji = '🍔';
             if (mealId.includes('pancake')) emoji = '🥞';
 
+            const hasOptional = !!meal.has_optional_ingredients;
+            const customizeHint = hasOptional ? '<span class="meal-card-customize">+ add-ons</span>' : '';
+
             card.innerHTML = `
                 <div class="meal-card-header">
                     <h3>${emoji} ${formatName(mealId)}</h3>
+                    ${customizeHint}
                 </div>
+                <div class="meal-card-addons" hidden></div>
             `;
             card.id = `meal-${mealId}-${index}`;
             card.setAttribute('data-meal-id', mealId);
             card.setAttribute('draggable', 'true');
             card.setAttribute('ondragstart', 'drag(event)');
+            if (hasOptional) card.dataset.hasOptional = '1';
 
-            // Add click listener for selection
+            // Click behaviour: if the meal has optional ingredients, the click
+            // opens the add-on picker for this tile. Otherwise, fall back to
+            // the existing selection toggle used by "View Ingredients".
             card.addEventListener('click', (e) => {
-                // Prevent triggering if dragging
                 if (card.classList.contains('dragging')) return;
+
+                if (hasOptional) {
+                    openAddonsModal(card, mealId);
+                    return;
+                }
 
                 if (selectedMeals.has(mealId)) {
                     selectedMeals.delete(mealId);
@@ -186,6 +203,106 @@ function renderMeals(meals) {
             group.appendChild(card);
             attachMealTouchListeners(card, mealId);
         });
+    }
+}
+
+// ── Add-on (optional ingredient) picker ─────────────────────────────────────
+
+let addonsModalState = null; // { cardEl, mealId, initialAddons }
+
+async function openAddonsModal(cardEl, mealId) {
+    // Fetch the full meal so we know which ingredients are optional
+    let meal;
+    try {
+        const res = await fetch(`/api/meals/${encodeURIComponent(mealId)}`);
+        if (!res.ok) throw new Error('fetch failed');
+        meal = await res.json();
+    } catch (e) {
+        console.error('Failed to load meal for add-ons:', e);
+        showToast('Could not load add-ons for this recipe.', false);
+        return;
+    }
+
+    const optionalIngs = (meal.ingredients || []).filter(i => i.optional);
+    if (optionalIngs.length === 0) {
+        // Shouldn't normally happen if has_optional_ingredients was true, but
+        // guard against drift between cached meta and current DB state.
+        return;
+    }
+
+    const currentSelections = new Set(readAddonsFromCard(cardEl));
+    const list = document.getElementById('addons-list');
+    list.innerHTML = '';
+    optionalIngs.forEach(ing => {
+        const label = document.createElement('label');
+        label.className = 'addon-row';
+        const checked = currentSelections.has(ing.name) ? 'checked' : '';
+        label.innerHTML = `
+            <input type="checkbox" class="addon-check" data-name="${ing.name}" ${checked}>
+            <span>${ing.name}</span>
+        `;
+        list.appendChild(label);
+    });
+
+    const title = document.getElementById('addons-title');
+    if (title) {
+        const formatName = mealId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        title.textContent = `Add-ons for ${formatName}`;
+    }
+
+    addonsModalState = {
+        cardEl,
+        mealId,
+        initialAddons: Array.from(currentSelections),
+    };
+    document.getElementById('addons-modal').classList.remove('hidden');
+}
+
+function confirmAddonsModal() {
+    if (!addonsModalState) return;
+    const checks = document.querySelectorAll('#addons-list .addon-check');
+    const selected = [];
+    checks.forEach(c => { if (c.checked) selected.push(c.dataset.name); });
+    writeAddonsToCard(addonsModalState.cardEl, selected);
+    closeModal('addons-modal');
+    addonsModalState = null;
+}
+
+function cancelAddonsModal() {
+    closeModal('addons-modal');
+    addonsModalState = null;
+}
+
+function readAddonsFromCard(cardEl) {
+    if (!cardEl || !cardEl.dataset.addons) return [];
+    try {
+        const parsed = JSON.parse(cardEl.dataset.addons);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeAddonsToCard(cardEl, addons) {
+    if (!cardEl) return;
+    if (!addons || addons.length === 0) {
+        delete cardEl.dataset.addons;
+    } else {
+        cardEl.dataset.addons = JSON.stringify(addons);
+    }
+    renderAddonsBadge(cardEl);
+}
+
+function renderAddonsBadge(cardEl) {
+    const badge = cardEl.querySelector('.meal-card-addons');
+    if (!badge) return;
+    const addons = readAddonsFromCard(cardEl);
+    if (addons.length === 0) {
+        badge.hidden = true;
+        badge.textContent = '';
+    } else {
+        badge.hidden = false;
+        badge.textContent = '+ ' + addons.join(', ');
     }
 }
 
@@ -249,6 +366,9 @@ function drop(ev) {
             const dayCol = dropTarget.closest('.day-col');
             if (dayCol) clone.dataset.placedDate = dayCol.dataset.date;
             dropTarget.appendChild(clone);
+            renderAddonsBadge(clone);
+            // Reset the source recipe tile so the next drag starts vanilla
+            writeAddonsToCard(draggedElt, []);
         } else if (!fromGrid && toGrid) {
             // If dragging from a slot back to the grid, just remove it from the planner
             draggedElt.remove();
@@ -337,6 +457,9 @@ function handleDayTap(dayColEl) {
             clone.dataset.placedDate = dayColEl.dataset.date;
             attachMealTouchListeners(clone, mealId);
             mealSlot.appendChild(clone);
+            renderAddonsBadge(clone);
+            // Reset the source recipe tile so the next tap starts vanilla
+            writeAddonsToCard(cardEl, []);
         } else {
             // Moving between slots
             cardEl.dataset.placedDate = dayColEl.dataset.date;
@@ -449,7 +572,13 @@ async function planMeals() {
             if (slot) {
                 const cards = slot.querySelectorAll('.meal-card');
                 cards.forEach(c => {
-                    schedule[day].push(c.getAttribute('data-meal-id'));
+                    const mealId = c.getAttribute('data-meal-id');
+                    const addons = readAddonsFromCard(c);
+                    if (addons.length > 0) {
+                        schedule[day].push({ name: mealId, add_ons: addons });
+                    } else {
+                        schedule[day].push(mealId);
+                    }
                 });
             }
         });
@@ -793,7 +922,7 @@ async function editMeal(mealId) {
             const mealData = await mealRes.json();
             document.getElementById('meal-category').value = mealData.category || "Uncategorized";
             mealData.ingredients.forEach(ing => {
-                addIngredientRow(ing.name, ing.amount, ing.unit);
+                addIngredientRow(ing.name, ing.amount, ing.unit, !!ing.optional);
             });
         } else {
             addIngredientRow(); // Fallback to empty row
@@ -826,7 +955,7 @@ function closeEditView() {
     document.getElementById('manage-edit-view').classList.add('hidden');
 }
 
-function addIngredientRow(name = "", amount = "", unit = 0) {
+function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
     const container = document.getElementById('ingredients-list');
     const row = document.createElement('div');
     row.className = 'ingredient-row';
@@ -846,6 +975,10 @@ function addIngredientRow(name = "", amount = "", unit = 0) {
         <select class="form-control unit-input">
             ${unitOptions}
         </select>
+        <label class="optional-toggle" title="Optional add-on: users can opt in per meal plan">
+            <input type="checkbox" class="optional-input" ${optional ? 'checked' : ''}>
+            <span>Optional</span>
+        </label>
         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">X</button>
     `;
 
@@ -889,7 +1022,8 @@ async function saveMeal(e) {
             name: row.querySelector('.name-input').value,
             amount: parseFloat(row.querySelector('.amount-input').value),
             unit: parseInt(row.querySelector('.unit-input').value),
-            preparation: "None"
+            preparation: "None",
+            optional: row.querySelector('.optional-input')?.checked || false
         });
     });
 

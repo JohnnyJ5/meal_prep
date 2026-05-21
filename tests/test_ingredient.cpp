@@ -127,3 +127,15 @@ TEST_F(IngredientTest, AssignmentOperator) {
     EXPECT_EQ(ing2.getName(), "Spinach");
     EXPECT_DOUBLE_EQ(ing2.getAmount().getValue(), 3.0);
 }
+
+// Test isOptional defaults to false
+TEST_F(IngredientTest, IsOptionalDefaultsFalse) {
+    Ingredient ing("Spinach", Measurement(1.0, MeasurementUnit::CUP));
+    EXPECT_FALSE(ing.isOptional());
+}
+
+// Test isOptional can be set via constructor
+TEST_F(IngredientTest, IsOptionalCanBeSet) {
+    Ingredient ing("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true);
+    EXPECT_TRUE(ing.isOptional());
+}

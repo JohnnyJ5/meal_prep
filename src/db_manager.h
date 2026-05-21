@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -97,6 +98,13 @@ class DBManager {
      * @return true if successful, false otherwise.
      */
     bool getAllMeals(std::vector<std::tuple<int, std::string, std::string>> &meals);
+
+    /**
+     * @brief Returns the set of meal IDs that have at least one optional
+     * ingredient. Used so the UI can show an add-on picker only for meals
+     * that actually have selectable add-ons.
+     */
+    std::set<int> getMealIdsWithOptionalIngredients();
 
     /**
      * @brief Saves Google OAuth2 tokens to the database.
