@@ -28,11 +28,6 @@
                 <span class="nav-ico">▤</span>
                 <span>Weekly Planner</span>
             </div>
-            <button type="button" class="nav-item nav-item-btn" onclick="openManageModal()">
-                <span class="nav-chev"></span>
-                <span class="nav-ico">▦</span>
-                <span>Manage Recipes</span>
-            </button>
         </nav>
 
         <div class="nav-section">Integrations</div>
@@ -58,23 +53,23 @@
                 <span class="sep">/</span>
                 <span id="week-label">This week</span>
             </div>
-            <div class="topbar-r">
+        </header>
+
+        <section class="page-h">
+            <div>
                 <div class="topbar-actions hidden" id="action-bar">
                     <span class="selection-count" id="selection-chip" hidden><b id="selected-count">0</b> selected</span>
                     <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()" disabled>
                         View Ingredients
+                    </button>
+                    <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
+                        Manage Recipes
                     </button>
                     <button id="plan-btn" type="button" class="btn btn-primary" onclick="planMeals()" disabled>
                         <span class="btn-text">Generate Plan</span>
                         <div class="btn-loader hidden"></div>
                     </button>
                 </div>
-            </div>
-        </header>
-
-        <section class="page-h">
-            <div>
-                <div class="page-icon">▤</div>
                 <h1>Weekly Meal Prep</h1>
                 <p class="page-desc">Drag a recipe onto any day, then generate a plan and grocery list for the week.</p>
             </div>
@@ -104,9 +99,6 @@
             <aside class="recipe-library sidebar-container" data-panel="meals">
                 <div class="recipe-library-h">
                     <h2>Recipes</h2>
-                    <button type="button" class="btn btn-sm mobile-manage-btn" onclick="openManageModal()">
-                        Manage Recipes
-                    </button>
                 </div>
                 <p class="touch-hint">Tap a recipe, then tap a day to assign it.</p>
                 <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
