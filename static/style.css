@@ -251,24 +251,6 @@ body {
     gap: 10px;
 }
 
-.topbar-actions .selection-count {
-    font-size: 12px;
-    color: var(--ink-2);
-    background: var(--bg-2);
-    border-radius: 999px;
-    padding: 4px 10px;
-    line-height: 1.2;
-}
-
-.topbar-actions .selection-count[hidden] {
-    display: none;
-}
-
-.topbar-actions .selection-count b {
-    color: var(--ink);
-    font-weight: 600;
-}
-
 /* Page header */
 .page-h {
     padding: 22px 28px 18px;

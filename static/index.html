@@ -58,9 +58,11 @@
         <section class="page-h">
             <div>
                 <div class="topbar-actions hidden" id="action-bar">
-                    <span class="selection-count" id="selection-chip" hidden><b id="selected-count">0</b> selected</span>
+                    <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
+                        Manage Recipes
+                    </button>
                     <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()" disabled>
-                        View Ingredients
+                        <span class="btn-text">View Ingredients</span>
                     </button>
                     <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
                         Manage Recipes
