@@ -172,6 +172,7 @@ function renderMeals(meals) {
                     ${customizeHint}
                 </div>
                 <div class="meal-card-addons" hidden></div>
+                <button type="button" class="meal-card-remove" draggable="false" onclick="removeMealFromSlot(event, this)" title="Remove from day" aria-label="Remove from day">&times;</button>
             `;
             card.id = `meal-${mealId}-${index}`;
             card.setAttribute('data-meal-id', mealId);
@@ -384,6 +385,15 @@ function drop(ev) {
             draggedElt.classList.remove('selected');
         }
 
+        updateActionBar();
+    }
+}
+
+function removeMealFromSlot(ev, btn) {
+    ev.stopPropagation();
+    const card = btn.closest('.meal-card');
+    if (card && card.closest('.meal-slot')) {
+        card.remove();
         updateActionBar();
     }
 }
