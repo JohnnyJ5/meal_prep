@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "meal.h"
+#include "workout.h"
 
 /**
  * @brief Manages SQLite database operations for the Meal Prep application.
@@ -124,6 +125,66 @@ class DBManager {
      * @return true if tokens were found, false otherwise.
      */
     bool getGoogleTokens(std::string &accessToken, std::string &refreshToken, int64_t &expiryTime);
+
+    // --- Workouts ---
+
+    /**
+     * @brief Inserts a workout (with its blocks and exercises) atomically.
+     * @param workout Input/output. On success, workout.id is set to the new row id.
+     * @return true on success, false on failure (transaction rolled back).
+     */
+    bool addWorkout(Workout &workout);
+
+    /**
+     * @brief Replaces an existing workout. Blocks/exercises are wiped and re-inserted.
+     * @return true on success, false on failure (transaction rolled back).
+     */
+    bool updateWorkout(const Workout &workout);
+
+    /**
+     * @brief Deletes a workout by id. Cascades to blocks and exercises.
+     */
+    bool deleteWorkout(int id);
+
+    /**
+     * @brief Loads a single workout including its blocks and exercises.
+     * @return populated Workout with id != 0 on success; id == 0 if not found.
+     */
+    Workout getWorkout(int id);
+
+    /**
+     * @brief Lists all workouts, most recent first.
+     */
+    std::vector<WorkoutSummary> listWorkouts();
+
+    // --- Workout Templates ---
+
+    /**
+     * @brief Inserts a workout template (with its blocks/exercises) atomically.
+     * @param tmpl Input/output. On success, tmpl.id is set to the new row id.
+     */
+    bool addTemplate(WorkoutTemplate &tmpl);
+
+    /**
+     * @brief Replaces an existing template's name and blocks/exercises.
+     */
+    bool updateTemplate(const WorkoutTemplate &tmpl);
+
+    /**
+     * @brief Deletes a template by id. Cascades to blocks/exercises.
+     */
+    bool deleteTemplate(int id);
+
+    /**
+     * @brief Loads a single template with its blocks/exercises.
+     * @return populated WorkoutTemplate with id != 0 on success; id == 0 if not found.
+     */
+    WorkoutTemplate getTemplate(int id);
+
+    /**
+     * @brief Lists all templates, alphabetical by name.
+     */
+    std::vector<WorkoutTemplateSummary> listTemplates();
 
    private:
     sqlite3 *d_db{nullptr};

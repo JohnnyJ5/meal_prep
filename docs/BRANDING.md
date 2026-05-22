@@ -4,260 +4,444 @@ Reference for anyone — human or agent — building UI for the meal-prep app.
 Every new screen, modal, and component should pull from this document so the
 look stays consistent.
 
-The reference implementation lives at `static/mockups/notion-3-indigo-kanban.html`
-and its rendered preview at `static/mockups/notion-3-indigo-kanban.png`. When
-in doubt, open that file and copy the pattern.
+The reference implementation is the live app itself: `static/index.html` +
+`static/style.css`. When in doubt, open them and copy the pattern.
 
 ## Brand Vibe
 
-Clean productivity tool, Notion-adjacent. Minimal, text-forward, focused. A
-single cool indigo accent against neutral surfaces, with sage and rose
-reserved as secondary category colors. No glassmorphism, no gradients on
-content, no decorative emoji. The product should feel like a tool a serious
-home cook uses on a laptop, not a lifestyle app.
+**Warm editorial.** A cookbook crossed with a workshop notebook. Cream paper,
+espresso ink, terracotta accent, with sage and mustard as quiet secondary
+tones. Typography does the heavy lifting: a soft, slightly book-y serif
+(Fraunces) for display set against a refined geometric body face (Inter Tight).
+
+The product should feel like a recipe binder that happens to be a webapp —
+considered, hand-touched, with character — not a dashboard. Think *Apartamento
+magazine* and *Joshua Weissman's "An Unapologetic Cookbook"*, not Notion.
+
+Anti-patterns: cool blue/indigo accents, pure-white surfaces, all-uppercase
+tracked eyebrow labels stacked on every section, soft-pillow rounded cards.
+We retired those with the previous direction.
 
 ## Color Palette
 
-Implement as CSS custom properties at `:root`. These names are normative —
-new CSS should reference them, not raw hex codes.
+Implement as CSS custom properties at `:root`. These token names are normative
+— new CSS should reference them, not raw hex codes.
 
 ```css
 :root {
-  /* Surfaces */
-  --paper:       #FFFFFF;  /* primary card / panel background */
-  --bg:          #FAFAFA;  /* app background, sidebar, day columns */
-  --bg-2:        #F4F4F4;  /* hover state, segmented control track */
+  /* Surfaces — cream paper warmth, not sterile white */
+  --paper:       #F8F4EC;  /* primary surface, body background */
+  --paper-2:     #FBF8F2;  /* card / panel background (slightly brighter) */
+  --bg:          #F3EDE1;  /* sidebar, day columns, recessed surfaces */
+  --bg-2:        #ECE3D2;  /* hover surfaces, sunken regions */
 
-  /* Lines & dividers */
-  --line:        #ECECEC;  /* default 1px border */
-  --line-2:      #E0E0E0;  /* slightly stronger divider, dashed drop zones */
+  /* Lines — warm taupe, never cool gray */
+  --line:        #E0D5BF;  /* default 1px border */
+  --line-2:      #C9B998;  /* stronger divider, focus borders, dashed drop zones */
 
-  /* Text */
-  --ink:         #111111;  /* primary text, headings */
-  --ink-2:       #5F5F5F;  /* body, secondary text */
-  --ink-3:       #9A9A9A;  /* tertiary, placeholders, metadata */
+  /* Text — espresso family, not pure black */
+  --ink:         #1A1410;  /* primary text, headings */
+  --ink-2:       #5A4A3C;  /* body, secondary text */
+  --ink-3:       #93826C;  /* tertiary, placeholders, metadata, italics */
 
-  /* Accent (indigo) — primary brand color */
-  --accent:      #4F46E5;  /* buttons, active states, links, primary stripe */
-  --accent-2:    #6366F1;  /* hover / lighter accent */
-  --accent-soft: #EEF0FF;  /* active row background, today-column background */
-  --accent-mid:  #C7CBF5;  /* today-column border */
+  /* Accent — terracotta */
+  --accent-color:#C2410C;  /* buttons, today indicator, primary stripe, link color */
+  --accent-2:    #9A330A;  /* hover / darker terracotta */
+  --accent-soft: #F3E2D0;  /* selected meal card, soft fills */
+  --accent-mid:  #E8B89A;  /* mid-tone, soft borders */
 
-  /* Category accents — used on meal cards to differentiate meal types */
-  --sage:        #3E5C44;  /* vegetarian / vegan meals */
-  --rose:        #B91C5C;  /* red-meat meals */
+  /* Category / secondary accents */
+  --sage:        #3E5C44;  /* workouts, calendar events, "kept" actions */
+  --sage-soft:   #DDE5DA;  /* drag-over target, sage tag fills */
+  --mustard:     #B7791F;  /* templates, alternate tags */
+  --rose:        #B91C5C;  /* red-meat meals (reserved) */
+
+  /* Status — tuned warm */
+  --success-color: #2F7D32;
+  --error-color:   #B91C1C;
 }
 ```
 
 **Color usage rules:**
 
-- Indigo (`--accent`) is the only "brand" color. Never introduce a fourth
-  accent without updating this document.
-- Sage and rose are **categorical**, not brand colors — they tag meal type.
-  Use them on meal cards, recipe tags, and category dots. Do not use them
-  for buttons, links, or chrome.
-- Day columns: default day uses `--bg`. The current day uses `--accent-soft`
-  background with `--accent-mid` border. Past days are not styled differently.
-- Soft variants (`--accent-soft`, `#ECF1ED` for sage, `#FCE7EE` for rose)
-  are for backgrounds; pair with the strong variant for text or borders.
+- Terracotta (`--accent-color`) is the brand color. One sharp accent, used
+  sparingly — it should feel like a stamp, not a wash. Don't fill backgrounds
+  or large regions with it.
+- Sage is the *companion* accent used for workouts, calendar events, and
+  "secondary positive" states (kept items, drop targets). Treat it as the
+  brand color's quiet counterpart, not a third primary.
+- Mustard appears on templates (a saved-workout signal) and may be used for
+  cautionary or "in-progress" affordances. Use sparingly.
+- Rose is reserved for red-meat meal cards if/when categorical color tagging
+  returns. Do not use for chrome.
+- Day columns: default day uses `--paper-2`. The current day uses `--paper`
+  background with `--accent-color` border and a "TODAY" chip badge — not just
+  a fill change. *Today should feel like a stamp, not a wash.*
 
 ## Typography
 
-```css
-font-family: 'Inter', system-ui, sans-serif;
+Two faces, loaded together from Google Fonts:
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 ```
 
-Load Inter from Google Fonts (weights 400, 500, 600, 700). No serif faces,
-no display faces. Body line-height is `1.45`. Antialiasing is on:
-`-webkit-font-smoothing: antialiased`.
+```css
+--font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+--font-body:    'Inter Tight', system-ui, -apple-system, sans-serif;
+--font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+```
 
-| Role          | Size    | Weight | Letter-spacing | Notes                              |
-| ------------- | ------- | ------ | -------------- | ---------------------------------- |
-| Page title    | 26 px   | 700    | -0.02em        | e.g. "Week of May 18, 2026"        |
-| Section title | 18 px   | 700    | -0.01em        | Column headers, modal titles       |
-| Card title    | 13 px   | 600    | normal         | Meal name on a kanban card         |
-| Body          | 13.5 px | 400–500| normal         | Default                            |
-| Metadata      | 12 px   | 400    | normal         | Meta-row values, footnotes         |
-| Eyebrow       | 10–11 px| 600    | 0.12em         | UPPERCASE labels above titles      |
-| Tag / pill    | 10.5 px | 500    | normal         | Prep-time tags, count badges       |
+- **Fraunces** is a contemporary variable serif with soft optical sizing. Use
+  `font-variation-settings: 'opsz' <size>` on large headings to opt into the
+  display cut (warmer, more characterful) and `'SOFT' 50–100` for the rounded
+  variant on the brandmark and select titles. Italic is heavily used for
+  section labels and metadata — it gives the editorial voice.
+- **Inter Tight** is the body face. Tighter spacing than vanilla Inter, more
+  refined for a content-forward app. Body line-height is `1.5`.
+- **JetBrains Mono** is for code blocks and any monospace meta display.
 
-The `Eyebrow` style (uppercase, tracked, `--ink-3`) is used liberally for
-section labels — `RECIPES`, `CATEGORIES`, `WORKSPACES`, day-of-week, the
-`DINNER` / `LUNCH` label inside meal cards. Always small caps via
-`text-transform: uppercase`, never typed in actual caps.
+Antialiasing on: `-webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility`.
+
+| Role                | Family    | Size      | Weight   | Style          | Notes                                          |
+| ------------------- | --------- | --------- | -------- | -------------- | ---------------------------------------------- |
+| Page title (`h1`)   | Display   | 44 px     | 600      | normal         | `opsz: 144, SOFT: 50`, `tracking: -0.025em`    |
+| Panel heading       | Display   | 22 px     | 600      | normal         | Recipe library, workouts list                  |
+| Modal title         | Display   | 28 px     | 600      | normal         | `opsz: 72`                                     |
+| Section label       | Display   | 13–17 px  | 500      | **italic**     | Replaces old uppercase eyebrow                 |
+| Card title (recipe) | Body      | 13.5 px   | 500      | normal         | Meal name on a kanban card                     |
+| Card title (workout)| Display   | 19 px     | 600      | normal         | Workout heading on workout-card                |
+| Body                | Body      | 14.5 px   | 400      | normal         | Default                                        |
+| Metadata            | Body      | 12–12.5 px| 400      | **italic**     | Meta-row values, footnotes, crumbs             |
+| Date numeral        | Display   | 26 px     | 600      | normal         | `opsz: 72`, today gets `SOFT: 80`              |
+| Day name            | Display   | 12 px     | 500      | **italic**     | "Mon", "Tue" — mixed case, NOT uppercase       |
+| Today chip          | Body      | 9 px      | 700      | normal         | `letter-spacing: 0.18em`, uppercase, accent-on-paper |
+| Button              | Body      | 13 px     | 500–600  | normal         |                                                |
+| Mono / code         | Mono      | 12 px     | 400      | normal         |                                                |
+
+**Italic is a brand tool.** When in doubt about a section label or piece of
+metadata, set it in display italic at 13–16 px and `--ink-3`. That's the
+voice. Avoid uppercase tracked labels — they belong to the old direction.
 
 ## Layout
 
 ### App shell
-- Two-column: fixed `248px` left sidebar, fluid main column.
+- Two-column: fixed `220px` left sidebar, fluid main column. The sidebar is
+  intentionally narrow so the calendar grid can claim as much width as
+  possible.
 - Sidebar background is `--bg`, separated from main by a `1px --line` border.
 - Main column background is `--paper`.
-- App is full-viewport — no outer padding around the shell.
+- Body has a fixed-attachment paper-grain noise overlay (subtle, ~3.5% opacity)
+  applied via inline SVG `data:` URL. The grain is part of the brand — don't
+  remove it without redoing the surface tokens.
 
 ### Main column structure
-1. **Topbar** — 52 px tall, breadcrumbs left, segmented view + actions + avatar right. Bottom border `1px --line`.
-2. **Page header** — title + description + meta-row + week navigation. Bottom border `1px --line`.
-3. **Body** — recipe library (280 px) + 7-column kanban planner (fluid). Padding `16px 28px 22px`.
+1. **Topbar** — 52 px tall, breadcrumbs in italic crumbs left, integration
+   status / actions right. Bottom border `1px --line`. Background `--paper-2`.
+   Side padding `var(--s-5)`.
+2. **Page header (`.page-h`)** — editorial masthead. Top padding `var(--s-8)`,
+   side padding `var(--s-5)`, big serif `h1`, italic description below. A
+   soft gradient hairline replaces the hard bottom border.
+3. **Planner body** — two-column panel-and-grid. `240px 1fr` grid with
+   `var(--s-4)` gap and `var(--s-6) var(--s-5) var(--s-8)` padding. The
+   240px recipe rail keeps the calendar grid wide.
+4. **Workouts body** — full-width list and templates with `var(--s-5)` side
+   padding throughout (workouts list, empty state, templates section).
 
 ### Spacing scale
-Stick to multiples of 4 px. Common values:
 
-| Token       | Value | Used for                              |
-| ----------- | ----- | ------------------------------------- |
-| `xs`        | 4 px  | Inline gaps inside chips              |
-| `sm`        | 6–8 px| Card internal padding, button spacing |
-| `md`        | 12 px | Inter-section gap inside a panel      |
-| `lg`        | 16 px | Body padding top/bottom               |
-| `xl`        | 22–28 px | Page-header padding, body sides    |
+Use **only** the tokens. No raw pixel values for spacing in new CSS.
+
+| Token   | Value | Used for                                  |
+| ------- | ----- | ----------------------------------------- |
+| `--s-1` |  4 px | Inline gaps inside chips, tight rhythm    |
+| `--s-2` |  8 px | Card internal padding, button gaps        |
+| `--s-3` | 12 px | Inter-section gap inside a panel          |
+| `--s-4` | 16 px | Form-group separation, card padding       |
+| `--s-5` | 20 px | Panel padding                             |
+| `--s-6` | 24 px | Modal padding                             |
+| `--s-8` | 32 px | Page side padding                         |
+| `--s-10`| 40 px | Page-header top padding                   |
+| `--s-12`| 48 px | Hero / signature spacing                  |
 
 ### Border radii
 
-| Token | Value | Used for                       |
-| ----- | ----- | ------------------------------ |
-| `sm`  | 4 px  | Inline buttons, tag chips      |
-| `md`  | 6–7 px| Sidebar nav items, form inputs |
-| `lg`  | 8–10 px | Cards, day columns, panels   |
+We deliberately keep radii **small** to feel like printed cards rather than
+soft UI pillows.
 
-No fully-rounded pill shapes (`border-radius: 999px`) except for the small
-count badges and tag chips in the recipe list. Pill buttons were retired
-with the old glass design.
+| Use                       | Radius |
+| ------------------------- | ------ |
+| Buttons, inputs, tags     |  2 px  |
+| Cards, panels, modals     |  3–4 px|
+| Today / status pill chip  |  2 px  |
+
+Rounded-pill shapes (`border-radius: 999px`) are out. So is anything ≥ 8px.
 
 ### Shadows
 
-Mostly flat. Only two acceptable shadows:
+Layered, paper-like depth — never the puffy SaaS shadow.
 
 ```css
-box-shadow: 0 1px 0 rgba(0,0,0,0.02);    /* meal cards */
-box-shadow: 0 1px 2px rgba(0,0,0,0.04);  /* active segmented-control button */
+/* Panel: subtle hairline + soft drop */
+box-shadow: 0 1px 0 var(--line), 0 4px 12px -8px rgba(26, 20, 16, 0.08);
+
+/* Card-in-day-column: stacked printed-paper effect */
+box-shadow: 0 1px 0 var(--line), 0 2px 4px -2px rgba(26, 20, 16, 0.08);
+
+/* Hover lift on card */
+box-shadow: 0 1px 0 var(--line), 0 6px 14px -6px rgba(26, 20, 16, 0.12);
+
+/* Modal */
+box-shadow:
+  0 1px 0 var(--paper-2) inset,
+  0 30px 60px -20px rgba(26, 20, 16, 0.35),
+  0 10px 25px -8px rgba(26, 20, 16, 0.15);
 ```
 
-No drop-shadows on buttons, no glow, no blur, no inset shadows.
+All shadow colors use the warm `rgba(26, 20, 16, ...)` ink, never cool
+black/gray. The combination of a `0 1px 0 var(--line)` hairline + a soft drop
+gives the "this card is sitting on a piece of paper" feel.
+
+## Backgrounds & Texture
+
+- Body has a **paper-grain noise overlay** applied via inline SVG `data:` URL,
+  `background-attachment: fixed`. Around 3.5% opacity. This is non-negotiable
+  brand texture — don't strip it.
+- Panels and modals layer `--paper-2` over `--paper`/`--bg` to create a soft
+  hierarchy without resorting to drop shadows alone.
+- No gradients on chrome. No `backdrop-filter` blur except a tiny 2px blur on
+  the modal scrim.
 
 ## Components
 
+### Brandmark / workspace
+- Display-italic capital "M" at 32 px, terracotta, with `font-variation-settings:
+  'opsz' 144, 'SOFT' 100`. No background fill, no rounded square.
+- Followed by "Meal Prep" in display 17/600, with the subtitle "weekly
+  planner" set in italic at 11 px and `--ink-3`.
+- Underline the whole block with a `1px --line` divider.
+
 ### Sidebar nav item
 ```html
-<div class="nav-item"><span class="chev">▾</span><span class="ico">▤</span> Label <span class="ct">24</span></div>
-```
-- 5 px / 8 px padding, 5 px radius, 13 px text.
-- Hover: `--bg-2` background.
-- Active: `--accent-soft` background, `--accent` text, weight 600.
-- Children indent 18 px with a `1px --line` left border.
-
-### Button
-```css
-.btn { padding: 6px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 500 12px Inter; }
-.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
-```
-- Three variants only: default (white, hairline border), `primary` (indigo, white text), `ghost` (transparent, no border — sparingly).
-- No icon-only round buttons except `.iconbtn` (28×28, square with 6 px radius).
-- No emoji on button labels.
-
-### Segmented control (Day / Week / Month)
-- Container: `--bg-2` background, `1px --line` border, 7 px radius, 2 px inner padding.
-- Active button: `--paper` background, `1px 2px` shadow.
-- Inactive buttons: transparent, `--ink-2` text.
-
-### Recipe row (sidebar library)
-```html
-<div class="recipe">
-  <span class="h">⋮⋮</span>      <!-- drag handle -->
-  <span class="em">▤</span>       <!-- icon mark -->
-  <span class="n">Recipe name</span>
-  <span class="tag acc">35m</span> <!-- prep-time tag -->
+<div class="nav-item active">
+  <span class="nav-chev">▾</span>
+  <span class="nav-ico">▤</span>
+  <span>Weekly Planner</span>
 </div>
 ```
-- Tag color signals category: `.acc` = indigo (default), `.sage` = vegetarian, `.rose` = red meat.
-- Drag handle `⋮⋮` uses `--ink-3` at 60% opacity.
+- 12 px / 8 px padding, **2 px radius** (not the old 6 px).
+- Hover: background `--bg-2`, color `--ink`, `padding-left` slides right by
+  4 px — a small reveal animation.
+- Active: **no background fill.** Instead, a 2 px terracotta rule (`::before`)
+  pinned to the left edge of the item, plus weight 600 ink text. The accent
+  is the rule, not a wash.
+
+### Button
+
+```css
+.btn {
+  font: 500 13px var(--font-body);
+  padding: var(--s-2) var(--s-4);
+  border-radius: 2px;
+  border: 1px solid var(--line-2);
+  background: var(--paper);
+  color: var(--ink);
+  letter-spacing: 0.005em;
+}
+.btn-primary {
+  background: var(--accent-color);
+  color: var(--paper-2);
+  border-color: var(--accent-color);
+  font-weight: 600;
+  box-shadow: 0 1px 0 var(--accent-2);  /* "pressed-into-paper" lip */
+}
+.btn:active { transform: translateY(1px); }
+```
+
+- Three variants: default (transparent, hairline border), `primary`
+  (terracotta), `secondary` (alias for default), `danger` (warm red text +
+  hairline).
+- No icon-only round buttons except `.iconbtn` (30×30, square, 6 px radius —
+  used for week navigation).
+- No emoji in button labels.
+- Primary has a 1 px darker "lip" shadow so it reads as pressed into paper.
+
+### Recipe library panel (sidebar)
+```html
+<aside class="recipe-library">
+  <div class="recipe-library-h"><h2>Recipes</h2></div>
+  …
+</aside>
+```
+- `--paper-2` background, 1 px `--line` border, 4 px radius.
+- Panel heading is display 22/600, **mixed case**, decorated with a small
+  terracotta `❦` (heart fleuron) suffix. This fleuron is a brand mark —
+  reuse it for major panel headings, sparingly.
+- Bottom hairline under the heading.
+
+### Meal card — recipe library variant
+```html
+<div class="meal-card">
+  <h3>Sheet-Pan Salmon</h3>
+</div>
+```
+- Transparent background, no visible border at rest. Just a row of text.
+- Hover reveals: `--bg` background fill, an italic terracotta `→` arrow
+  slides in from the left, and `padding-left` increases — the row feels like
+  it leans forward to greet you.
+- Selected: `--accent-soft` background, title turns `--accent-2`, weight 600.
+
+### Meal card — kanban variant (placed in a day)
+- `--paper-2` background.
+- **3 px left border in `--accent-color`** — the "stamped recipe slip" look.
+- 2 px corner radius.
+- Layered hairline + drop shadow (see Shadows above).
+- Hover: lifts 1 px and rotates `-0.3deg`. Subtle, like a printed card
+  catching on the edge.
 
 ### Day column (kanban)
 ```html
-<div class="col [today]">
-  <div class="col-h">
-    <span class="dow">MON</span>
-    <span class="dn">18</span>
-    <span class="count">1</span>
-  </div>
-  <div class="card indigo">...</div>
-  <div class="col-add">+ add</div>
+<div class="day-col today">
+  <h3>
+    <span class="day-name">Mon</span>
+    <span class="date-label">18</span>
+  </h3>
+  …
 </div>
 ```
-- 10 px / 8 px padding, 10 px radius, `--bg` background, `1px --line` border.
-- `.today` column: `--accent-soft` background, `--accent-mid` border.
-- Column header has a dashed bottom divider (`1px dashed --line-2`).
-- `.col-add` ("+ add" affordance) is `--ink-3` 11 px, becomes `--accent` on hover.
+- Default: `--paper-2` background, 1 px `--line` border, **3 px radius**.
+- Drag-over: `--sage-soft` background, `--sage` border, lifts 2 px. Drag
+  targets use sage, not terracotta — terracotta is reserved for "today".
+- **Today**: `--paper` background, 1 px solid terracotta border (and a `0 0
+  0 1px --accent-color` ring to thicken it). A small "TODAY" pill badge
+  (terracotta on paper, uppercase tracked 9 px) sits over the top-left
+  corner of the column. The day name and date go terracotta with extra
+  warmth from `SOFT: 80` on the Fraunces date numeral.
+- Day name is display-italic mixed-case ("Mon", "Tue"). Never uppercase.
 
-### Meal card (kanban tile)
-```html
-<div class="card indigo">  <!-- or .sage, .rose -->
-  <div class="stripe"></div>
-  <div class="t">DINNER · 19:00</div>
-  <div class="n">Sheet-Pan Salmon</div>
-  <div class="foot"><span class="pip"></span>35m · 4 srv</div>
-</div>
-```
-- White background, `1px --line` border, 8 px radius, 8 px / 10 px padding.
-- Top stripe (3 px) and `.foot .pip` (6 px dot) use the card's category color.
-- Eyebrow `.t` is uppercase 9.5 px, includes meal-time and optionally clock time.
-- Card body `.n` is 13 px / weight 600.
-- Foot row shows prep time + serving count, separated by `·`.
+### Workout card
+- `--paper-2` background.
+- 3 px left border in **sage** (workouts are sage's domain — terracotta is
+  for meals).
+- Title in display 19/600. Meta line in italic, smaller, `--ink-3`.
+- Hover swaps the left-border color to terracotta and lifts 1 px.
 
-### Drop placeholder
-```html
-<div class="drop">drag a recipe<br>onto this day</div>
-```
-- Dashed `1px --line-2` border, 6 px radius, `--ink-3` text at 75% opacity.
+### Template card
+- `--paper-2` background, 1 px `--line` border.
+- A 2 px **mustard** stripe across the top (`::before`) — the "template"
+  signal.
+- Title in display 17/600. Meta in italic 12px, `--ink-3`.
 
-## Iconography
+### Templates section heading
+- Display italic 22/500. Decorated with a leading terracotta `❦` fleuron.
 
-- **No emoji.** Existing meal data may include 🍗/🍝 but new UI chrome should avoid them.
-- Use geometric Unicode marks for icons: `▤ ▦ ▥ ▨ ● ○ ▸ ▾ ⌕ ⌘ ⚙ ↗ ⋮⋮`.
-- Future improvement: replace these with a single icon library (Lucide
-  recommended) — but only as a coordinated migration, not piecemeal.
-- The workspace icon (top-left "M" badge) is `--accent` filled, white text,
-  26×26, 6 px radius, weight 700.
+### Modal
+- `--paper` content surface, 4 px radius.
+- Header: display 28/600 title (`opsz: 72`), `--line` divider below.
+- Backdrop: warm-ink scrim (`rgba(26, 20, 16, 0.5)`) + 2 px blur.
+- Layered shadow (see Shadows).
+
+### Form input
+- `--paper-2` background, `--line-2` border, **2 px radius**.
+- Focus: brightens to `--paper`, border goes terracotta, 3 px ring in
+  `--accent-soft`.
+
+### Empty state
+- Dashed `--line-2` border, 3 px radius, italic copy in `--ink-2`, centered.
+- Max-width: ~60ch. Place inside the page side gutters, not edge-to-edge.
+
+### Toast
+- `--ink` background, paper-cream text. 3 px terracotta left stripe.
+- Layered shadow.
 
 ## States & Interactions
 
-- **Hover**: surface elements lighten to `--bg-2`, links/buttons brighten one
-  step. No scale transforms.
-- **Active / selected**: `--accent-soft` background + `--accent` text.
-- **Today indicator**: column gets `--accent-soft` bg and `--accent-mid` border; day number gets `--accent` color.
-- **Drag-over (drop target)**: column border becomes `--accent`, background tints to `--accent-soft`. No scale or shadow change.
-- **Loading**: a 1 px indeterminate progress bar at the top of the panel,
-  `--accent` over `--accent-soft`. No spinners.
-- **Empty state**: dashed-border placeholder with `--ink-3` text. Keep the copy short and lowercase ("drag a recipe", "weekend", "+ add").
+- **Hover (rows/cards)**: subtle paper-color shift + occasional translate-up
+  by 1 px. Drag-source rows additionally slide right (`padding-left`) and
+  reveal an italic arrow `→`.
+- **Hover (buttons)**: background brightens one step, border darkens to
+  `--ink-3`. No hue shift.
+- **Active / selected**: `--accent-soft` background + accent text. For
+  navigation, *no fill* — use the 2 px left rule instead.
+- **Today indicator**: column gets paper background + terracotta border +
+  "TODAY" pill chip. The badge is the brand moment; don't replace it with
+  a fill change.
+- **Drag-over (drop target)**: sage tint, sage border, 2 px lift. Sage —
+  not terracotta — because "you're about to place" is a positive action,
+  and reserving terracotta for "today" keeps that moment special.
+- **Drag source**: opacity 0.4 + `-1deg` rotation. The dragged card looks
+  like it's been lifted off the surface.
+- **Loading**: a circular spinner with `--accent-color` top stroke.
+- **Focus ring**: 3 px `--accent-soft` glow, 1 px terracotta border.
+
+## Motion
+
+- Transitions default to `0.18s ease`. Hover effects, focus rings, and
+  expansions all use this timing.
+- Page reveal: each page (`.planner-body`, `#page-workouts`) animates in
+  with `pageReveal` — a small 8 px translateY + opacity over 0.5 s on a
+  `cubic-bezier(0.22, 0.9, 0.3, 1)` curve. Don't add more entry animations
+  on top.
+- Modals: 0.25 s translateY-up + fade.
+- Card hover lift: max 1–2 px translate. Anything bigger feels like a toy.
+- Slide-in arrow on recipe row hover: a tiny 0.18 s `slideIn` keyframe.
+
+## Iconography
+
+- Geometric Unicode marks are still used for chrome icons (`▾ ▤ ◆ ↗ ‹ ›`).
+  They render acceptably and avoid an icon-font dependency. **Open
+  improvement:** replace with Lucide SVGs at 1.5 px stroke as a coordinated
+  migration.
+- The terracotta **❦ (floral heart / fleuron)** is the only decorative
+  glyph and serves as a brand-mark accent on panel and section headings.
+  Use sparingly — at most twice per visible page.
+- No emoji in UI chrome. Existing meal data may include 🍗/🍝 but new
+  surfaces should avoid them.
 
 ## What NOT to do
 
-- ❌ Pill-shaped buttons (`border-radius: 999px`) on anything bigger than a tag.
-- ❌ Glassmorphism, `backdrop-filter: blur`, gradient backgrounds on chrome.
-- ❌ Drop shadows above 1–2 px blur.
-- ❌ Decorative emoji in button labels, headings, or empty states.
-- ❌ Outfit font, serif headings, or any new typeface — Inter only.
-- ❌ Dark mode (out of scope until explicitly designed).
-- ❌ Color-shifting hover states that change hue. Lighten, don't recolor.
+- ❌ Inter (the regular face) — we moved to Inter Tight + Fraunces.
+- ❌ Indigo/purple accents. Anywhere.
+- ❌ Pure-white `#FFFFFF` surfaces. Always go cream.
+- ❌ Uppercase-tracked eyebrow labels for section titles. Use display italic
+  in mixed case instead.
+- ❌ Soft-pillow rounded corners ≥ 8 px on cards and panels. Keep things
+  printed-edge.
+- ❌ Color-shifting hover states that change hue. Lighten/translate, don't
+  recolor.
+- ❌ Flat `0 4px 8px rgba(0,0,0,0.04)` shadow without a paired 1 px
+  hairline. Always layer the two.
+- ❌ Backdrop-blur glassmorphism on chrome. The only blur is the 2 px modal
+  scrim.
+- ❌ Gradients on buttons, cards, or chrome.
+- ❌ Dark mode (out of scope until explicitly designed; the warm palette
+  needs a deliberate dark counterpart).
 
 ## Adding a new screen
 
-1. Open `static/mockups/notion-3-indigo-kanban.html` and copy the shell.
-2. Wire the new content into the main column. Reuse the topbar, page-header,
-   and sidebar patterns verbatim.
-3. Reference CSS variables, not hex codes.
-4. Render a 1440×900 PNG of the new screen into `static/mockups/` and commit
-   it alongside the implementation so the design system stays self-documenting.
-5. If a new component is needed (e.g., a data table), add a section to this
-   file describing its tokens, states, and copy norms.
+1. Open `static/index.html` + `static/style.css` and copy the shell + an
+   existing page section (`#page-planner` or `#page-workouts`).
+2. Use page-header `.page-h` markup verbatim — masthead title + italic
+   description.
+3. Reference CSS tokens (`--paper-2`, `--ink-2`, `--s-4`, etc.). Never
+   hard-code hex or px values for color/spacing.
+4. Set every section/panel heading in display (Fraunces). Use italic for
+   labels and metadata.
+5. If a new component is needed, add a section to this file describing its
+   tokens, states, and copy norms.
+6. Render a 1440×900 screenshot of the new screen into `static/mockups/` so
+   the design system stays self-documenting.
 
 ## File map
 
-| File                                                | Purpose                                  |
-| --------------------------------------------------- | ---------------------------------------- |
-| `docs/BRANDING.md`                                  | This document — single source of truth   |
-| `static/mockups/notion-3-indigo-kanban.html`        | Canonical reference layout               |
-| `static/mockups/notion-3-indigo-kanban.png`         | Rendered preview at 1440×900             |
-| `static/index.html`                                 | Live app markup (port from mockup)       |
-| `static/style.css`                                  | Live app styles (port from mockup)       |
+| File                         | Purpose                                  |
+| ---------------------------- | ---------------------------------------- |
+| `docs/BRANDING.md`           | This document — single source of truth   |
+| `static/index.html`          | Live app markup (reference layout)       |
+| `static/style.css`           | Live app styles (token + component defs) |
+| `static/mockups/`            | Rendered screenshots per page            |
 
-When the live app and the mockup diverge, treat the mockup + this doc as the
-intent and update the live files to match — not the other way around.
+When the live app and a mockup diverge, treat this document + the live app
+as intent. Old mockups (e.g. the `notion-3-indigo-kanban.*` files from the
+previous direction) are historical references only — do **not** use them as
+a target.
