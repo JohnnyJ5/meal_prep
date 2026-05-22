@@ -7,7 +7,7 @@
     <title>Meal Prep</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -24,7 +24,6 @@
         <div class="nav-section">Plan</div>
         <nav class="sidebar-nav">
             <div class="nav-item active" id="nav-planner" onclick="showPage('planner')">
-                <span class="nav-chev">▾</span>
                 <span class="nav-ico">▤</span>
                 <span>Weekly Planner</span>
             </div>
@@ -33,7 +32,6 @@
         <div class="nav-section">Train</div>
         <nav class="sidebar-nav">
             <div class="nav-item" id="nav-workouts" onclick="showPage('workouts')">
-                <span class="nav-chev">▾</span>
                 <span class="nav-ico">◆</span>
                 <span>Workouts</span>
             </div>
@@ -41,7 +39,6 @@
 
         <div class="nav-section">Integrations</div>
         <a class="nav-item nav-item-stack" href="/auth/google" id="sidebar-calendar-link">
-            <span class="nav-chev"></span>
             <span class="nav-ico">↗</span>
             <span class="nav-item-body">
                 <span>Google Calendar</span>
@@ -327,13 +324,13 @@
         <div id="page-workouts" class="hidden">
             <section class="page-h">
                 <div>
-                    <div class="topbar-actions" id="workouts-action-bar">
-                        <button id="workout-new-btn" type="button" class="btn btn-primary" onclick="openWorkoutForm()">
-                            + Log Workout
-                        </button>
-                    </div>
                     <h1>Workouts</h1>
                     <p class="page-desc">Log circuit and straight-set workouts. Track date, duration, and what you did.</p>
+                    <div class="topbar-actions" id="workouts-action-bar">
+                        <button id="workout-new-btn" type="button" class="btn btn-primary" onclick="openWorkoutForm()">
+                            Create Workout
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -342,15 +339,18 @@
                 <p>Loading workouts…</p>
             </section>
 
-            <section id="workouts-empty" class="hidden" style="padding: 1.5rem 0; color: var(--ink-2);">
-                <p>No workouts logged yet. Click <b>+ Log Workout</b> to add your first one.</p>
-            </section>
-
-            <section id="workouts-list" class="workouts-list hidden"></section>
-
             <section id="templates-section" class="templates-section hidden">
                 <h2 class="templates-h">Saved templates</h2>
                 <div id="templates-list" class="templates-list"></div>
+            </section>
+
+            <section id="workouts-empty" class="workouts-empty hidden">
+                <p>No workouts logged yet. Click <b>Create Workout</b> to add your first one.</p>
+            </section>
+
+            <section id="workouts-logs-section" class="workouts-logs-section hidden">
+                <h2 class="workouts-logs-h">Workout logs</h2>
+                <div id="workouts-list" class="workouts-list"></div>
             </section>
         </div><!-- /#page-workouts -->
 

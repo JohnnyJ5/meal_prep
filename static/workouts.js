@@ -48,10 +48,11 @@
 
     async function fetchWorkouts() {
         const list = document.getElementById('workouts-list');
+        const section = document.getElementById('workouts-logs-section');
         const loading = document.getElementById('workouts-loading');
         const empty = document.getElementById('workouts-empty');
         loading.classList.remove('hidden');
-        list.classList.add('hidden');
+        section.classList.add('hidden');
         empty.classList.add('hidden');
 
         try {
@@ -64,34 +65,97 @@
                 list.innerHTML = '';
                 return;
             }
-            list.classList.remove('hidden');
+            section.classList.remove('hidden');
             renderWorkoutList(items);
         } catch (e) {
             loading.classList.add('hidden');
-            list.classList.remove('hidden');
+            section.classList.remove('hidden');
             list.innerHTML = '<p style="color:var(--error-color)">Failed to load workouts.</p>';
             console.error(e);
         }
     }
 
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const collapsedMonths = new Set(
+        JSON.parse(sessionStorage.getItem('workouts.collapsedMonths') || '[]')
+    );
+
+    function persistCollapsed() {
+        sessionStorage.setItem('workouts.collapsedMonths', JSON.stringify([...collapsedMonths]));
+    }
+
+    function monthKey(performedOn) {
+        // performed_on is YYYY-MM-DD; fall back to "Undated" if missing/malformed
+        if (!performedOn || performedOn.length < 7) return { key: 'undated', label: 'Undated', sort: '' };
+        const [y, m] = performedOn.split('-');
+        const idx = parseInt(m, 10) - 1;
+        if (isNaN(idx) || idx < 0 || idx > 11) return { key: 'undated', label: 'Undated', sort: '' };
+        return { key: `${y}-${m}`, label: `${MONTH_NAMES[idx]} ${y}`, sort: `${y}-${m}` };
+    }
+
     function renderWorkoutList(items) {
         const list = document.getElementById('workouts-list');
         list.innerHTML = '';
+
+        // Group by month, preserving the API's order within each group.
+        const groups = new Map();
         items.forEach((w) => {
-            const card = document.createElement('div');
-            card.className = 'workout-card';
-            card.onclick = () => openWorkoutDetail(w.id);
-            const title = w.name || w.performed_on;
-            card.innerHTML = `
-                <div class="workout-card-title">${escapeHtml(title)}</div>
-                <div class="workout-card-meta">
-                    <span>${escapeHtml(w.performed_on)}</span>
-                    <span>•</span>
-                    <span>${formatDuration(w.duration_seconds)}</span>
-                    <span>•</span>
-                    <span>${w.exercise_count} exercise${w.exercise_count === 1 ? '' : 's'}</span>
-                </div>`;
-            list.appendChild(card);
+            const { key, label, sort } = monthKey(w.performed_on);
+            if (!groups.has(key)) groups.set(key, { key, label, sort, items: [] });
+            groups.get(key).items.push(w);
+        });
+
+        // Sort groups newest-first; "undated" sinks to the bottom.
+        const sortedGroups = [...groups.values()].sort((a, b) => {
+            if (!a.sort) return 1;
+            if (!b.sort) return -1;
+            return b.sort.localeCompare(a.sort);
+        });
+
+        sortedGroups.forEach((group) => {
+            const isCollapsed = collapsedMonths.has(group.key);
+
+            const header = document.createElement('button');
+            header.type = 'button';
+            header.className = 'month-group-h' + (isCollapsed ? ' collapsed' : '');
+            header.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+            header.innerHTML = `
+                <span class="month-group-chevron">▾</span>
+                <span class="month-group-label">${escapeHtml(group.label)}</span>
+                <span class="month-group-count">${group.items.length} workout${group.items.length === 1 ? '' : 's'}</span>`;
+
+            const grid = document.createElement('div');
+            grid.className = 'month-group-grid' + (isCollapsed ? ' hidden' : '');
+
+            group.items.forEach((w) => {
+                const card = document.createElement('div');
+                card.className = 'workout-card';
+                card.onclick = () => openWorkoutDetail(w.id);
+                const title = w.name || 'Untitled workout';
+                card.innerHTML = `
+                    <div class="workout-card-title">${escapeHtml(title)}</div>
+                    <div class="workout-card-meta">
+                        <span>${escapeHtml(w.performed_on)}</span>
+                        <span>•</span>
+                        <span>${formatDuration(w.duration_seconds)}</span>
+                        <span>•</span>
+                        <span>${w.exercise_count} exercise${w.exercise_count === 1 ? '' : 's'}</span>
+                    </div>`;
+                grid.appendChild(card);
+            });
+
+            header.onclick = () => {
+                const nowCollapsed = !header.classList.contains('collapsed');
+                header.classList.toggle('collapsed', nowCollapsed);
+                grid.classList.toggle('hidden', nowCollapsed);
+                header.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
+                if (nowCollapsed) collapsedMonths.add(group.key);
+                else collapsedMonths.delete(group.key);
+                persistCollapsed();
+            };
+
+            list.appendChild(header);
+            list.appendChild(grid);
         });
     }
 

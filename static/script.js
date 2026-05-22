@@ -733,18 +733,16 @@ async function cancelPlan() {
 function showToast(message, success = true) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.style.background = success ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)';
-    toast.style.color = '#fff';
-    toast.classList.remove('hidden');
+    toast.classList.remove('hidden', 'toast-error');
+    if (!success) toast.classList.add('toast-error');
     setTimeout(() => toast.classList.add('hidden'), 3500);
 }
 
 function setOrderStatus(message, success) {
     const el = document.getElementById('order-status');
     el.textContent = message;
-    el.style.background = success ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
-    el.style.color = success ? '#16a34a' : '#dc2626';
-    el.classList.remove('hidden');
+    el.classList.remove('hidden', 'order-status-error', 'order-status-success');
+    el.classList.add(success ? 'order-status-success' : 'order-status-error');
 }
 
 async function scheduleOrderEvent() {
