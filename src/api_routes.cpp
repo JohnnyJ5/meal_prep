@@ -460,6 +460,123 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             return crow::response(200, "Workout deleted");
         });
 
+    // --- Workout Template Routes ---
+
+    auto templateToJson = [](const WorkoutTemplate &t) {
+        crow::json::wvalue res;
+        res["id"] = t.id;
+        res["name"] = t.name;
+        res["created_at"] = static_cast<int64_t>(t.created_at);
+        for (size_t bi = 0; bi < t.blocks.size(); ++bi) {
+            const auto &b = t.blocks[bi];
+            res["blocks"][bi]["id"] = b.id;
+            res["blocks"][bi]["position"] = b.position;
+            res["blocks"][bi]["block_type"] = blockTypeToString(b.type);
+            res["blocks"][bi]["rounds"] = b.rounds;
+            res["blocks"][bi]["rest_seconds"] = b.rest_seconds;
+            for (size_t ei = 0; ei < b.exercises.size(); ++ei) {
+                const auto &e = b.exercises[ei];
+                res["blocks"][bi]["exercises"][ei]["id"] = e.id;
+                res["blocks"][bi]["exercises"][ei]["position"] = e.position;
+                res["blocks"][bi]["exercises"][ei]["name"] = e.name;
+                res["blocks"][bi]["exercises"][ei]["exercise_type"] = exerciseTypeToString(e.type);
+                res["blocks"][bi]["exercises"][ei]["sets"] = e.sets;
+                res["blocks"][bi]["exercises"][ei]["reps"] = e.reps;
+                res["blocks"][bi]["exercises"][ei]["weight_lbs"] = e.weight_lbs;
+                res["blocks"][bi]["exercises"][ei]["distance"] = e.distance;
+                res["blocks"][bi]["exercises"][ei]["distance_unit"] = e.distance_unit;
+                res["blocks"][bi]["exercises"][ei]["duration_seconds"] = e.duration_seconds;
+                res["blocks"][bi]["exercises"][ei]["rest_seconds"] = e.rest_seconds;
+            }
+        }
+        return res;
+    };
+
+    auto templateFromJson = [workoutFromJson](const crow::json::rvalue &body) {
+        WorkoutTemplate t;
+        if (body.has("name")) t.name = std::string(body["name"].s());
+        // Reuse workout's block parser: workoutFromJson reads "blocks" and ignores the
+        // workout-only fields if absent.
+        Workout w = workoutFromJson(body);
+        t.blocks = std::move(w.blocks);
+        return t;
+    };
+
+    // Route: List all templates
+    CROW_ROUTE(app, "/api/workout-templates")
+        .methods(crow::HTTPMethod::GET)([&dbManager]() {
+            auto list = dbManager->listTemplates();
+            crow::json::wvalue res = crow::json::wvalue::list();
+            for (size_t i = 0; i < list.size(); ++i) {
+                res[i]["id"] = list[i].id;
+                res[i]["name"] = list[i].name;
+                res[i]["exercise_count"] = list[i].exercise_count;
+            }
+            CROW_LOG_INFO << "Listed " << list.size() << " template(s)";
+            return crow::response(std::move(res));
+        });
+
+    // Route: Get one template
+    CROW_ROUTE(app, "/api/workout-templates/<int>")
+        .methods(crow::HTTPMethod::GET)([&dbManager, templateToJson](int id) {
+            WorkoutTemplate t = dbManager->getTemplate(id);
+            if (t.id == 0) return crow::response(404, "Template not found");
+            return crow::response(templateToJson(t));
+        });
+
+    // Route: Create a template
+    CROW_ROUTE(app, "/api/workout-templates")
+        .methods(crow::HTTPMethod::POST)(
+            [&dbManager, templateFromJson, templateToJson](const crow::request &req) {
+                auto body = crow::json::load(req.body);
+                if (!body) return crow::response(400, "Invalid JSON");
+                try {
+                    WorkoutTemplate t = templateFromJson(body);
+                    if (t.name.empty()) return crow::response(400, "name is required");
+                    t.created_at = static_cast<int64_t>(std::time(nullptr));
+                    if (!dbManager->addTemplate(t)) {
+                        return crow::response(500,
+                                              "Failed to save template (name may already exist)");
+                    }
+                    CROW_LOG_INFO << "Saved template id=" << t.id << " name=" << t.name;
+                    return crow::response(templateToJson(dbManager->getTemplate(t.id)));
+                } catch (const std::exception &e) {
+                    CROW_LOG_ERROR << "Invalid template JSON: " << e.what();
+                    return crow::response(400, "Invalid template data");
+                }
+            });
+
+    // Route: Update a template
+    CROW_ROUTE(app, "/api/workout-templates/<int>")
+        .methods(crow::HTTPMethod::PUT)(
+            [&dbManager, templateFromJson, templateToJson](const crow::request &req, int id) {
+                auto body = crow::json::load(req.body);
+                if (!body) return crow::response(400, "Invalid JSON");
+                try {
+                    WorkoutTemplate t = templateFromJson(body);
+                    t.id = id;
+                    if (t.name.empty()) return crow::response(400, "name is required");
+                    if (!dbManager->updateTemplate(t)) {
+                        return crow::response(500, "Failed to update template");
+                    }
+                    CROW_LOG_INFO << "Updated template id=" << id;
+                    return crow::response(templateToJson(dbManager->getTemplate(id)));
+                } catch (const std::exception &e) {
+                    CROW_LOG_ERROR << "Invalid template JSON: " << e.what();
+                    return crow::response(400, "Invalid template data");
+                }
+            });
+
+    // Route: Delete a template
+    CROW_ROUTE(app, "/api/workout-templates/<int>")
+        .methods(crow::HTTPMethod::DELETE)([&dbManager](int id) {
+            if (!dbManager->deleteTemplate(id)) {
+                return crow::response(500, "Failed to delete template");
+            }
+            CROW_LOG_INFO << "Deleted template id=" << id;
+            return crow::response(200, "Template deleted");
+        });
+
     // Route: Serve index.html at root
     CROW_ROUTE(app, "/")
     ([googleOAuth](const crow::request &req) {

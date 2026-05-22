@@ -4,6 +4,8 @@
 (function () {
     let workoutsLoaded = false;
     let currentDetailId = null;
+    let currentTemplateId = null;
+    let templatesCache = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('workout-date');
@@ -29,6 +31,7 @@
             navWorkouts.classList.add('active');
             if (!workoutsLoaded) {
                 fetchWorkouts();
+                fetchTemplates();
                 workoutsLoaded = true;
             }
         } else {
@@ -96,13 +99,19 @@
 
     let editingWorkoutId = null;
 
-    window.openWorkoutForm = function () {
+    window.openWorkoutForm = function (presetBlocks) {
         editingWorkoutId = null;
         document.getElementById('workout-modal-title').textContent = 'Log Workout';
         document.getElementById('workout-form').reset();
         document.getElementById('workout-date').valueAsDate = new Date();
         document.getElementById('workout-blocks').innerHTML = '';
-        addBlock();  // start with one straight block, one empty exercise
+        if (presetBlocks && presetBlocks.length > 0) {
+            presetBlocks.forEach((b) => addBlock(b));
+        } else {
+            addBlock();  // start with one straight block, one empty exercise
+        }
+        renderTemplatePicker();
+        document.getElementById('template-picker').value = '';
         document.getElementById('workout-modal').classList.remove('hidden');
     };
 
@@ -361,6 +370,7 @@
         document.getElementById('workout-notes').value = w.notes || '';
         document.getElementById('workout-blocks').innerHTML = '';
         (w.blocks || []).forEach((b) => addBlock(b));
+        document.getElementById('template-picker-wrap').classList.add('hidden');
         document.getElementById('workout-modal').classList.remove('hidden');
     };
 
@@ -409,6 +419,162 @@
             addExercise(blockEl.querySelector('.add-exercise-btn'));
         }
     }
+
+    // --- Templates -------------------------------------------------------
+
+    async function fetchTemplates() {
+        try {
+            const res = await fetch('/api/workout-templates');
+            if (!res.ok) throw new Error('http ' + res.status);
+            templatesCache = await res.json();
+            renderTemplatesSection();
+            renderTemplatePicker();
+        } catch (e) {
+            console.error('Failed to load templates', e);
+        }
+    }
+
+    function renderTemplatesSection() {
+        const section = document.getElementById('templates-section');
+        const list = document.getElementById('templates-list');
+        if (!section || !list) return;
+        if (!templatesCache || templatesCache.length === 0) {
+            section.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+        }
+        section.classList.remove('hidden');
+        list.innerHTML = '';
+        templatesCache.forEach((t) => {
+            const card = document.createElement('div');
+            card.className = 'template-card';
+            card.onclick = () => openTemplateDetail(t.id);
+            card.innerHTML = `
+                <div class="template-card-title">${escapeHtml(t.name)}</div>
+                <div class="template-card-meta">${t.exercise_count} exercise${t.exercise_count === 1 ? '' : 's'}</div>`;
+            list.appendChild(card);
+        });
+    }
+
+    function renderTemplatePicker() {
+        const wrap = document.getElementById('template-picker-wrap');
+        const picker = document.getElementById('template-picker');
+        if (!wrap || !picker) return;
+        if (!templatesCache || templatesCache.length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+        wrap.classList.remove('hidden');
+        picker.innerHTML = '<option value="">— blank workout —</option>';
+        templatesCache.forEach((t) => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            picker.appendChild(opt);
+        });
+    }
+
+    window.loadTemplateIntoForm = async function (id) {
+        if (!id) return;
+        try {
+            const res = await fetch('/api/workout-templates/' + id);
+            if (!res.ok) throw new Error('http ' + res.status);
+            const t = await res.json();
+            if (!document.getElementById('workout-name').value) {
+                document.getElementById('workout-name').value = t.name;
+            }
+            document.getElementById('workout-blocks').innerHTML = '';
+            (t.blocks || []).forEach((b) => addBlock(b));
+        } catch (e) {
+            alert('Failed to load template: ' + e.message);
+        }
+    };
+
+    window.openSaveTemplateDialog = function () {
+        // Pre-fill template name from the workout name if present.
+        const wname = document.getElementById('workout-name').value.trim();
+        document.getElementById('template-name-input').value = wname;
+        document.getElementById('template-name-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('template-name-input').focus(), 50);
+    };
+
+    window.saveTemplate = async function (event) {
+        event.preventDefault();
+        const name = document.getElementById('template-name-input').value.trim();
+        if (!name) return;
+        const wFromForm = collectWorkoutFromForm();
+        if (wFromForm.blocks.length === 0) {
+            alert('Add at least one exercise before saving as a template.');
+            return;
+        }
+        const payload = { name, blocks: wFromForm.blocks };
+        try {
+            const res = await fetch('/api/workout-templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || ('http ' + res.status));
+            }
+            document.getElementById('template-name-modal').classList.add('hidden');
+            await fetchTemplates();
+        } catch (e) {
+            alert('Failed to save template: ' + e.message);
+        }
+    };
+
+    async function openTemplateDetail(id) {
+        currentTemplateId = id;
+        try {
+            const res = await fetch('/api/workout-templates/' + id);
+            if (!res.ok) throw new Error('http ' + res.status);
+            const t = await res.json();
+            renderTemplateDetail(t);
+            document.getElementById('template-detail-modal').classList.remove('hidden');
+        } catch (e) {
+            alert('Failed to load template: ' + e.message);
+        }
+    }
+    window.openTemplateDetail = openTemplateDetail;
+
+    function renderTemplateDetail(t) {
+        document.getElementById('template-detail-title').textContent = t.name;
+        const body = document.getElementById('template-detail-body');
+        const parts = [];
+        (t.blocks || []).forEach((b, bi) => {
+            const heading = b.block_type === 'circuit'
+                ? `Circuit — ${b.rounds} round${b.rounds === 1 ? '' : 's'}` + (b.rest_seconds ? ` (rest ${b.rest_seconds}s)` : '')
+                : 'Straight sets' + (b.rest_seconds ? ` (rest ${b.rest_seconds}s)` : '');
+            parts.push(`<div class="detail-block"><h4>Block ${bi + 1}: ${heading}</h4><ul>`);
+            (b.exercises || []).forEach((e) => {
+                parts.push(`<li>${formatExerciseDetail(e)}</li>`);
+            });
+            parts.push('</ul></div>');
+        });
+        body.innerHTML = parts.join('') || '<p>(empty template)</p>';
+    }
+
+    window.useCurrentTemplate = async function () {
+        if (!currentTemplateId) return;
+        const res = await fetch('/api/workout-templates/' + currentTemplateId);
+        if (!res.ok) return alert('Could not load template');
+        const t = await res.json();
+        document.getElementById('template-detail-modal').classList.add('hidden');
+        openWorkoutForm(t.blocks || []);
+        document.getElementById('workout-name').value = t.name;
+    };
+
+    window.deleteCurrentTemplate = async function () {
+        if (!currentTemplateId) return;
+        if (!confirm('Delete this template? Logged workouts that used it are unaffected.')) return;
+        const res = await fetch('/api/workout-templates/' + currentTemplateId, { method: 'DELETE' });
+        if (!res.ok) return alert('Failed to delete template');
+        document.getElementById('template-detail-modal').classList.add('hidden');
+        currentTemplateId = null;
+        fetchTemplates();
+    };
 
     // --- Helpers ---------------------------------------------------------
 

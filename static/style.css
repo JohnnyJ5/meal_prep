@@ -1534,3 +1534,48 @@ h1 {
 .detail-block .muted {
     color: var(--ink-3);
 }
+
+.templates-section {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+}
+
+.templates-h {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    margin-bottom: 0.6rem;
+}
+
+.templates-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.6rem;
+    padding-bottom: 2rem;
+}
+
+.template-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.7rem 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.template-card:hover {
+    border-color: var(--accent-mid);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.template-card-title {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.2rem;
+}
+
+.template-card-meta {
+    color: var(--ink-2);
+    font-size: 0.82rem;
+}

@@ -347,6 +347,11 @@
             </section>
 
             <section id="workouts-list" class="workouts-list hidden"></section>
+
+            <section id="templates-section" class="templates-section hidden">
+                <h2 class="templates-h">Saved templates</h2>
+                <div id="templates-list" class="templates-list"></div>
+            </section>
         </div><!-- /#page-workouts -->
 
         <!-- Workout Log/Edit Modal -->
@@ -358,6 +363,13 @@
                 </div>
 
                 <form id="workout-form" onsubmit="saveWorkout(event)">
+                    <div id="template-picker-wrap" class="form-group hidden">
+                        <label for="template-picker">Start from template</label>
+                        <select id="template-picker" class="form-control" onchange="loadTemplateIntoForm(this.value)">
+                            <option value="">— blank workout —</option>
+                        </select>
+                    </div>
+
                     <div class="workout-form-meta">
                         <div class="form-group">
                             <label for="workout-name">Name (optional)</label>
@@ -385,6 +397,7 @@
 
                     <div class="form-actions mt-4">
                         <button type="button" onclick="closeWorkoutModal()" class="btn btn-secondary">Cancel</button>
+                        <button type="button" onclick="openSaveTemplateDialog()" class="btn btn-secondary">Save as Template</button>
                         <button type="submit" class="btn btn-primary">Save Workout</button>
                     </div>
                 </form>
@@ -403,6 +416,43 @@
                     <button type="button" onclick="editCurrentWorkout()" class="btn btn-secondary">Edit</button>
                     <button type="button" onclick="deleteCurrentWorkout()" class="btn btn-danger">Delete</button>
                     <button type="button" onclick="closeModal('workout-detail-modal')" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Template Name Modal -->
+        <div id="template-name-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="template-name-modal-title">Save as Template</h2>
+                    <button onclick="closeModal('template-name-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <form id="template-name-form" onsubmit="saveTemplate(event)">
+                    <div class="form-group">
+                        <label for="template-name-input">Template name</label>
+                        <input type="text" id="template-name-input" class="form-control" required
+                               placeholder="e.g., Hero circuit">
+                    </div>
+                    <div class="form-actions mt-4">
+                        <button type="button" onclick="closeModal('template-name-modal')" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Template</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Template Detail Modal -->
+        <div id="template-detail-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2 id="template-detail-title">Template</h2>
+                    <button onclick="closeModal('template-detail-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <div id="template-detail-body"></div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="useCurrentTemplate()" class="btn btn-secondary">Use for new workout</button>
+                    <button type="button" onclick="deleteCurrentTemplate()" class="btn btn-danger">Delete</button>
+                    <button type="button" onclick="closeModal('template-detail-modal')" class="btn btn-primary">Close</button>
                 </div>
             </div>
         </div>

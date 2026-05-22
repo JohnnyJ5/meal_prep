@@ -240,3 +240,136 @@ TEST_F(WorkoutTest, GetMissingWorkoutReturnsEmpty) {
     EXPECT_EQ(missing.id, 0);
     EXPECT_TRUE(missing.blocks.empty());
 }
+
+// --- Template tests --------------------------------------------------
+
+class TemplateTest : public WorkoutTest {
+   protected:
+    WorkoutTemplate buildSampleTemplate(const std::string &name = "Hero circuit") {
+        WorkoutTemplate t;
+        t.name = name;
+        t.created_at = 1716300000;
+
+        WorkoutBlock circuit;
+        circuit.type = BlockType::CIRCUIT;
+        circuit.rounds = 3;
+        circuit.rest_seconds = 60;
+
+        WorkoutExercise run;
+        run.name = "Run";
+        run.type = ExerciseType::DISTANCE;
+        run.distance = 0.25;
+        run.distance_unit = "mi";
+        circuit.exercises.push_back(run);
+
+        WorkoutExercise dl;
+        dl.name = "Deadlift";
+        dl.type = ExerciseType::REPS;
+        dl.sets = 1;
+        dl.reps = 20;
+        dl.weight_lbs = 135.0;
+        circuit.exercises.push_back(dl);
+
+        t.blocks.push_back(circuit);
+        return t;
+    }
+};
+
+TEST_F(TemplateTest, AddAndGetRoundTrip) {
+    WorkoutTemplate t = buildSampleTemplate();
+    ASSERT_TRUE(db->addTemplate(t));
+    EXPECT_GT(t.id, 0);
+
+    WorkoutTemplate loaded = db->getTemplate(t.id);
+    EXPECT_EQ(loaded.id, t.id);
+    EXPECT_EQ(loaded.name, "Hero circuit");
+    ASSERT_EQ(loaded.blocks.size(), 1u);
+    EXPECT_EQ(loaded.blocks[0].type, BlockType::CIRCUIT);
+    EXPECT_EQ(loaded.blocks[0].rounds, 3);
+    ASSERT_EQ(loaded.blocks[0].exercises.size(), 2u);
+    EXPECT_EQ(loaded.blocks[0].exercises[0].name, "Run");
+    EXPECT_EQ(loaded.blocks[0].exercises[1].name, "Deadlift");
+    EXPECT_DOUBLE_EQ(loaded.blocks[0].exercises[1].weight_lbs, 135.0);
+}
+
+TEST_F(TemplateTest, NameMustBeUnique) {
+    WorkoutTemplate a = buildSampleTemplate("Same name");
+    ASSERT_TRUE(db->addTemplate(a));
+    WorkoutTemplate b = buildSampleTemplate("Same name");
+    EXPECT_FALSE(db->addTemplate(b));
+}
+
+TEST_F(TemplateTest, EmptyNameRejected) {
+    WorkoutTemplate t = buildSampleTemplate("");
+    EXPECT_FALSE(db->addTemplate(t));
+}
+
+TEST_F(TemplateTest, ListReturnsAlphabetical) {
+    WorkoutTemplate b = buildSampleTemplate("Bravo");
+    ASSERT_TRUE(db->addTemplate(b));
+    WorkoutTemplate a = buildSampleTemplate("Alpha");
+    ASSERT_TRUE(db->addTemplate(a));
+
+    auto list = db->listTemplates();
+    ASSERT_EQ(list.size(), 2u);
+    EXPECT_EQ(list[0].name, "Alpha");
+    EXPECT_EQ(list[1].name, "Bravo");
+    EXPECT_EQ(list[0].exercise_count, 2);
+}
+
+TEST_F(TemplateTest, UpdateReplacesContent) {
+    WorkoutTemplate t = buildSampleTemplate();
+    ASSERT_TRUE(db->addTemplate(t));
+
+    WorkoutTemplate replacement;
+    replacement.id = t.id;
+    replacement.name = "Renamed";
+    WorkoutBlock b;
+    b.type = BlockType::STRAIGHT;
+    WorkoutExercise plank;
+    plank.name = "Plank";
+    plank.type = ExerciseType::TIME;
+    plank.duration_seconds = 60;
+    b.exercises.push_back(plank);
+    replacement.blocks.push_back(b);
+
+    ASSERT_TRUE(db->updateTemplate(replacement));
+    WorkoutTemplate loaded = db->getTemplate(t.id);
+    EXPECT_EQ(loaded.name, "Renamed");
+    ASSERT_EQ(loaded.blocks.size(), 1u);
+    EXPECT_EQ(loaded.blocks[0].type, BlockType::STRAIGHT);
+    ASSERT_EQ(loaded.blocks[0].exercises.size(), 1u);
+    EXPECT_EQ(loaded.blocks[0].exercises[0].name, "Plank");
+}
+
+TEST_F(TemplateTest, DeleteCascadesBlocksAndExercises) {
+    WorkoutTemplate t = buildSampleTemplate();
+    ASSERT_TRUE(db->addTemplate(t));
+    int id = t.id;
+
+    ASSERT_TRUE(db->deleteTemplate(id));
+    WorkoutTemplate missing = db->getTemplate(id);
+    EXPECT_EQ(missing.id, 0);
+    EXPECT_TRUE(missing.blocks.empty());
+}
+
+TEST_F(TemplateTest, GetMissingReturnsEmpty) {
+    WorkoutTemplate missing = db->getTemplate(99999);
+    EXPECT_EQ(missing.id, 0);
+}
+
+TEST_F(TemplateTest, DeletingTemplateDoesNotAffectWorkouts) {
+    // Save a template, then save an independent workout, then delete the template.
+    // The workout should remain.
+    WorkoutTemplate tmpl = buildSampleTemplate();
+    ASSERT_TRUE(db->addTemplate(tmpl));
+
+    Workout w = buildSampleCircuit();
+    ASSERT_TRUE(db->addWorkout(w));
+    int wid = w.id;
+
+    ASSERT_TRUE(db->deleteTemplate(tmpl.id));
+    Workout loaded = db->getWorkout(wid);
+    EXPECT_EQ(loaded.id, wid);
+    ASSERT_EQ(loaded.blocks.size(), 1u);
+}

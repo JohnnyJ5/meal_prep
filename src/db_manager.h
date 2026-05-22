@@ -157,6 +157,35 @@ class DBManager {
      */
     std::vector<WorkoutSummary> listWorkouts();
 
+    // --- Workout Templates ---
+
+    /**
+     * @brief Inserts a workout template (with its blocks/exercises) atomically.
+     * @param tmpl Input/output. On success, tmpl.id is set to the new row id.
+     */
+    bool addTemplate(WorkoutTemplate &tmpl);
+
+    /**
+     * @brief Replaces an existing template's name and blocks/exercises.
+     */
+    bool updateTemplate(const WorkoutTemplate &tmpl);
+
+    /**
+     * @brief Deletes a template by id. Cascades to blocks/exercises.
+     */
+    bool deleteTemplate(int id);
+
+    /**
+     * @brief Loads a single template with its blocks/exercises.
+     * @return populated WorkoutTemplate with id != 0 on success; id == 0 if not found.
+     */
+    WorkoutTemplate getTemplate(int id);
+
+    /**
+     * @brief Lists all templates, alphabetical by name.
+     */
+    std::vector<WorkoutTemplateSummary> listTemplates();
+
    private:
     sqlite3 *d_db{nullptr};
     std::string d_dbPath;

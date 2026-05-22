@@ -65,6 +65,19 @@ struct WorkoutSummary {
     int exercise_count{0};
 };
 
+struct WorkoutTemplate {
+    int id{0};
+    std::string name;
+    int64_t created_at{0};
+    std::vector<WorkoutBlock> blocks;
+};
+
+struct WorkoutTemplateSummary {
+    int id{0};
+    std::string name;
+    int exercise_count{0};
+};
+
 inline std::string exerciseTypeToString(ExerciseType t) {
     switch (t) {
         case ExerciseType::REPS:
