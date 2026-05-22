@@ -17,7 +17,7 @@
             <div class="ws-ico">M</div>
             <div>
                 <div class="ws-name">Meal Prep</div>
-                <div class="ws-sub">weekly planner</div>
+                <div class="ws-sub">Meal Prep</div>
             </div>
         </div>
 
@@ -25,7 +25,7 @@
         <nav class="sidebar-nav">
             <div class="nav-item active" id="nav-planner" onclick="showPage('planner')">
                 <span class="nav-ico">▤</span>
-                <span>Weekly Planner</span>
+                <span>Meal Prep</span>
             </div>
         </nav>
 
@@ -55,7 +55,7 @@
             <div class="crumbs">
                 <span>Workspace</span>
                 <span class="sep">/</span>
-                <b id="page-crumb">Weekly Planner</b>
+                <b id="page-crumb">Meal Prep</b>
                 <span class="sep">/</span>
                 <span id="week-label">This week</span>
             </div>
@@ -372,14 +372,14 @@
 
                     <div class="workout-form-meta">
                         <div class="form-group">
-                            <label for="workout-name">Name (optional)</label>
+                            <label for="workout-name" id="workout-name-label">Name (optional)</label>
                             <input type="text" id="workout-name" class="form-control" placeholder="e.g., Saturday circuit">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="workout-date-group">
                             <label for="workout-date">Date</label>
                             <input type="date" id="workout-date" class="form-control" required>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="workout-duration-group">
                             <label for="workout-duration">Duration (mm:ss)</label>
                             <input type="text" id="workout-duration" class="form-control"
                                    placeholder="25:00" pattern="\d{1,3}:\d{2}" required>
@@ -390,15 +390,15 @@
                     <div id="workout-blocks" class="workout-blocks"></div>
                     <button type="button" onclick="addBlock()" class="btn btn-secondary btn-sm mt-2">+ Add Block</button>
 
-                    <div class="form-group mt-4">
+                    <div class="form-group mt-4" id="workout-notes-group">
                         <label for="workout-notes">Notes (optional)</label>
                         <textarea id="workout-notes" class="form-control" rows="2"></textarea>
                     </div>
 
                     <div class="form-actions mt-4">
                         <button type="button" onclick="closeWorkoutModal()" class="btn btn-secondary">Cancel</button>
-                        <button type="button" onclick="openSaveTemplateDialog()" class="btn btn-secondary">Save as Template</button>
-                        <button type="submit" class="btn btn-primary">Save Workout</button>
+                        <button type="button" id="save-as-template-btn" onclick="openSaveTemplateDialog()" class="btn btn-secondary">Save as Template</button>
+                        <button type="submit" id="workout-form-submit" class="btn btn-primary">Save Workout</button>
                     </div>
                 </form>
             </div>
@@ -451,6 +451,7 @@
                 <div id="template-detail-body"></div>
                 <div class="form-actions mt-4">
                     <button type="button" onclick="useCurrentTemplate()" class="btn btn-secondary">Use for new workout</button>
+                    <button type="button" onclick="editCurrentTemplate()" class="btn btn-secondary">Edit</button>
                     <button type="button" onclick="deleteCurrentTemplate()" class="btn btn-danger">Delete</button>
                     <button type="button" onclick="closeModal('template-detail-modal')" class="btn btn-primary">Close</button>
                 </div>

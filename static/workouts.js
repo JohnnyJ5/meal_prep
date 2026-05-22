@@ -37,7 +37,7 @@
         } else {
             workouts.classList.add('hidden');
             planner.classList.remove('hidden');
-            crumb.textContent = 'Weekly Planner';
+            crumb.textContent = 'Meal Prep';
             if (weekLabel) weekLabel.textContent = 'This week';
             navWorkouts.classList.remove('active');
             navPlanner.classList.add('active');
@@ -162,9 +162,30 @@
     // --- Log form --------------------------------------------------------
 
     let editingWorkoutId = null;
+    let editingTemplateId = null;
+
+    function setWorkoutFormMode(mode) {
+        // mode: 'workout' (date/duration/notes/save-as-template visible, name optional)
+        //       'template' (those hidden, name required, submit says "Save Template")
+        const isTemplate = mode === 'template';
+        document.getElementById('workout-date-group').classList.toggle('hidden', isTemplate);
+        document.getElementById('workout-duration-group').classList.toggle('hidden', isTemplate);
+        document.getElementById('workout-notes-group').classList.toggle('hidden', isTemplate);
+        document.getElementById('save-as-template-btn').classList.toggle('hidden', isTemplate);
+        document.getElementById('workout-date').required = !isTemplate;
+        document.getElementById('workout-duration').required = !isTemplate;
+        const nameInput = document.getElementById('workout-name');
+        nameInput.required = isTemplate;
+        document.getElementById('workout-name-label').textContent =
+            isTemplate ? 'Template name' : 'Name (optional)';
+        document.getElementById('workout-form-submit').textContent =
+            isTemplate ? 'Save Template' : 'Save Workout';
+    }
 
     window.openWorkoutForm = function (presetBlocks) {
         editingWorkoutId = null;
+        editingTemplateId = null;
+        setWorkoutFormMode('workout');
         document.getElementById('workout-modal-title').textContent = 'Log Workout';
         document.getElementById('workout-form').reset();
         document.getElementById('workout-date').valueAsDate = new Date();
@@ -342,6 +363,25 @@
             return;
         }
         try {
+            if (editingTemplateId) {
+                const tplPayload = { name: payload.name, blocks: payload.blocks };
+                if (!tplPayload.name) {
+                    alert('Template name is required.');
+                    return;
+                }
+                const res = await fetch('/api/workout-templates/' + editingTemplateId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(tplPayload),
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || ('http ' + res.status));
+                }
+                closeWorkoutModal();
+                fetchTemplates();
+                return;
+            }
             const url = editingWorkoutId ? '/api/workouts/' + editingWorkoutId : '/api/workouts';
             const method = editingWorkoutId ? 'PUT' : 'POST';
             const res = await fetch(url, {
@@ -353,7 +393,7 @@
             closeWorkoutModal();
             fetchWorkouts();
         } catch (e) {
-            alert('Failed to save workout: ' + e.message);
+            alert('Failed to save: ' + e.message);
         }
     };
 
@@ -427,6 +467,8 @@
         document.getElementById('workout-detail-modal').classList.add('hidden');
 
         editingWorkoutId = w.id;
+        editingTemplateId = null;
+        setWorkoutFormMode('workout');
         document.getElementById('workout-modal-title').textContent = 'Edit Workout';
         document.getElementById('workout-name').value = w.name || '';
         document.getElementById('workout-date').value = w.performed_on || '';
@@ -434,6 +476,24 @@
         document.getElementById('workout-notes').value = w.notes || '';
         document.getElementById('workout-blocks').innerHTML = '';
         (w.blocks || []).forEach((b) => addBlock(b));
+        document.getElementById('template-picker-wrap').classList.add('hidden');
+        document.getElementById('workout-modal').classList.remove('hidden');
+    };
+
+    window.editCurrentTemplate = async function () {
+        if (!currentTemplateId) return;
+        const res = await fetch('/api/workout-templates/' + currentTemplateId);
+        if (!res.ok) return alert('Could not load template');
+        const t = await res.json();
+        document.getElementById('template-detail-modal').classList.add('hidden');
+
+        editingTemplateId = t.id;
+        editingWorkoutId = null;
+        setWorkoutFormMode('template');
+        document.getElementById('workout-modal-title').textContent = 'Edit Template';
+        document.getElementById('workout-name').value = t.name || '';
+        document.getElementById('workout-blocks').innerHTML = '';
+        (t.blocks || []).forEach((b) => addBlock(b));
         document.getElementById('template-picker-wrap').classList.add('hidden');
         document.getElementById('workout-modal').classList.remove('hidden');
     };
