@@ -73,9 +73,13 @@ set(LIB_SOURCES
     src/core/db/db_manager.cpp
     src/core/config/config_parser.cpp
     src/core/http/api_routes.cpp
+    src/core/http/static_routes.cpp
     src/features/meals/meal_factory.cpp
     src/features/meals/meal_planner.cpp
+    src/features/meals/meals_routes.cpp
+    src/features/workouts/workouts_routes.cpp
     src/integrations/google/google_oauth.cpp
+    src/integrations/google/google_routes.cpp
     src/integrations/google/calendar_service.cpp
     src/integrations/google/token_encryption.cpp
 )
