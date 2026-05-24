@@ -7,14 +7,18 @@
 #include <tuple>
 #include <vector>
 
-#include "api_routes.h"
-#include "calendar_service.h"
-#include "config_parser.h"
-#include "db_manager.h"
-#include "google_oauth.h"
-#include "meal_factory.h"
-#include "meal_planner.h"
-#include "middleware.h"
+#include "core/config/config_parser.h"
+#include "core/db/db_connection.h"
+#include "core/db/schema.h"
+#include "core/http/api_routes.h"
+#include "core/http/middleware.h"
+#include "features/meals/meal_factory.h"
+#include "features/meals/meal_planner.h"
+#include "features/meals/meals_repository.h"
+#include "features/workouts/workouts_repository.h"
+#include "integrations/google/calendar_service.h"
+#include "integrations/google/google_oauth.h"
+#include "integrations/google/google_tokens_repository.h"
 
 struct CurlGlobalGuard {
     CurlGlobalGuard() { curl_global_init(CURL_GLOBAL_DEFAULT); }
@@ -25,7 +29,6 @@ int main(int argc, char **argv) {
     try {
         CurlGlobalGuard curlGuard;
 
-        // Simple command line parsing for now
         std::vector<std::string> mealNames;
         bool listMeals = false;
         bool serveWeb = false;
@@ -43,25 +46,28 @@ int main(int argc, char **argv) {
 
         Config config = loadConfig("meal_prep.conf.json");
 
-        // Initialize Database
-        auto dbManager = std::make_shared<DBManager>(config.db_path);
-        if (!dbManager->initializeSchema()) {
+        auto db = std::make_shared<DbConnection>(config.db_path);
+        if (!initializeSchema(*db)) {
             std::cerr << "Failed to initialize database schema" << std::endl;
             return 1;
         }
-        dbManager->seedDefaultMeals();
-        dbManager->seedDefaultIngredients();
 
-        MealFactory factory(dbManager);
+        auto mealsRepo = std::make_shared<MealsRepository>(db);
+        auto workoutsRepo = std::make_shared<WorkoutsRepository>(db);
+        auto tokensRepo = std::make_shared<GoogleTokensRepository>(db);
+
+        mealsRepo->seedDefaultMeals();
+        mealsRepo->seedDefaultIngredients();
+
+        MealFactory factory(mealsRepo);
 
         if (serveWeb) {
-            auto googleOAuth = std::make_shared<GoogleOAuth>(config, dbManager);
+            auto googleOAuth = std::make_shared<GoogleOAuth>(config, tokensRepo);
             auto calendarService = std::make_shared<CalendarService>(googleOAuth);
 
             crow::App<RequestTimerMiddleware> app;
-            setupRoutes(app, dbManager, factory, config, googleOAuth, calendarService);
+            setupRoutes(app, mealsRepo, workoutsRepo, factory, googleOAuth, calendarService);
 
-            // Start the server
             std::cout << "Starting Meal Prep API on http://0.0.0.0:" << config.port << std::endl;
             app.bindaddr("0.0.0.0").port(config.port).multithreaded().run();
             return 0;
@@ -78,7 +84,6 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        // Create meals using factory
         std::vector<std::unique_ptr<Meal>> meals;
         if (!mealNames.empty()) {
             for (const auto &mealName : mealNames) {
@@ -95,12 +100,11 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        // Convert to vector of references for consolidation
         std::vector<std::reference_wrapper<Meal>> mealRefs;
         std::map<std::string, std::vector<std::string>> schedule;
         for (const auto &meal : meals) {
             mealRefs.emplace_back(*meal);
-            schedule["Monday"].push_back(meal->getName());  // Dummy assignment for CLI
+            schedule["Monday"].push_back(meal->getName());
         }
 
         std::map<std::string, Ingredient> allIngredients;

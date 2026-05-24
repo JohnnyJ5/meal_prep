@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Prep — Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/shared/base.css">
+</head>
+
+<body>
+    <main class="app-main">
+        <div id="page-planner">
+        <section class="page-h">
+            <div>
+                <div class="topbar-actions hidden" id="action-bar">
+                    <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
+                        Manage Recipes
+                    </button>
+                    <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()" disabled>
+                        <span class="btn-text">View Ingredients</span>
+                    </button>
+                    <button id="plan-btn" type="button" class="btn btn-primary" onclick="planMeals()" disabled>
+                        <span class="btn-text">Generate Plan</span>
+                        <div class="btn-loader hidden"></div>
+                    </button>
+                </div>
+                <h1>Weekly Meal Prep</h1>
+                <p class="page-desc">Drag a recipe onto any day, then generate a plan and grocery list for the week.</p>
+            </div>
+            <div class="week-nav">
+                <button class="iconbtn" onclick="shiftWindow(-1)" title="Previous day">‹</button>
+                <button class="btn btn-sm" onclick="shiftWindow(0)" title="Back to today">Today</button>
+                <button class="iconbtn" onclick="shiftWindow(1)" title="Next day">›</button>
+            </div>
+        </section>
+
+        <section id="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading available meals...</p>
+        </section>
+
+        <section id="error" class="error-state hidden">
+            <p id="error-message">Failed to load meals.</p>
+            <button onclick="fetchMeals()" class="btn">Retry</button>
+        </section>
+
+        <section id="planner-layout" class="planner-body hidden">
+            <div class="mobile-tab-bar">
+                <button class="mobile-tab active" data-tab="meals">Recipes</button>
+                <button class="mobile-tab" data-tab="calendar">Calendar</button>
+            </div>
+
+            <aside class="recipe-library sidebar-container" data-panel="meals">
+                <div class="recipe-library-h">
+                    <h2>Recipes</h2>
+                </div>
+                <p class="touch-hint">Tap a recipe, then tap a day to assign it.</p>
+                <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- Meal cards injected by JS -->
+                </div>
+            </aside>
+
+            <div class="kanban-week calendar-container" data-panel="calendar">
+                <div id="calendar-legend" class="calendar-legend hidden"></div>
+                <div id="mobile-selected-meal-banner" class="hidden">
+                    <span id="mobile-selected-meal-name"></span>
+                    <button type="button" onclick="cancelMobileTapSelection()">Cancel</button>
+                </div>
+                <div class="calendar-grid">
+                    <div class="day-col" id="day-Monday" data-day="Monday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Tuesday" data-day="Tuesday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Wednesday" data-day="Wednesday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Thursday" data-day="Thursday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Friday" data-day="Friday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Saturday" data-day="Saturday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                    <div class="day-col" id="day-Sunday" data-day="Sunday" ondrop="drop(event)"
+                        ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                        <h3><span class="day-name"></span> <span class="date-label"></span></h3>
+                        <div class="events-slot"></div>
+                        <div class="meal-slot"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Whole Foods Order Modal -->
+        <div id="order-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Schedule Whole Foods Order</h2>
+                </div>
+                <p class="text-secondary">When would you like to place your order?</p>
+                <div class="form-group mt-2">
+                    <label for="order-datetime">Date &amp; Time</label>
+                    <input type="datetime-local" id="order-datetime" class="form-control">
+                </div>
+                <div class="mt-2">
+                    <p class="text-secondary" style="margin-bottom: 0.4rem;">Ingredients list</p>
+                    <pre id="order-ingredients"></pre>
+                </div>
+                <div id="order-status" class="hidden" style="margin-top:0.75rem; padding:0.6rem 0.9rem; border-radius:6px; font-size:0.9rem;"></div>
+                <div class="form-actions mt-4">
+                    <button onclick="cancelPlan()" class="btn btn-danger">Cancel</button>
+                    <button onclick="skipOrderModal()" class="btn btn-secondary">Skip</button>
+                    <button onclick="scheduleOrderEvent()" class="btn btn-primary" id="order-confirm-btn">Create Events</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast notification -->
+        <div id="toast" class="hidden"></div>
+
+        <!-- Ingredients Modal -->
+        <div id="ingredients-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2>Ingredients</h2>
+                    <button onclick="closeModal('ingredients-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+
+                <div class="ingredients-layout">
+                    <div class="per-meal-section">
+                        <h3>Per Meal</h3>
+                        <div id="per-meal-list" class="scroll-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="consolidated-section">
+                        <h3>Consolidated List</h3>
+                        <div id="consolidated-list" class="scroll-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Modal -->
+        <div id="manage-modal" class="modal hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h2>Manage Recipes</h2>
+                    <button onclick="closeModal('manage-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+
+                <div id="manage-list-view">
+                    <button onclick="openEditView()" class="btn btn-primary mb-4" type="button">+ Add Recipe</button>
+                    <div id="manage-meal-list" class="manage-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div id="manage-edit-view" class="hidden">
+                    <h3 id="edit-view-title">Add Recipe</h3>
+                    <form id="meal-form" onsubmit="saveMeal(event)">
+                        <div class="form-group">
+                            <label for="meal-name">Recipe Name (e.g., spicy-chicken)</label>
+                            <input type="text" id="meal-name" required class="form-control">
+                        </div>
+                        <div class="form-group mt-2">
+                            <label for="meal-category">Category</label>
+                            <input type="text" id="meal-category" class="form-control"
+                                placeholder="e.g., Poultry, Breakfast" value="Uncategorized">
+                        </div>
+
+                        <h4>Ingredients</h4>
+                        <div id="ingredients-list" class="ingredients-list">
+                            <!-- Populated by JS -->
+                        </div>
+                        <button type="button" onclick="addIngredientRow()" class="btn btn-secondary mt-2 mb-4 btn-sm">+ Add Ingredient</button>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="closeEditView()" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Recipe</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add-ons (Optional Ingredients) Picker Modal -->
+        <div id="addons-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="addons-title">Add-ons</h2>
+                    <button onclick="closeModal('addons-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <p class="text-secondary">Select any add-ons to include with this recipe. Choices reset after you drag it onto the calendar.</p>
+                <div id="addons-list" class="addons-list">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="cancelAddonsModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="button" onclick="confirmAddonsModal()" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Ingredient Modal -->
+        <div id="add-ingredient-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Ingredient</h2>
+                    <button onclick="closeModal('add-ingredient-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <form id="new-ingredient-form" onsubmit="createNewIngredient(event)">
+                    <div class="form-group">
+                        <label for="new-ing-name">Ingredient Name</label>
+                        <input type="text" id="new-ing-name" required class="form-control" placeholder="e.g., Kale">
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="new-ing-category">Category</label>
+                        <input type="text" id="new-ing-category" required class="form-control"
+                            placeholder="e.g., Vegetables" list="category-list">
+                        <datalist id="category-list">
+                            <option value="Vegetables">
+                            <option value="Proteins">
+                            <option value="Dairy">
+                            <option value="Pantry Staples">
+                            <option value="Seasonings & Spices">
+                            <option value="Produce">
+                            <option value="Grains & Pasta">
+                            <option value="Broths & Sauces">
+                            <option value="Sweeteners">
+                            <option value="Other">
+                        </datalist>
+                    </div>
+                    <div class="form-actions mt-4">
+                        <button type="button" onclick="closeModal('add-ingredient-modal')" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Ingredient</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <datalist id="available-ingredients">
+            <!-- Populated by JS -->
+        </datalist>
+        </div><!-- /#page-planner -->
+    </main>
+
+    <script src="/shared/chrome.js"></script>
+    <script>mountChrome({ activePage: 'planner', crumbLabel: 'Meal Prep', weekLabel: 'This week' });</script>
+    <script src="/pages/planner/planner.js"></script>
+</body>
+
+</html>
