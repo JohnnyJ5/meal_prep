@@ -1,5 +1,14 @@
 # Mobile UI Plan
 
+> **Note:** This plan was written before the static-layout refactor. The
+> paths it references no longer exist as named:
+> - `static/index.html` → `static/pages/planner/index.html`
+> - `static/style.css`  → `static/shared/base.css`
+> - `static/script.js`  → `static/pages/planner/planner.js`
+>
+> The conceptual steps still apply — mentally substitute the new paths if
+> you reapply any of this work to a different page.
+
 ## Overview
 
 Make the Meal Prep Dashboard mobile-friendly with a breakpoint at 768px. No new dependencies — pure CSS/JS. Desktop behavior is completely unchanged. All changes live in `static/`.

@@ -4,8 +4,10 @@ Reference for anyone — human or agent — building UI for the meal-prep app.
 Every new screen, modal, and component should pull from this document so the
 look stays consistent.
 
-The reference implementation is the live app itself: `static/index.html` +
-`static/style.css`. When in doubt, open them and copy the pattern.
+The reference implementation is the live app itself: the per-page documents
+under `static/pages/<page>/index.html` plus the shared `static/shared/base.css`
+(design tokens, sidebar, topbar, buttons, modals) and `static/shared/chrome.js`
+(sidebar + topbar shell). When in doubt, open them and copy the pattern.
 
 ## Brand Vibe
 
@@ -419,27 +421,35 @@ gives the "this card is sitting on a piece of paper" feel.
 
 ## Adding a new screen
 
-1. Open `static/index.html` + `static/style.css` and copy the shell + an
-   existing page section (`#page-planner` or `#page-workouts`).
-2. Use page-header `.page-h` markup verbatim — masthead title + italic
+1. Copy an existing page directory under `static/pages/` (e.g. `cp -r
+   static/pages/workouts static/pages/<name>`) and rename
+   `workouts.js` → `<name>.js`.
+2. Register the page with the sidebar by adding an entry to the `PAGES`
+   array in `static/shared/chrome.js`, and update the `mountChrome` call
+   inside your page's HTML to use the new `activePage` id.
+3. Add a `CROW_ROUTE(app, "/<name>")` to `src/core/http/static_routes.cpp`
+   that serves `static/pages/<name>/index.html`.
+4. Use page-header `.page-h` markup verbatim — masthead title + italic
    description.
-3. Reference CSS tokens (`--paper-2`, `--ink-2`, `--s-4`, etc.). Never
-   hard-code hex or px values for color/spacing.
-4. Set every section/panel heading in display (Fraunces). Use italic for
+5. Reference CSS tokens (`--paper-2`, `--ink-2`, `--s-4`, etc.) from
+   `/shared/base.css`. Never hard-code hex or px values for color/spacing.
+6. Set every section/panel heading in display (Fraunces). Use italic for
    labels and metadata.
-5. If a new component is needed, add a section to this file describing its
+7. If a new component is needed, add a section to this file describing its
    tokens, states, and copy norms.
-6. Render a 1440×900 screenshot of the new screen into `static/mockups/` so
+8. Render a 1440×900 screenshot of the new screen into `static/mockups/` so
    the design system stays self-documenting.
 
 ## File map
 
-| File                         | Purpose                                  |
-| ---------------------------- | ---------------------------------------- |
-| `docs/BRANDING.md`           | This document — single source of truth   |
-| `static/index.html`          | Live app markup (reference layout)       |
-| `static/style.css`           | Live app styles (token + component defs) |
-| `static/mockups/`            | Rendered screenshots per page            |
+| File                                     | Purpose                                          |
+| ---------------------------------------- | ------------------------------------------------ |
+| `docs/BRANDING.md`                       | This document — single source of truth           |
+| `static/shared/base.css`                 | Design tokens + shared component styles          |
+| `static/shared/chrome.js`                | Sidebar + topbar shell injected by every page    |
+| `static/pages/<name>/index.html`         | Per-page markup (one document per page)          |
+| `static/pages/<name>/<name>.js`          | Per-page logic                                   |
+| `static/mockups/`                        | Rendered screenshots per page                    |
 
 When the live app and a mockup diverge, treat this document + the live app
 as intent. Old mockups (e.g. the `notion-3-indigo-kanban.*` files from the
