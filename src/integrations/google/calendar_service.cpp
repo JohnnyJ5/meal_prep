@@ -1,4 +1,4 @@
-#include "calendar_service.h"
+#include "integrations/google/calendar_service.h"
 
 #include <crow.h>
 #include <curl/curl.h>
@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-#include "curl_utils.h"
+#include "core/util/curl_utils.h"
 
 CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
 

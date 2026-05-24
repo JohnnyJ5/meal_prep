@@ -1,9 +1,9 @@
-#include "db_manager.h"
+#include "core/db/db_manager.h"
 
 #include <iostream>
 
-#include "measurement.h"
-#include "token_encryption.h"
+#include "features/meals/measurement.h"
+#include "integrations/google/token_encryption.h"
 
 DBManager::DBManager(const std::string &dbPath) : d_dbPath(dbPath) {
     if (sqlite3_open(dbPath.c_str(), &d_db) != SQLITE_OK) {

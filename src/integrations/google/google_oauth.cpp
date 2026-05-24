@@ -1,4 +1,4 @@
-#include "google_oauth.h"
+#include "integrations/google/google_oauth.h"
 
 #include <crow.h>
 #include <curl/curl.h>
@@ -9,7 +9,7 @@
 #include <sstream>
 #include <utility>
 
-#include "curl_utils.h"
+#include "core/util/curl_utils.h"
 
 namespace {
 std::string generateRandomState() {

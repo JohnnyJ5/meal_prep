@@ -7,14 +7,14 @@
 #include <tuple>
 #include <vector>
 
-#include "api_routes.h"
-#include "calendar_service.h"
-#include "config_parser.h"
-#include "db_manager.h"
-#include "google_oauth.h"
-#include "meal_factory.h"
-#include "meal_planner.h"
-#include "middleware.h"
+#include "core/http/api_routes.h"
+#include "integrations/google/calendar_service.h"
+#include "core/config/config_parser.h"
+#include "core/db/db_manager.h"
+#include "integrations/google/google_oauth.h"
+#include "features/meals/meal_factory.h"
+#include "features/meals/meal_planner.h"
+#include "core/http/middleware.h"
 
 struct CurlGlobalGuard {
     CurlGlobalGuard() { curl_global_init(CURL_GLOBAL_DEFAULT); }

@@ -2,9 +2,9 @@
 
 #include <sstream>
 
-#include "../src/ingredient.h"
-#include "../src/meal.h"
-#include "../src/meal_planner.h"
+#include "features/meals/ingredient.h"
+#include "features/meals/meal.h"
+#include "features/meals/meal_planner.h"
 
 class MealPlannerTest : public ::testing::Test {
    protected:

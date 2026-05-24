@@ -1,4 +1,4 @@
-#include "meal_planner.h"
+#include "features/meals/meal_planner.h"
 
 #include <sstream>
 

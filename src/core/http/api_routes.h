@@ -4,12 +4,12 @@
 
 #include <memory>
 
-#include "calendar_service.h"
-#include "config_parser.h"
-#include "db_manager.h"
-#include "google_oauth.h"
-#include "meal_factory.h"
-#include "middleware.h"
+#include "integrations/google/calendar_service.h"
+#include "core/config/config_parser.h"
+#include "core/db/db_manager.h"
+#include "integrations/google/google_oauth.h"
+#include "features/meals/meal_factory.h"
+#include "core/http/middleware.h"
 
 /**
  * @brief Configures all the REST API routes for the Meal Prep application.

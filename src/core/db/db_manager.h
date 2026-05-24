@@ -10,8 +10,8 @@
 #include <tuple>
 #include <vector>
 
-#include "meal.h"
-#include "workout.h"
+#include "features/meals/meal.h"
+#include "features/workouts/workout.h"
 
 /**
  * @brief Manages SQLite database operations for the Meal Prep application.

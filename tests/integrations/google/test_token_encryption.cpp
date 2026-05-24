@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-#include "../src/token_encryption.h"
+#include "integrations/google/token_encryption.h"
 
 class TokenEncryptionTest : public ::testing::Test {
    protected:

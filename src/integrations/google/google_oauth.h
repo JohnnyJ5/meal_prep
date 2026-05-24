@@ -4,8 +4,8 @@
 #include <mutex>
 #include <string>
 
-#include "config_parser.h"
-#include "db_manager.h"
+#include "core/config/config_parser.h"
+#include "core/db/db_manager.h"
 
 /**
  * @brief Handles Google OAuth2 Authorization Code Flow.

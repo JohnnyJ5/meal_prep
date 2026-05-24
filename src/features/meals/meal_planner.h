@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "ingredient.h"
-#include "meal.h"
+#include "features/meals/ingredient.h"
+#include "features/meals/meal.h"
 
 /**
  * @brief Consolidates ingredients from a list of meals into a single map.

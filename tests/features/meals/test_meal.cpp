@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../src/meal.h"
+#include "features/meals/meal.h"
 
 class MealTest : public ::testing::Test {
    protected:

@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "db_manager.h"
-#include "meal.h"
+#include "core/db/db_manager.h"
+#include "features/meals/meal.h"
 
 /**
  * @brief Factory class for creating and retrieving meals from the database.

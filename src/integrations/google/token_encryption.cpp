@@ -1,4 +1,4 @@
-#include "token_encryption.h"
+#include "integrations/google/token_encryption.h"
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>

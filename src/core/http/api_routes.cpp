@@ -1,4 +1,4 @@
-#include "api_routes.h"
+#include "core/http/api_routes.h"
 
 #include <algorithm>
 #include <ctime>
@@ -6,8 +6,8 @@
 #include <set>
 #include <tuple>
 
-#include "meal_planner.h"
-#include "workout.h"
+#include "features/meals/meal_planner.h"
+#include "features/workouts/workout.h"
 
 void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManager> dbManager,
                  MealFactory &factory, const Config & /*config*/,

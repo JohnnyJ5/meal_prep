@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include "../src/measurement.h"
+#include "features/meals/measurement.h"
 
 class MeasurementTest : public ::testing::Test {
    protected:

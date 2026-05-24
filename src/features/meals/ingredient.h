@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "measurement.h"
+#include "features/meals/measurement.h"
 
 /**
  * @brief Represents an ingredient required for a meal.

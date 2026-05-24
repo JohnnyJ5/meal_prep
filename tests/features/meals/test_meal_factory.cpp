@@ -4,9 +4,9 @@
 #include <string>
 #include <tuple>
 
-#include "../src/db_manager.h"
-#include "../src/meal.h"
-#include "../src/meal_factory.h"
+#include "core/db/db_manager.h"
+#include "features/meals/meal.h"
+#include "features/meals/meal_factory.h"
 
 class MealFactoryTest : public ::testing::Test {
    protected:

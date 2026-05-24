@@ -3,8 +3,8 @@
 #include <cstdlib>
 #include <memory>
 
-#include "../src/db_manager.h"
-#include "../src/workout.h"
+#include "core/db/db_manager.h"
+#include "features/workouts/workout.h"
 
 class WorkoutTest : public ::testing::Test {
    protected:

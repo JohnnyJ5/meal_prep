@@ -1,4 +1,4 @@
-#include "meal_factory.h"
+#include "features/meals/meal_factory.h"
 
 #include <set>
 #include <string>
@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "meal.h"
+#include "features/meals/meal.h"
 
 // MealFactory constructor
 MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager)

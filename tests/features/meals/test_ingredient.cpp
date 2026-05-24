@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../src/ingredient.h"
-#include "../src/measurement.h"
+#include "features/meals/ingredient.h"
+#include "features/meals/measurement.h"
 
 class IngredientTest : public ::testing::Test {
    protected:

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "ingredient.h"
+#include "features/meals/ingredient.h"
 
 /**
  * @brief Represents a meal and its required ingredients.

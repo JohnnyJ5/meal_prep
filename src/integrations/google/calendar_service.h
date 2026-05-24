@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "google_oauth.h"
+#include "integrations/google/google_oauth.h"
 
 /**
  * @brief Handles interactions with the Google Calendar API.

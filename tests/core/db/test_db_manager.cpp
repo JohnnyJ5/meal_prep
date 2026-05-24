@@ -3,10 +3,10 @@
 #include <cstdlib>
 #include <tuple>
 
-#include "../src/db_manager.h"
-#include "../src/ingredient.h"
-#include "../src/meal.h"
-#include "../src/measurement.h"
+#include "core/db/db_manager.h"
+#include "features/meals/ingredient.h"
+#include "features/meals/meal.h"
+#include "features/meals/measurement.h"
 
 class DBManagerTest : public ::testing::Test {
    protected:
