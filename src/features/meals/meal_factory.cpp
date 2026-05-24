@@ -1,32 +1,22 @@
 #include "features/meals/meal_factory.h"
 
-#include <set>
-#include <string>
-#include <tuple>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
-#include "features/meals/meal.h"
+MealFactory::MealFactory(std::shared_ptr<MealsRepository> meals) : d_meals(std::move(meals)) {}
 
-// MealFactory constructor
-MealFactory::MealFactory(std::shared_ptr<DBManager> dbManager)
-    : d_dbManager(std::move(dbManager)) {}
-
-// Meal factory function — excludes all optional ingredients
-std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName) {
+std::unique_ptr<Meal> MealFactory::createMeal(const std::string& mealName) {
     return createMeal(mealName, {});
 }
 
-std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName,
-                                              const std::set<std::string> &enabledAddOns) {
-    if (!d_dbManager) return nullptr;
-    auto raw = d_dbManager->getMeal(mealName);
+std::unique_ptr<Meal> MealFactory::createMeal(const std::string& mealName,
+                                              const std::set<std::string>& enabledAddOns) {
+    if (!d_meals) return nullptr;
+    auto raw = d_meals->getMeal(mealName);
     if (!raw) return nullptr;
 
     std::vector<Ingredient> filtered;
     filtered.reserve(raw->getIngredients().size());
-    for (const auto &ing : raw->getIngredients()) {
+    for (const auto& ing : raw->getIngredients()) {
         if (ing.isOptional() && enabledAddOns.find(ing.getName()) == enabledAddOns.end()) {
             continue;
         }
@@ -35,9 +25,8 @@ std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName,
     return std::make_unique<Meal>(raw->getName(), filtered, raw->getCategory());
 }
 
-// Function to get all available meal names and categories
-void MealFactory::getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>> &meals) {
-    if (d_dbManager) {
-        d_dbManager->getAllMeals(meals);
+void MealFactory::getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>>& meals) {
+    if (d_meals) {
+        d_meals->getAllMeals(meals);
     }
 }

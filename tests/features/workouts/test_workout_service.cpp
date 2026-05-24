@@ -3,19 +3,23 @@
 #include <cstdlib>
 #include <memory>
 
-#include "core/db/db_manager.h"
+#include "core/db/db_connection.h"
+#include "core/db/schema.h"
+#include "features/workouts/workouts_repository.h"
 #include "features/workouts/workout.h"
 
 class WorkoutTest : public ::testing::Test {
    protected:
     void SetUp() override {
         unsetenv("MEAL_PREP_TOKEN_KEY");
-        db = std::make_unique<DBManager>(":memory:");
-        ASSERT_TRUE(db->initializeSchema());
+        conn = std::make_shared<DbConnection>(":memory:");
+        ASSERT_TRUE(initializeSchema(*conn));
+        db = std::make_unique<WorkoutsRepository>(conn);
     }
     void TearDown() override { unsetenv("MEAL_PREP_TOKEN_KEY"); }
 
-    std::unique_ptr<DBManager> db;
+    std::shared_ptr<DbConnection> conn;
+    std::unique_ptr<WorkoutsRepository> db;
 
     Workout buildSampleCircuit() {
         Workout w;

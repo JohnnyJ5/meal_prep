@@ -70,17 +70,21 @@ find_package(SQLite3 REQUIRED)
 # --- Source Files ---
 # Explicitly listing sources is preferred over file(GLOB ...)
 set(LIB_SOURCES
-    src/core/db/db_manager.cpp
     src/core/config/config_parser.cpp
+    src/core/db/db_connection.cpp
+    src/core/db/schema.cpp
     src/core/http/api_routes.cpp
     src/core/http/static_routes.cpp
     src/features/meals/meal_factory.cpp
     src/features/meals/meal_planner.cpp
+    src/features/meals/meals_repository.cpp
     src/features/meals/meals_routes.cpp
+    src/features/workouts/workouts_repository.cpp
     src/features/workouts/workouts_routes.cpp
+    src/integrations/google/calendar_service.cpp
     src/integrations/google/google_oauth.cpp
     src/integrations/google/google_routes.cpp
-    src/integrations/google/calendar_service.cpp
+    src/integrations/google/google_tokens_repository.cpp
     src/integrations/google/token_encryption.cpp
 )
 
@@ -90,10 +94,11 @@ set(TEST_SOURCES
     tests/features/meals/test_ingredient.cpp
     tests/features/meals/test_meal.cpp
     tests/features/meals/test_meal_factory.cpp
-    tests/features/meals/test_measurement.cpp
     tests/features/meals/test_meal_planner.cpp
+    tests/features/meals/test_measurement.cpp
+    tests/features/meals/test_meals_repository.cpp
     tests/features/workouts/test_workout_service.cpp
-    tests/core/db/test_db_manager.cpp
+    tests/integrations/google/test_google_tokens_repository.cpp
     tests/integrations/google/test_token_encryption.cpp
 )
 

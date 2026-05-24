@@ -24,8 +24,8 @@ std::string generateRandomState() {
 }
 }  // namespace
 
-GoogleOAuth::GoogleOAuth(const Config &config, std::shared_ptr<DBManager> dbManager)
-    : d_config(config), d_dbManager(std::move(dbManager)) {}
+GoogleOAuth::GoogleOAuth(const Config &config, std::shared_ptr<GoogleTokensRepository> tokens)
+    : d_config(config), d_tokens(std::move(tokens)) {}
 
 std::string GoogleOAuth::getAuthUrl() {
     std::lock_guard<std::mutex> lock(d_tokenMutex);
@@ -70,12 +70,12 @@ bool GoogleOAuth::exchangeCodeForTokens(const std::string &code) {
         std::string newRefreshToken = response.refresh_token;
 
         if (newRefreshToken.empty() &&
-            d_dbManager->getGoogleTokens(existingAccessToken, existingRefreshToken,
+            d_tokens->getTokens(existingAccessToken, existingRefreshToken,
                                          existingExpiry)) {
             newRefreshToken = existingRefreshToken;
         }
 
-        bool saved = d_dbManager->saveGoogleTokens(response.access_token, newRefreshToken,
+        bool saved = d_tokens->saveTokens(response.access_token, newRefreshToken,
                                                    static_cast<int64_t>(expiry));
         if (saved) {
             CROW_LOG_INFO << "Successfully exchanged code for tokens and saved to database.";
@@ -91,7 +91,7 @@ bool GoogleOAuth::exchangeCodeForTokens(const std::string &code) {
 bool GoogleOAuth::refreshAccessToken() {
     std::string accessToken, refreshToken;
     int64_t expiryTime;
-    if (!d_dbManager->getGoogleTokens(accessToken, refreshToken, expiryTime) ||
+    if (!d_tokens->getTokens(accessToken, refreshToken, expiryTime) ||
         refreshToken.empty()) {
         CROW_LOG_WARNING << "Cannot refresh token: missing refresh token in database.";
         return false;
@@ -110,7 +110,7 @@ bool GoogleOAuth::refreshAccessToken() {
         // Refresh tokens might not be returned in refresh requests
         std::string newRefreshToken =
             response.refresh_token.empty() ? refreshToken : response.refresh_token;
-        bool saved = d_dbManager->saveGoogleTokens(response.access_token, newRefreshToken,
+        bool saved = d_tokens->saveTokens(response.access_token, newRefreshToken,
                                                    static_cast<int64_t>(expiry));
         if (saved) {
             CROW_LOG_INFO << "Successfully refreshed access token and saved to database.";
@@ -128,7 +128,7 @@ std::string GoogleOAuth::getAccessToken() {
 
     std::string accessToken, refreshToken;
     int64_t expiryTime;
-    if (!d_dbManager->getGoogleTokens(accessToken, refreshToken, expiryTime)) {
+    if (!d_tokens->getTokens(accessToken, refreshToken, expiryTime)) {
         CROW_LOG_WARNING << "Failed to retrieve Google tokens from database.";
         return "";
     }
@@ -137,7 +137,7 @@ std::string GoogleOAuth::getAccessToken() {
     if (now >= expiryTime - 60) {  // Refresh if within 60 seconds of expiry
         CROW_LOG_INFO << "Google access token expired or expiring soon, attempting refresh...";
         if (refreshAccessToken()) {
-            d_dbManager->getGoogleTokens(accessToken, refreshToken, expiryTime);
+            d_tokens->getTokens(accessToken, refreshToken, expiryTime);
         } else {
             CROW_LOG_ERROR << "Failed to refresh Google access token.";
             return "";

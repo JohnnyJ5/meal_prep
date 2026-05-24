@@ -5,14 +5,14 @@
 #include <string>
 
 #include "core/config/config_parser.h"
-#include "core/db/db_manager.h"
+#include "integrations/google/google_tokens_repository.h"
 
 /**
  * @brief Handles Google OAuth2 Authorization Code Flow.
  */
 class GoogleOAuth {
    public:
-    GoogleOAuth(const Config &config, std::shared_ptr<DBManager> dbManager);
+    GoogleOAuth(const Config &config, std::shared_ptr<GoogleTokensRepository> tokens);
 
     /**
      * @brief Generates the URL for the user to visit to authorize the application.
@@ -49,7 +49,7 @@ class GoogleOAuth {
 
    private:
     Config d_config;
-    std::shared_ptr<DBManager> d_dbManager;
+    std::shared_ptr<GoogleTokensRepository> d_tokens;
     std::mutex d_tokenMutex;
     std::string d_pendingState;
 

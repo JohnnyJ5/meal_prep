@@ -4,9 +4,9 @@
 
 #include <memory>
 
-#include "core/db/db_manager.h"
 #include "core/http/middleware.h"
 #include "features/meals/meal_factory.h"
+#include "features/meals/meals_repository.h"
 
 void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
-                         std::shared_ptr<DBManager> dbManager, MealFactory& factory);
+                         std::shared_ptr<MealsRepository> mealsRepo, MealFactory& factory);

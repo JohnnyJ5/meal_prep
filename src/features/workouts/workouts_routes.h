@@ -4,8 +4,8 @@
 
 #include <memory>
 
-#include "core/db/db_manager.h"
 #include "core/http/middleware.h"
+#include "features/workouts/workouts_repository.h"
 
 void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
-                            std::shared_ptr<DBManager> dbManager);
+                            std::shared_ptr<WorkoutsRepository> workouts);
