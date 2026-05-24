@@ -90,7 +90,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: List all workouts (summary)
     CROW_ROUTE(app, "/api/workouts")
-        .methods(crow::HTTPMethod::GET)([&workouts]() {
+        .methods(crow::HTTPMethod::GET)([workouts]() {
             auto list = workouts->listWorkouts();
             crow::json::wvalue res = crow::json::wvalue::list();
             for (size_t i = 0; i < list.size(); ++i) {
@@ -106,7 +106,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Get one workout (full nested document)
     CROW_ROUTE(app, "/api/workouts/<int>")
-        .methods(crow::HTTPMethod::GET)([&workouts, workoutToJson](int id) {
+        .methods(crow::HTTPMethod::GET)([workouts, workoutToJson](int id) {
             Workout w = workouts->getWorkout(id);
             if (w.id == 0) {
                 return crow::response(404, "Workout not found");
@@ -117,7 +117,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
     // Route: Create a workout
     CROW_ROUTE(app, "/api/workouts")
         .methods(crow::HTTPMethod::POST)(
-            [&workouts, workoutFromJson, workoutToJson](const crow::request& req) {
+            [workouts, workoutFromJson, workoutToJson](const crow::request& req) {
                 auto body = crow::json::load(req.body);
                 if (!body) return crow::response(400, "Invalid JSON");
                 try {
@@ -140,7 +140,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
     // Route: Update a workout
     CROW_ROUTE(app, "/api/workouts/<int>")
         .methods(crow::HTTPMethod::PUT)(
-            [&workouts, workoutFromJson, workoutToJson](const crow::request& req, int id) {
+            [workouts, workoutFromJson, workoutToJson](const crow::request& req, int id) {
                 auto body = crow::json::load(req.body);
                 if (!body) return crow::response(400, "Invalid JSON");
                 try {
@@ -162,7 +162,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Delete a workout
     CROW_ROUTE(app, "/api/workouts/<int>")
-        .methods(crow::HTTPMethod::DELETE)([&workouts](int id) {
+        .methods(crow::HTTPMethod::DELETE)([workouts](int id) {
             if (!workouts->deleteWorkout(id)) {
                 return crow::response(500, "Failed to delete workout");
             }
@@ -214,7 +214,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: List all templates
     CROW_ROUTE(app, "/api/workout-templates")
-        .methods(crow::HTTPMethod::GET)([&workouts]() {
+        .methods(crow::HTTPMethod::GET)([workouts]() {
             auto list = workouts->listTemplates();
             crow::json::wvalue res = crow::json::wvalue::list();
             for (size_t i = 0; i < list.size(); ++i) {
@@ -228,7 +228,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Get one template
     CROW_ROUTE(app, "/api/workout-templates/<int>")
-        .methods(crow::HTTPMethod::GET)([&workouts, templateToJson](int id) {
+        .methods(crow::HTTPMethod::GET)([workouts, templateToJson](int id) {
             WorkoutTemplate t = workouts->getTemplate(id);
             if (t.id == 0) return crow::response(404, "Template not found");
             return crow::response(templateToJson(t));
@@ -237,7 +237,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
     // Route: Create a template
     CROW_ROUTE(app, "/api/workout-templates")
         .methods(crow::HTTPMethod::POST)(
-            [&workouts, templateFromJson, templateToJson](const crow::request& req) {
+            [workouts, templateFromJson, templateToJson](const crow::request& req) {
                 auto body = crow::json::load(req.body);
                 if (!body) return crow::response(400, "Invalid JSON");
                 try {
@@ -259,7 +259,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
     // Route: Update a template
     CROW_ROUTE(app, "/api/workout-templates/<int>")
         .methods(crow::HTTPMethod::PUT)(
-            [&workouts, templateFromJson, templateToJson](const crow::request& req, int id) {
+            [workouts, templateFromJson, templateToJson](const crow::request& req, int id) {
                 auto body = crow::json::load(req.body);
                 if (!body) return crow::response(400, "Invalid JSON");
                 try {
@@ -279,7 +279,7 @@ void registerWorkoutsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Delete a template
     CROW_ROUTE(app, "/api/workout-templates/<int>")
-        .methods(crow::HTTPMethod::DELETE)([&workouts](int id) {
+        .methods(crow::HTTPMethod::DELETE)([workouts](int id) {
             if (!workouts->deleteTemplate(id)) {
                 return crow::response(500, "Failed to delete template");
             }

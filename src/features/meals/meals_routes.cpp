@@ -10,7 +10,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
                          std::shared_ptr<MealsRepository> mealsRepo, MealFactory& factory) {
     // Route: Get all available meals
     CROW_ROUTE(app, "/api/meals")
-    ([&factory, &mealsRepo]() {
+    ([&factory, mealsRepo]() {
         std::vector<std::tuple<int, std::string, std::string>> meals;
         factory.getAvailableMeals(meals);
         std::set<int> idsWithOptional = mealsRepo->getMealIdsWithOptionalIngredients();
@@ -28,7 +28,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Get all available ingredients
     CROW_ROUTE(app, "/api/ingredients")
-    ([&mealsRepo]() {
+    ([mealsRepo]() {
         std::vector<std::pair<std::string, std::string>> ingredients;
         mealsRepo->getAllIngredients(ingredients);
         crow::json::wvalue res;
@@ -43,7 +43,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Add a new ingredient
     CROW_ROUTE(app, "/api/ingredients/add")
-        .methods(crow::HTTPMethod::POST)([&mealsRepo](const crow::request& req) {
+        .methods(crow::HTTPMethod::POST)([mealsRepo](const crow::request& req) {
             auto body = crow::json::load(req.body);
             if (!body) {
                 CROW_LOG_ERROR << "Invalid JSON for /api/ingredients/add POST";
@@ -69,7 +69,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Add a new meal
     CROW_ROUTE(app, "/api/meals/add")
-        .methods(crow::HTTPMethod::POST)([&mealsRepo](const crow::request& req) {
+        .methods(crow::HTTPMethod::POST)([mealsRepo](const crow::request& req) {
             auto body = crow::json::load(req.body);
             if (!body) {
                 CROW_LOG_ERROR << "Invalid JSON for /api/meals/add POST";
@@ -123,7 +123,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
     // Route: Update an existing meal
     CROW_ROUTE(app, "/api/meals/<string>")
         .methods(crow::HTTPMethod::PUT)(
-            [&mealsRepo](const crow::request& req, const std::string& mealName) {
+            [mealsRepo](const crow::request& req, const std::string& mealName) {
                 auto body = crow::json::load(req.body);
                 if (!body) {
                     CROW_LOG_ERROR << "Invalid JSON for /api/meals/" << mealName << " PUT";
@@ -173,7 +173,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Delete a meal
     CROW_ROUTE(app, "/api/meals/<string>")
-        .methods(crow::HTTPMethod::DELETE)([&mealsRepo](const std::string& mealName) {
+        .methods(crow::HTTPMethod::DELETE)([mealsRepo](const std::string& mealName) {
             if (mealsRepo->deleteMeal(mealName)) {
                 CROW_LOG_INFO << "Successfully deleted meal: " << mealName;
                 return crow::response(200, "Meal deleted successfully");
@@ -185,7 +185,7 @@ void registerMealsRoutes(crow::App<RequestTimerMiddleware>& app,
 
     // Route: Get a specific meal
     CROW_ROUTE(app, "/api/meals/<string>")
-        .methods(crow::HTTPMethod::GET)([&mealsRepo](const std::string& mealName) {
+        .methods(crow::HTTPMethod::GET)([mealsRepo](const std::string& mealName) {
             auto meal = mealsRepo->getMeal(mealName);
             if (meal) {
                 CROW_LOG_INFO << "Successfully retrieved meal: " << mealName;

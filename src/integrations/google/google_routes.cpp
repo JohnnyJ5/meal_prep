@@ -30,7 +30,7 @@ void registerGoogleRoutes(crow::App<RequestTimerMiddleware>& app,
         }
 
         crow::response res;
-        res.set_static_file_info("static/index.html");
+        res.set_static_file_info("static/pages/planner/index.html");
         return res;
     });
 

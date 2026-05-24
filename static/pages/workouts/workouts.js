@@ -1,8 +1,6 @@
 // Workouts page: list, log form, detail view.
-// Coexists with planner script.js; assumes DOM is ready when script.js' DOMContentLoaded fires.
 
 (function () {
-    let workoutsLoaded = false;
     let currentDetailId = null;
     let currentTemplateId = null;
     let templatesCache = [];
@@ -10,39 +8,9 @@
     document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('workout-date');
         if (dateInput) dateInput.valueAsDate = new Date();
+        fetchWorkouts();
+        fetchTemplates();
     });
-
-    // --- Page switching --------------------------------------------------
-
-    window.showPage = function (page) {
-        const planner = document.getElementById('page-planner');
-        const workouts = document.getElementById('page-workouts');
-        const crumb = document.getElementById('page-crumb');
-        const weekLabel = document.getElementById('week-label');
-        const navPlanner = document.getElementById('nav-planner');
-        const navWorkouts = document.getElementById('nav-workouts');
-
-        if (page === 'workouts') {
-            planner.classList.add('hidden');
-            workouts.classList.remove('hidden');
-            crumb.textContent = 'Workouts';
-            if (weekLabel) weekLabel.textContent = 'Log';
-            navPlanner.classList.remove('active');
-            navWorkouts.classList.add('active');
-            if (!workoutsLoaded) {
-                fetchWorkouts();
-                fetchTemplates();
-                workoutsLoaded = true;
-            }
-        } else {
-            workouts.classList.add('hidden');
-            planner.classList.remove('hidden');
-            crumb.textContent = 'Meal Prep';
-            if (weekLabel) weekLabel.textContent = 'This week';
-            navWorkouts.classList.remove('active');
-            navPlanner.classList.add('active');
-        }
-    };
 
     // --- History list ----------------------------------------------------
 
