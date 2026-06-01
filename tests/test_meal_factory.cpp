@@ -51,7 +51,7 @@ TEST_F(MealFactoryTest, CaseSensitivity) {
 
 // Test getAvailableMeals
 TEST_F(MealFactoryTest, GetAvailableMeals) {
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     factory->getAvailableMeals(meals);
 
     EXPECT_GT(meals.size(), 0);
@@ -118,7 +118,7 @@ TEST_F(MealFactoryTest, CreateMealIncludesSelectedAddOns) {
 
 // Test that all available meals can be creatable
 TEST_F(MealFactoryTest, AllAvailableMealsAreCreatable) {
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     factory->getAvailableMeals(meals);
 
     for (const auto &mealTuple : meals) {

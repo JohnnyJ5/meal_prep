@@ -21,6 +21,19 @@ TEST_F(MealTest, MealConstructorAndGetters) {
     EXPECT_EQ(meal.getIngredients().size(), 2);
     EXPECT_EQ(meal.getIngredients()[0].getName(), "Spinach");
     EXPECT_EQ(meal.getIngredients()[1].getName(), "Salt");
+    EXPECT_FALSE(meal.isVerified());  // defaults to unverified
+}
+
+// Test the verified flag through the constructor
+TEST_F(MealTest, VerifiedFlag) {
+    std::vector<Ingredient> ingredients = {
+        Ingredient("Spinach", Measurement(2.0, MeasurementUnit::CUP))};
+
+    Meal verifiedMeal("Verified Meal", ingredients, "Dinner", true);
+    EXPECT_TRUE(verifiedMeal.isVerified());
+
+    Meal unverifiedMeal("Unverified Meal", ingredients, "Dinner", false);
+    EXPECT_FALSE(unverifiedMeal.isVerified());
 }
 
 // Test that ingredients are immutable through getter

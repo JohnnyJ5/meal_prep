@@ -40,7 +40,8 @@ bool DBManager::initializeSchema() {
         "CREATE TABLE IF NOT EXISTS meals ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "name TEXT UNIQUE NOT NULL, "
-        "category TEXT DEFAULT 'Uncategorized'"
+        "category TEXT DEFAULT 'Uncategorized', "
+        "verified INTEGER NOT NULL DEFAULT 0"
         ");";
 
     std::string createIngredientsTable =
@@ -167,6 +168,25 @@ bool DBManager::initializeSchema() {
         executeQuery("ALTER TABLE meals ADD COLUMN category TEXT DEFAULT 'Uncategorized';");
     }
 
+    // Add verified column to existing databases if it doesn't exist
+    bool verifiedColumnExists = false;
+    sqlite3_stmt *stmtVerified = nullptr;
+    if (sqlite3_prepare_v2(d_db, checkColumn.c_str(), -1, &stmtVerified, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmtVerified) == SQLITE_ROW) {
+            const char *colName =
+                reinterpret_cast<const char *>(sqlite3_column_text(stmtVerified, 1));
+            if (colName && std::string(colName) == "verified") {
+                verifiedColumnExists = true;
+                break;
+            }
+        }
+        sqlite3_finalize(stmtVerified);
+    }
+
+    if (!verifiedColumnExists) {
+        executeQuery("ALTER TABLE meals ADD COLUMN verified INTEGER NOT NULL DEFAULT 0;");
+    }
+
     if (!executeQuery(createIngredientsTable)) return false;
 
     // Add is_optional column to existing ingredients tables if it doesn't exist
@@ -228,7 +248,7 @@ bool DBManager::addMeal(const Meal &meal) {
     // Begin transaction
     executeQuery("BEGIN TRANSACTION;");
 
-    std::string insertMeal = "INSERT INTO meals (name, category) VALUES (?, ?);";
+    std::string insertMeal = "INSERT INTO meals (name, category, verified) VALUES (?, ?, ?);";
     sqlite3_stmt *stmtMeal = nullptr;
     if (sqlite3_prepare_v2(d_db, insertMeal.c_str(), -1, &stmtMeal, nullptr) != SQLITE_OK) {
         executeQuery("ROLLBACK;");
@@ -237,6 +257,7 @@ bool DBManager::addMeal(const Meal &meal) {
 
     sqlite3_bind_text(stmtMeal, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmtMeal, 2, meal.getCategory().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmtMeal, 3, meal.isVerified() ? 1 : 0);
     if (sqlite3_step(stmtMeal) != SQLITE_DONE) {
         sqlite3_finalize(stmtMeal);
         executeQuery("ROLLBACK;");
@@ -298,7 +319,7 @@ bool DBManager::updateMeal(const Meal &meal) {
     }
 
     // Insert updated meal row
-    std::string insertMeal = "INSERT INTO meals (name, category) VALUES (?, ?);";
+    std::string insertMeal = "INSERT INTO meals (name, category, verified) VALUES (?, ?, ?);";
     sqlite3_stmt *stmtMeal = nullptr;
     if (sqlite3_prepare_v2(d_db, insertMeal.c_str(), -1, &stmtMeal, nullptr) != SQLITE_OK) {
         executeQuery("ROLLBACK;");
@@ -306,6 +327,7 @@ bool DBManager::updateMeal(const Meal &meal) {
     }
     sqlite3_bind_text(stmtMeal, 1, meal.getName().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmtMeal, 2, meal.getCategory().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmtMeal, 3, meal.isVerified() ? 1 : 0);
     if (sqlite3_step(stmtMeal) != SQLITE_DONE) {
         sqlite3_finalize(stmtMeal);
         executeQuery("ROLLBACK;");
@@ -367,9 +389,10 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     int mealId = getMealId(mealName);
     if (mealId == -1) return nullptr;
 
-    std::string getCategoryQuery = "SELECT category FROM meals WHERE id = ?;";
+    std::string getCategoryQuery = "SELECT category, verified FROM meals WHERE id = ?;";
     sqlite3_stmt *stmtCat = nullptr;
     std::string category = "Uncategorized";
+    bool verified = false;
     if (sqlite3_prepare_v2(d_db, getCategoryQuery.c_str(), -1, &stmtCat, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(stmtCat, 1, mealId);
         if (sqlite3_step(stmtCat) == SQLITE_ROW) {
@@ -377,6 +400,7 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
                     reinterpret_cast<const char *>(sqlite3_column_text(stmtCat, 0))) {
                 category = catText;
             }
+            verified = sqlite3_column_int(stmtCat, 1) != 0;
         }
     }
     sqlite3_finalize(stmtCat);
@@ -403,14 +427,14 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
     }
     sqlite3_finalize(stmt);
 
-    return std::make_unique<Meal>(mealName, ingredients, category);
+    return std::make_unique<Meal>(mealName, ingredients, category, verified);
 }
 
-bool DBManager::getAllMeals(std::vector<std::tuple<int, std::string, std::string>> &meals) {
+bool DBManager::getAllMeals(std::vector<std::tuple<int, std::string, std::string, bool>> &meals) {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     if (!d_db) return false;
 
-    std::string query = "SELECT id, name, category FROM meals ORDER BY name ASC;";
+    std::string query = "SELECT id, name, category, verified FROM meals ORDER BY name ASC;";
     sqlite3_stmt *stmt = nullptr;
 
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -422,7 +446,8 @@ bool DBManager::getAllMeals(std::vector<std::tuple<int, std::string, std::string
                     reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2))) {
                 category = catText;
             }
-            meals.emplace_back(id, name, category);
+            bool verified = sqlite3_column_int(stmt, 3) != 0;
+            meals.emplace_back(id, name, category, verified);
         }
     }
     sqlite3_finalize(stmt);
@@ -576,7 +601,7 @@ bool DBManager::seedDefaultIngredients() {
 bool DBManager::seedDefaultMeals() {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     // This will seed the database with the initial hardcoded values if empty.
-    std::vector<std::tuple<int, std::string, std::string>> existing;
+    std::vector<std::tuple<int, std::string, std::string, bool>> existing;
     getAllMeals(existing);
     if (!existing.empty()) return true;  // Already seeded
 

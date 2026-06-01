@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 
         if (listMeals) {
             std::cout << "Available meals:" << std::endl;
-            std::vector<std::tuple<int, std::string, std::string>> meals;
+            std::vector<std::tuple<int, std::string, std::string, bool>> meals;
             factory.getAvailableMeals(meals);
             for (const auto &mealTuple : meals) {
                 std::cout << "-m " << std::get<1>(mealTuple) << " [" << std::get<2>(mealTuple)

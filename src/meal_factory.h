@@ -53,7 +53,7 @@ class MealFactory {
      * meals.
      * @param meals The vector to populate.
      */
-    void getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>> &meals);
+    void getAvailableMeals(std::vector<std::tuple<int, std::string, std::string, bool>> &meals);
 
    private:
     std::shared_ptr<DBManager> d_dbManager;

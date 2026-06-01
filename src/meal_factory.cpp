@@ -32,11 +32,12 @@ std::unique_ptr<Meal> MealFactory::createMeal(const std::string &mealName,
         }
         filtered.push_back(ing);
     }
-    return std::make_unique<Meal>(raw->getName(), filtered, raw->getCategory());
+    return std::make_unique<Meal>(raw->getName(), filtered, raw->getCategory(), raw->isVerified());
 }
 
 // Function to get all available meal names and categories
-void MealFactory::getAvailableMeals(std::vector<std::tuple<int, std::string, std::string>> &meals) {
+void MealFactory::getAvailableMeals(
+    std::vector<std::tuple<int, std::string, std::string, bool>> &meals) {
     if (d_dbManager) {
         d_dbManager->getAllMeals(meals);
     }

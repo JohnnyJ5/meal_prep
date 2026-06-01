@@ -16,7 +16,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
     // Route: Get all available meals
     CROW_ROUTE(app, "/api/meals")
     ([&factory, &dbManager]() {
-        std::vector<std::tuple<int, std::string, std::string>> meals;
+        std::vector<std::tuple<int, std::string, std::string, bool>> meals;
         factory.getAvailableMeals(meals);
         std::set<int> idsWithOptional = dbManager->getMealIdsWithOptionalIngredients();
         crow::json::wvalue res;
@@ -25,6 +25,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             res[i]["id"] = id;
             res[i]["name"] = std::get<1>(meals[i]);
             res[i]["category"] = std::get<2>(meals[i]);
+            res[i]["verified"] = std::get<3>(meals[i]);
             res[i]["has_optional_ingredients"] = idsWithOptional.count(id) > 0;
         }
         CROW_LOG_INFO << "Successfully retrieved " << meals.size() << " available meals";
@@ -109,7 +110,12 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                     category = body["category"].s();
                 }
 
-                Meal newMeal(mealName, ingredients, category);
+                bool verified = false;
+                if (body.has("verified")) {
+                    verified = body["verified"].b();
+                }
+
+                Meal newMeal(mealName, ingredients, category, verified);
                 if (dbManager->addMeal(newMeal)) {
                     CROW_LOG_INFO << "Successfully added meal: " << mealName;
                     return crow::response(200, "Meal added successfully");
@@ -165,8 +171,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                         category = body["category"].s();
                     }
 
+                    bool verified = false;
+                    if (body.has("verified")) {
+                        verified = body["verified"].b();
+                    }
+
                     // Name from URL is used
-                    Meal updatedMeal(mealName, ingredients, category);
+                    Meal updatedMeal(mealName, ingredients, category, verified);
                     if (dbManager->updateMeal(updatedMeal)) {
                         CROW_LOG_INFO << "Successfully updated meal: " << mealName;
                         return crow::response(200, "Meal updated successfully");
@@ -202,6 +213,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                 crow::json::wvalue res;
                 res["name"] = meal->getName();
                 res["category"] = meal->getCategory();
+                res["verified"] = meal->isVerified();
                 for (size_t i = 0; i < meal->getIngredients().size(); ++i) {
                     const auto &ing = meal->getIngredients()[i];
                     res["ingredients"][i]["name"] = ing.getName();
