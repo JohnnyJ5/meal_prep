@@ -41,6 +41,45 @@ TEST_F(DBManagerTest, AddAndGetMeal) {
     EXPECT_EQ(retrieved->getIngredients()[0].getAmount().getUnit(), MeasurementUnit::POUND);
 }
 
+// verified defaults to false and round-trips through add/get
+TEST_F(DBManagerTest, VerifiedFlagDefaultsFalse) {
+    db->addMeal(makeMeal("unverified-meal"));
+    auto retrieved = db->getMeal("unverified-meal");
+    ASSERT_NE(retrieved, nullptr);
+    EXPECT_FALSE(retrieved->isVerified());
+}
+
+// addMeal persists the verified flag and getMeal/getAllMeals report it
+TEST_F(DBManagerTest, VerifiedFlagPersists) {
+    std::vector<Ingredient> ings = {
+        Ingredient("Chicken", Measurement(1.0, MeasurementUnit::POUND))};
+    Meal meal("verified-meal", ings, "Poultry", true);
+    EXPECT_TRUE(db->addMeal(meal));
+
+    auto retrieved = db->getMeal("verified-meal");
+    ASSERT_NE(retrieved, nullptr);
+    EXPECT_TRUE(retrieved->isVerified());
+
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
+    EXPECT_TRUE(db->getAllMeals(meals));
+    ASSERT_EQ(meals.size(), 1u);
+    EXPECT_TRUE(std::get<3>(meals[0]));
+}
+
+// updateMeal can toggle the verified flag
+TEST_F(DBManagerTest, UpdateMealTogglesVerified) {
+    db->addMeal(makeMeal("toggle-me"));  // unverified by default
+
+    std::vector<Ingredient> ings = {
+        Ingredient("Chicken", Measurement(1.0, MeasurementUnit::POUND))};
+    Meal updated("toggle-me", ings, "Test", true);
+    EXPECT_TRUE(db->updateMeal(updated));
+
+    auto retrieved = db->getMeal("toggle-me");
+    ASSERT_NE(retrieved, nullptr);
+    EXPECT_TRUE(retrieved->isVerified());
+}
+
 // getMeal for a name not in the DB returns nullptr
 TEST_F(DBManagerTest, GetNonExistentMealReturnsNull) {
     auto result = db->getMeal("does-not-exist");
@@ -80,7 +119,7 @@ TEST_F(DBManagerTest, GetAllMealsReturnsAllEntries) {
     db->addMeal(makeMeal("meal-b", "Cat2"));
     db->addMeal(makeMeal("meal-a", "Cat1"));
 
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     EXPECT_TRUE(db->getAllMeals(meals));
     ASSERT_EQ(meals.size(), 2u);
     EXPECT_EQ(std::get<1>(meals[0]), "meal-a");  // ordered ASC
@@ -89,7 +128,7 @@ TEST_F(DBManagerTest, GetAllMealsReturnsAllEntries) {
 
 // getAllMeals on empty DB returns empty vector
 TEST_F(DBManagerTest, GetAllMealsEmptyDB) {
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     EXPECT_TRUE(db->getAllMeals(meals));
     EXPECT_TRUE(meals.empty());
 }
@@ -145,7 +184,7 @@ TEST_F(DBManagerTest, SeedDefaultIngredientsIsIdempotent) {
 TEST_F(DBManagerTest, SeedDefaultMealsPopulatesTable) {
     EXPECT_TRUE(db->seedDefaultMeals());
 
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     db->getAllMeals(meals);
     EXPECT_GT(meals.size(), 0u);
 }
@@ -153,11 +192,11 @@ TEST_F(DBManagerTest, SeedDefaultMealsPopulatesTable) {
 // seedDefaultMeals is idempotent
 TEST_F(DBManagerTest, SeedDefaultMealsIsIdempotent) {
     db->seedDefaultMeals();
-    std::vector<std::tuple<int, std::string, std::string>> first;
+    std::vector<std::tuple<int, std::string, std::string, bool>> first;
     db->getAllMeals(first);
 
     db->seedDefaultMeals();
-    std::vector<std::tuple<int, std::string, std::string>> second;
+    std::vector<std::tuple<int, std::string, std::string, bool>> second;
     db->getAllMeals(second);
 
     EXPECT_EQ(first.size(), second.size());
@@ -295,7 +334,7 @@ TEST_F(DBManagerTest, GetMealIdsWithOptionalIngredients) {
 
     auto ids = db->getMealIdsWithOptionalIngredients();
 
-    std::vector<std::tuple<int, std::string, std::string>> meals;
+    std::vector<std::tuple<int, std::string, std::string, bool>> meals;
     db->getAllMeals(meals);
     int noOptionsId = -1, withOptionsId = -1;
     for (const auto &m : meals) {

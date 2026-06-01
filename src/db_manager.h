@@ -95,10 +95,10 @@ class DBManager {
     /**
      * @brief Retrieves a list of all available meal ids, names, and categories
      * from the database.
-     * @param meals Vector to populate with tuples of (id, name, category).
+     * @param meals Vector to populate with tuples of (id, name, category, verified).
      * @return true if successful, false otherwise.
      */
-    bool getAllMeals(std::vector<std::tuple<int, std::string, std::string>> &meals);
+    bool getAllMeals(std::vector<std::tuple<int, std::string, std::string, bool>> &meals);
 
     /**
      * @brief Returns the set of meal IDs that have at least one optional

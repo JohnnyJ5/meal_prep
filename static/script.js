@@ -165,10 +165,12 @@ function renderMeals(meals) {
 
             const hasOptional = !!meal.has_optional_ingredients;
             const customizeHint = hasOptional ? '<span class="meal-card-customize">+ add-ons</span>' : '';
+            const verifiedBadge = meal.verified ? '<span class="verified-badge" title="Verified recipe">✓ Verified</span>' : '';
 
             card.innerHTML = `
                 <div class="meal-card-header">
                     <h3>${emoji} ${formatName(mealId)}</h3>
+                    ${verifiedBadge}
                     ${customizeHint}
                 </div>
                 <div class="meal-card-addons" hidden></div>
@@ -908,10 +910,15 @@ async function fetchManageMeals() {
 
             const formatName = str => str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
+            const verifiedBadge = meal.verified
+                ? '<span class="verified-badge" style="margin-left:8px;" title="Verified recipe">✓ Verified</span>'
+                : '';
+
             item.innerHTML = `
                 <div class="manage-item-info">
                     <strong>${formatName(mealId)}</strong>
                     <span class="badge" style="margin-left:8px; font-size:0.8rem; background:var(--primary-color); padding:2px 6px; border-radius:4px; color:white;">${meal.category}</span>
+                    ${verifiedBadge}
                     <br><small style="color: var(--text-secondary);">${mealId}</small>
                     <br><small style="color: var(--text-secondary);">ID: ${meal.id}</small>
                 </div>
@@ -946,6 +953,7 @@ async function editMeal(mealId) {
         if (mealRes.ok) {
             const mealData = await mealRes.json();
             document.getElementById('meal-category').value = mealData.category || "Uncategorized";
+            document.getElementById('meal-verified').checked = !!mealData.verified;
             mealData.ingredients.forEach(ing => {
                 addIngredientRow(ing.name, ing.amount, ing.unit, !!ing.optional);
             });
@@ -1034,6 +1042,7 @@ async function saveMeal(e) {
 
     const name = document.getElementById('meal-name').value.trim().toLowerCase().replace(/\s+/g, '-');
     const category = document.getElementById('meal-category').value.trim() || 'Uncategorized';
+    const verified = document.getElementById('meal-verified').checked;
     const ingredientRows = document.querySelectorAll('.ingredient-row');
 
     if (ingredientRows.length === 0) {
@@ -1052,7 +1061,7 @@ async function saveMeal(e) {
         });
     });
 
-    const payload = { name, category, ingredients };
+    const payload = { name, category, verified, ingredients };
 
     try {
         const method = currentEditMeal ? 'PUT' : 'POST';
