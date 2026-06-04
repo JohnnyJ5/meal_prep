@@ -1,8 +1,5 @@
 build/
-build_docker/
-build_asan/
-build_tsan/
-build_cov/
+build_*/
 .cache/
 compile_commands.json
 *.o
@@ -21,6 +18,13 @@ meal_prep.conf.json
 
 #claude worksapce
 .claude_workspace_env/
+
+# Claude Code machine-specific files (shared config under .claude/ is still tracked)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Local recipe scratch images (inputs for the heic-recipe skill)
+recipes/
 
 # Sensitive files
 .env

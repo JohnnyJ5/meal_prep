@@ -11,6 +11,28 @@
 
 CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
 
+std::string CalendarService::filterBirthdayEvents(const std::string &eventsJson) {
+    auto parsed = crow::json::load(eventsJson);
+    if (!parsed || !parsed.has("items")) {
+        return eventsJson;
+    }
+
+    crow::json::wvalue out(parsed);
+    std::vector<crow::json::wvalue> kept;
+    for (const auto &item : parsed["items"]) {
+        bool isBirthday = item.has("eventType") && std::string(item["eventType"].s()) == "birthday";
+        // Belt-and-suspenders: also drop anything carrying birthdayProperties.
+        bool hasBirthdayProps = item.has("birthdayProperties");
+        if (isBirthday || hasBirthdayProps) {
+            continue;
+        }
+        kept.emplace_back(item);
+    }
+
+    out["items"] = std::move(kept);
+    return out.dump();
+}
+
 std::string CalendarService::createEvent(const std::string &summary, const std::string &description,
                                          const std::string &startTime, const std::string &endTime,
                                          bool withReminders) {
@@ -108,11 +130,15 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
             cal.has("foregroundColor") ? std::string(cal["foregroundColor"].s()) : "#ffffff";
 
         // Filter out the birthday/contacts calendar.
-        // The calendar ID suffix varies by account but always ends with
-        // "#contacts@group.v.calendar.google.com".
+        // The calendar ID for this auto-generated calendar contains
+        // "#contacts@group.v.calendar.google.com". The displayed summary varies
+        // ("Birthdays", "Birthday", "Contacts", localized variants), so match it
+        // case-insensitively as a fallback.
+        std::string summaryLower = calData.summary;
+        std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(), ::tolower);
         bool isBirthdaysCalendar =
             calId.find("#contacts@group.v.calendar.google.com") != std::string::npos ||
-            calData.summary == "Birthdays" || calData.summary == "Contacts";
+            summaryLower.find("birthday") != std::string::npos || summaryLower == "contacts";
         if (isBirthdaysCalendar) {
             continue;
         }
@@ -130,7 +156,7 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
 
         std::string evResponse = makeAuthorizedRequest(url);
         if (!evResponse.empty()) {
-            calData.eventsJson = evResponse;
+            calData.eventsJson = filterBirthdayEvents(evResponse);
             results.push_back(calData);
         }
     }

@@ -92,6 +92,7 @@ set(TEST_SOURCES
     tests/test_db_manager.cpp
     tests/test_token_encryption.cpp
     tests/test_workout_service.cpp
+    tests/test_calendar_service.cpp
     # Add other test source files here
 )
 

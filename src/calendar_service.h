@@ -44,6 +44,20 @@ class CalendarService {
     std::vector<CalendarEvents> listEvents(const std::string &timeMin = "",
                                            const std::string &timeMax = "", int maxResults = 100);
 
+    /**
+     * @brief Removes birthday/anniversary events from a Calendar API events list response.
+     *
+     * Google tags these with eventType == "birthday" (an all-day, annually recurring
+     * event sourced from Google Contacts). Such events can appear in any calendar feed,
+     * including the user's primary calendar, so filtering by calendar name/ID alone is
+     * not sufficient. Exposed as static for unit testing.
+     *
+     * @param eventsJson Raw JSON body of a calendar events.list response.
+     * @return The same JSON with birthday events removed from "items". If the input is
+     *         not valid JSON or has no "items" array, it is returned unchanged.
+     */
+    static std::string filterBirthdayEvents(const std::string &eventsJson);
+
    private:
     std::shared_ptr<GoogleOAuth> d_oauth;
 
