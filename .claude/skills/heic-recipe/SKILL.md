@@ -69,7 +69,7 @@ From the image, identify:
 - **name**: the title/name of the dish formatted as **kebab-case** (lowercase, spaces replaced with hyphens, e.g. `"greek-yogurt-banana-pancakes"`). All existing meals use this format and Crow's URL routing requires it.
 - **category**: one of `Breakfast`, `Lunch`, `Dinner`, `Snack`, `Dessert`, `Side`, `Drink` — default `Uncategorized`
 - **ingredients**: array of objects, each with:
-  - `name` — lowercase ingredient name (e.g. `"chicken breast"`)
+  - `name` — ingredient name in Title Case, capitalizing the first letter of each word (e.g. `"Chicken Breast"`)
   - `amount` — numeric quantity (use midpoint for ranges, 1.0 if unclear)
   - `unit` — integer from the table above
   - `preparation` — string from the list above, or `"None"`
