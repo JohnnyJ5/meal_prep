@@ -128,7 +128,7 @@ All API responses are in JSON format.
   ```json
   {
     "status": "success",
-    "ingredients_text": "Whole Foods Order - Ingredients:\n- Ground Beef: 1 lb\n...",
+    "ingredients_text": "Whole Foods Order\n\nMeals:\n- Spaghetti Bolognese\n\nIngredients:\n\nProteins:\n- Ground Beef: 1 pounds\n...",
     "failed_meals": ["Unknown Meal"]
   }
   ```
@@ -246,7 +246,7 @@ These endpoints require Google OAuth to be authorized first (see OAuth Endpoints
   {
     "start": "2026-03-28T10:00:00Z",
     "end":   "2026-03-28T11:00:00Z",
-    "ingredients": "Whole Foods Order - Ingredients:\n- Ground Beef: 1 lb\n..."
+    "ingredients": "Whole Foods Order\n\nMeals:\n- Spaghetti Bolognese\n\nIngredients:\n\nProteins:\n- Ground Beef: 1 pounds\n..."
   }
   ```
 - **Success Response**: `200 OK`

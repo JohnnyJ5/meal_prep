@@ -4,6 +4,7 @@
 #include <map>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ingredient.h"
@@ -19,6 +20,19 @@
  */
 void ConsolidateAllIngredients(std::map<std::string, Ingredient> &allIngredients,
                                const std::vector<std::reference_wrapper<Meal>> &meals);
+
+/**
+ * @brief Formats the Whole Foods order description with meal names and categorized ingredients.
+ *
+ * @param os The output stream to write the formatted order text to.
+ * @param meals The list of meals used to create the consolidated ingredient list.
+ * @param allIngredients The consolidated ingredients map.
+ * @param availableIngredients Pairs of (ingredient name, category) from the database.
+ */
+void FormatWholeFoodsOrder(
+    std::ostream &os, const std::vector<std::reference_wrapper<Meal>> &meals,
+    const std::map<std::string, Ingredient> &allIngredients,
+    const std::vector<std::pair<std::string, std::string>> &availableIngredients);
 
 /**
  * @brief Prints the weekly meal schedule to the given output stream.

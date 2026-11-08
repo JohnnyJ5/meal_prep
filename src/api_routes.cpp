@@ -231,7 +231,7 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
 
     // Route: Plan selected meals and trigger email
     CROW_ROUTE(app, "/api/plan")
-        .methods(crow::HTTPMethod::POST)([&factory](const crow::request &req) {
+        .methods(crow::HTTPMethod::POST)([&factory, &dbManager](const crow::request &req) {
             auto body = crow::json::load(req.body);
             if (!body) {
                 CROW_LOG_ERROR << "Invalid JSON for /api/plan POST";
@@ -284,11 +284,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             std::map<std::string, Ingredient> allIngredients;
             ConsolidateAllIngredients(allIngredients, mealRefs);
 
-            std::stringstream ingredientsSS;
-            ingredientsSS << "Whole Foods Order - Ingredients:\n";
-            for (const auto &pair : allIngredients) {
-                ingredientsSS << "- " << pair.second << "\n";
+            std::vector<std::pair<std::string, std::string>> availableIngredients;
+            if (dbManager) {
+                dbManager->getAllIngredients(availableIngredients);
             }
+
+            std::stringstream ingredientsSS;
+            FormatWholeFoodsOrder(ingredientsSS, mealRefs, allIngredients, availableIngredients);
 
             CROW_LOG_INFO << "Successfully planned meals, failed subset size: "
                           << failedMeals.size();
@@ -365,8 +367,8 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
                         WorkoutExercise e;
                         if (eJson.has("name")) e.name = std::string(eJson["name"].s());
                         if (eJson.has("exercise_type")) {
-                            e.type = exerciseTypeFromString(
-                                std::string(eJson["exercise_type"].s()));
+                            e.type =
+                                exerciseTypeFromString(std::string(eJson["exercise_type"].s()));
                         }
                         if (eJson.has("sets")) e.sets = static_cast<int>(eJson["sets"].i());
                         if (eJson.has("reps")) e.reps = static_cast<int>(eJson["reps"].i());
@@ -391,20 +393,19 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
     };
 
     // Route: List all workouts (summary)
-    CROW_ROUTE(app, "/api/workouts")
-        .methods(crow::HTTPMethod::GET)([&dbManager]() {
-            auto list = dbManager->listWorkouts();
-            crow::json::wvalue res = crow::json::wvalue::list();
-            for (size_t i = 0; i < list.size(); ++i) {
-                res[i]["id"] = list[i].id;
-                res[i]["name"] = list[i].name;
-                res[i]["performed_on"] = list[i].performed_on;
-                res[i]["duration_seconds"] = list[i].duration_seconds;
-                res[i]["exercise_count"] = list[i].exercise_count;
-            }
-            CROW_LOG_INFO << "Listed " << list.size() << " workout(s)";
-            return crow::response(std::move(res));
-        });
+    CROW_ROUTE(app, "/api/workouts").methods(crow::HTTPMethod::GET)([&dbManager]() {
+        auto list = dbManager->listWorkouts();
+        crow::json::wvalue res = crow::json::wvalue::list();
+        for (size_t i = 0; i < list.size(); ++i) {
+            res[i]["id"] = list[i].id;
+            res[i]["name"] = list[i].name;
+            res[i]["performed_on"] = list[i].performed_on;
+            res[i]["duration_seconds"] = list[i].duration_seconds;
+            res[i]["exercise_count"] = list[i].exercise_count;
+        }
+        CROW_LOG_INFO << "Listed " << list.size() << " workout(s)";
+        return crow::response(std::move(res));
+    });
 
     // Route: Get one workout (full nested document)
     CROW_ROUTE(app, "/api/workouts/<int>")
@@ -463,14 +464,13 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             });
 
     // Route: Delete a workout
-    CROW_ROUTE(app, "/api/workouts/<int>")
-        .methods(crow::HTTPMethod::DELETE)([&dbManager](int id) {
-            if (!dbManager->deleteWorkout(id)) {
-                return crow::response(500, "Failed to delete workout");
-            }
-            CROW_LOG_INFO << "Deleted workout id=" << id;
-            return crow::response(200, "Workout deleted");
-        });
+    CROW_ROUTE(app, "/api/workouts/<int>").methods(crow::HTTPMethod::DELETE)([&dbManager](int id) {
+        if (!dbManager->deleteWorkout(id)) {
+            return crow::response(500, "Failed to delete workout");
+        }
+        CROW_LOG_INFO << "Deleted workout id=" << id;
+        return crow::response(200, "Workout deleted");
+    });
 
     // --- Workout Template Routes ---
 
@@ -515,18 +515,17 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
     };
 
     // Route: List all templates
-    CROW_ROUTE(app, "/api/workout-templates")
-        .methods(crow::HTTPMethod::GET)([&dbManager]() {
-            auto list = dbManager->listTemplates();
-            crow::json::wvalue res = crow::json::wvalue::list();
-            for (size_t i = 0; i < list.size(); ++i) {
-                res[i]["id"] = list[i].id;
-                res[i]["name"] = list[i].name;
-                res[i]["exercise_count"] = list[i].exercise_count;
-            }
-            CROW_LOG_INFO << "Listed " << list.size() << " template(s)";
-            return crow::response(std::move(res));
-        });
+    CROW_ROUTE(app, "/api/workout-templates").methods(crow::HTTPMethod::GET)([&dbManager]() {
+        auto list = dbManager->listTemplates();
+        crow::json::wvalue res = crow::json::wvalue::list();
+        for (size_t i = 0; i < list.size(); ++i) {
+            res[i]["id"] = list[i].id;
+            res[i]["name"] = list[i].name;
+            res[i]["exercise_count"] = list[i].exercise_count;
+        }
+        CROW_LOG_INFO << "Listed " << list.size() << " template(s)";
+        return crow::response(std::move(res));
+    });
 
     // Route: Get one template
     CROW_ROUTE(app, "/api/workout-templates/<int>")
@@ -538,25 +537,24 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
 
     // Route: Create a template
     CROW_ROUTE(app, "/api/workout-templates")
-        .methods(crow::HTTPMethod::POST)(
-            [&dbManager, templateFromJson, templateToJson](const crow::request &req) {
-                auto body = crow::json::load(req.body);
-                if (!body) return crow::response(400, "Invalid JSON");
-                try {
-                    WorkoutTemplate t = templateFromJson(body);
-                    if (t.name.empty()) return crow::response(400, "name is required");
-                    t.created_at = static_cast<int64_t>(std::time(nullptr));
-                    if (!dbManager->addTemplate(t)) {
-                        return crow::response(500,
-                                              "Failed to save template (name may already exist)");
-                    }
-                    CROW_LOG_INFO << "Saved template id=" << t.id << " name=" << t.name;
-                    return crow::response(templateToJson(dbManager->getTemplate(t.id)));
-                } catch (const std::exception &e) {
-                    CROW_LOG_ERROR << "Invalid template JSON: " << e.what();
-                    return crow::response(400, "Invalid template data");
+        .methods(crow::HTTPMethod::POST)([&dbManager, templateFromJson,
+                                          templateToJson](const crow::request &req) {
+            auto body = crow::json::load(req.body);
+            if (!body) return crow::response(400, "Invalid JSON");
+            try {
+                WorkoutTemplate t = templateFromJson(body);
+                if (t.name.empty()) return crow::response(400, "name is required");
+                t.created_at = static_cast<int64_t>(std::time(nullptr));
+                if (!dbManager->addTemplate(t)) {
+                    return crow::response(500, "Failed to save template (name may already exist)");
                 }
-            });
+                CROW_LOG_INFO << "Saved template id=" << t.id << " name=" << t.name;
+                return crow::response(templateToJson(dbManager->getTemplate(t.id)));
+            } catch (const std::exception &e) {
+                CROW_LOG_ERROR << "Invalid template JSON: " << e.what();
+                return crow::response(400, "Invalid template data");
+            }
+        });
 
     // Route: Update a template
     CROW_ROUTE(app, "/api/workout-templates/<int>")
