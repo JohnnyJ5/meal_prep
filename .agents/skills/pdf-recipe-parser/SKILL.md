@@ -1,5 +1,5 @@
 ---
-name: PDF Recipe Parser
+name: pdf-recipe-parser
 description: Parse a recipe PDF into a JSON payload suitable for uploading to the meal prep database via the API.
 ---
 
@@ -20,7 +20,7 @@ pip3 install PyPDF2 requests
 ### Step 1: Parse the PDF
 
 ```bash
-python3 skills/pdf_recipe_parser/scripts/parse_recipe.py <path-to-pdf>
+python3 .agents/skills/pdf-recipe-parser/scripts/parse_recipe.py <path-to-pdf>
 ```
 
 This extracts text from the PDF and produces a JSON file at `recipes/<recipe-name>.json`. The JSON is also printed to stdout.
