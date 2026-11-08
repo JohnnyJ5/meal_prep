@@ -6,7 +6,7 @@ A guided task for importing a recipe from a PDF into the meal prep database.
 
 1. **Parse the PDF**
    ```bash
-   python3 skills/pdf_recipe_parser/scripts/parse_recipe.py <path-to-pdf>
+   python3 .agents/skills/pdf-recipe-parser/scripts/parse_recipe.py <path-to-pdf>
    ```
    This generates a JSON file at `recipes/<recipe-name>.json`.
 

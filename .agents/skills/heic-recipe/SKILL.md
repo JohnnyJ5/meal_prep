@@ -1,17 +1,11 @@
 ---
 name: heic-recipe
-description: Parse a HEIC image file to extract a recipe (name and ingredients) and upload it to the production meal-prep database. Use when the user says "import recipe from photo", "add recipe from image", "upload recipe", or provides a .heic/.HEIC file path with intent to add it to the database.
-argument-hint: <path-to-heic-file>
-allowed-tools: [Bash, Read]
+description: Parse a HEIC, JPG, or PNG image file to extract a recipe (name and ingredients) and upload it to the production meal-prep database. Use when the user says "import recipe from photo", "add recipe from image", "upload recipe", or provides an image file path with intent to add it to the database.
 ---
 
 # HEIC Recipe Importer
 
-Parse a HEIC photo of a recipe and upload it to the production meal-prep API.
-
-## Arguments
-
-The user provided: $ARGUMENTS
+Parse a photo of a recipe and upload it to the production meal-prep API.
 
 ## MeasurementUnit Integer Reference
 
@@ -41,10 +35,10 @@ Use one of these exact strings (or `"None"` if not specified):
 
 ## Steps
 
-### Step 1 — Convert HEIC to PNG
+### Step 1 — Convert HEIC to PNG (if needed)
 
 ```bash
-HEIC_PATH="$ARGUMENTS"
+HEIC_PATH="<path-to-heic-file>"
 TMP_PNG="/tmp/recipe_$$.png"
 
 if command -v heif-convert &>/dev/null; then
@@ -59,9 +53,9 @@ fi
 
 If the file already ends in `.jpg`, `.jpeg`, or `.png`, skip conversion and use the path directly.
 
-### Step 2 — Read the Image
+### Step 2 — Inspect the Image
 
-Use the **Read tool** on the PNG path to visually inspect the recipe.
+Use the `view_file` tool on the PNG/JPEG path to visually inspect the recipe.
 
 ### Step 3 — Extract Recipe Data
 

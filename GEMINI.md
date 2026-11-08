@@ -1,10 +1,10 @@
-# CLAUDE.md
+# GEMINI.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Gemini / Antigravity when working with code in this repository.
 
 ## Commands
 
-All development runs inside Docker via the Makefile:
+All development runs inside Docker via the Makefile (or directly via CMake/CTest when building in the local environment):
 
 ```bash
 make build      # Build Docker image and compile C++ code
@@ -22,7 +22,7 @@ make cppcheck   # Run cppcheck static analysis
 
 The local directory is volume-mounted into the container at `/home/devuser/meal_prep`, so code changes are reflected without rebuilding.
 
-To run a single test target, exec into the container and use ctest:
+To run a single test target, exec into the container and use `ctest`:
 ```bash
 docker compose exec meal_prep_dev bash
 cd build && ctest -R test_meal_planner --output-on-failure
@@ -72,10 +72,27 @@ Database path: `meals.db` locally; `/mnt/db/meals.db` on GCP (GCS bucket mount).
 
 CMake (C++17) with FetchContent for: Crow, Asio, GoogleTest. System deps: Boost, OpenSSL, CURL, SQLite3. Builds `meal_prep_lib` (static) + `meal_prep` executable. Tests are a separate `meal_prep_tests` target.
 
+## Unit Testing & Coverage Guidelines
+
+The project maintains a 90%+ line coverage quality gate (currently ~90.1% line coverage, 100% function coverage). Keep these patterns in mind when writing or updating tests in `tests/`:
+
+- **`TokenEncryption`**: Tests use `setenv`/`unsetenv("MEAL_PREP_TOKEN_KEY", ...)` to control encryption mode. Key must be 64 hex chars. For tampered ciphertext tests, replace the entire base64 payload with a known-bad value rather than flipping one character (GCM tag auth only fails reliably if the payload is sufficiently wrong).
+- **`DBManager`**: Use `:memory:` SQLite for isolation. A bad path such as `/nonexistent/path/x.db` triggers the null DB pointer path. The `ALTER TABLE` migration path is tested by manually creating a DB with the old schema (no `category` column) and then opening it via `DBManager`.
+- **`GoogleOAuth`**: Network-dependent methods (`makeTokenRequest`, `exchangeCodeForTokens` success path) require real Google OAuth calls. Calling `getAccessToken` with an expired token exercises the refresh failure path without network access.
+- **`config_parser.cpp`**: The `google_redirect_uri` default fallback only applies when JSON parses successfully (not when the config file is missing entirely).
+- **`google_oauth.cpp` gcov artifact**: Line 32 (`<< "client_id=..."`) may show as `0` in `gcov` despite being executed because `gcov` does not count the first continuation line of multi-line stream chains on some compilers.
+- **`measurement.h` `default:` switch cases**: Only reachable by casting an out-of-range `int` to `MeasurementUnit`. The `ostream operator<<` default can be tested this way; `convertToTeaspoons`/`convertFromTeaspoons` defaults are unreachable because the `isVolumeUnit` gate prevents calling them with non-volume units.
+
 ## Cloud Deployment
 
 `cloudbuild.yaml` defines a 3-step pipeline: build image → push to Artifact Registry → deploy to Cloud Run. The GCS bucket `meal-prep-db-bucket` is mounted for persistent SQLite storage. Secrets for email/calendar credentials are injected via Cloud Secrets Manager. See `docs/GCP_COMMANDS.md` for deployment and database management commands.
 
+## Project Skills (`.agents/skills/`)
+
+- **`heic-recipe`** (`.agents/skills/heic-recipe/SKILL.md`) — Parse a HEIC/JPG/PNG photo of a recipe and upload it to the production meal-prep API.
+- **`pdf-recipe-parser`** (`.agents/skills/pdf-recipe-parser/SKILL.md`) — Parse a recipe PDF into a JSON payload and upload it to the meal-prep database after user review.
+- **`documentation-management`** (`.agents/skills/documentation-management/SKILL.md`) — Guidelines and procedures for keeping `README.md` and `docs/` synchronized with code and deployment changes.
+
 ## Working with the UI
 
-When making any UI/frontend changes (HTML, CSS, JS in `static/`), always produce screenshot images of the result and attach them via `SendUserFile` so the user can see before/after visuals. This applies to every UI change, not just when explicitly requested.
+When making any UI/frontend changes (HTML, CSS, JS in `static/`), always capture before/after screenshot images or artifacts and embed them in the artifact directory so the user can visually verify the result. This applies to every UI change, not just when explicitly requested.

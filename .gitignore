@@ -16,12 +16,10 @@ server.log
 # Runtime config (contains environment-specific paths and PII)
 meal_prep.conf.json
 
-#claude worksapce
-.claude_workspace_env/
-
-# Claude Code machine-specific files (shared config under .claude/ is still tracked)
-.claude/settings.local.json
-.claude/worktrees/
+# Gemini / Agent machine-specific files (shared skills under .agents/ are tracked)
+.gemini/
+.agents/settings.local.json
+.agents/worktrees/
 
 # Local recipe scratch images (inputs for the heic-recipe skill)
 recipes/
