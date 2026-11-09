@@ -3,9 +3,14 @@
 #include <crow/json.h>
 
 #include <algorithm>
+#include <cstdlib>
+#include <memory>
 #include <string>
 
 #include "../src/calendar_service.h"
+#include "../src/curl_utils.h"
+#include "../src/db_manager.h"
+#include "../src/google_oauth.h"
 
 namespace {
 
@@ -119,4 +124,88 @@ TEST(CalendarServiceFilterTest, PreservesTopLevelFields) {
     EXPECT_EQ(std::string(parsed["summary"].s()), "My Calendar");
     EXPECT_EQ(countItems(out), 1u);
     EXPECT_TRUE(hasEventWithSummary(out, "Real Meeting"));
+}
+
+TEST(CurlUtilsTest, UrlEncodeAndWriteCallback) {
+    EXPECT_EQ(curl_utils::urlEncode("hello world@2026"), "hello%20world%402026");
+
+    std::string buf;
+    const char *chunk = "abc123";
+    size_t written = curl_utils::writeCallback(const_cast<char *>(chunk), 1, 6, &buf);
+    EXPECT_EQ(written, 6u);
+    EXPECT_EQ(buf, "abc123");
+}
+
+class GoogleOAuthAndCalendarTest : public ::testing::Test {
+   protected:
+    void SetUp() override {
+        setenv("HTTPS_PROXY", "http://127.0.0.1:1", 1);
+        db = std::make_shared<DBManager>(":memory:");
+        ASSERT_TRUE(db->initializeSchema());
+        cfg.google_client_id = "test_client_id";
+        cfg.google_client_secret = "test_secret";
+        cfg.google_redirect_uri = "http://localhost:8080/callback";
+        oauth = std::make_shared<GoogleOAuth>(cfg, db);
+        cal = std::make_unique<CalendarService>(oauth);
+    }
+
+    void TearDown() override { unsetenv("HTTPS_PROXY"); }
+
+    std::shared_ptr<DBManager> db;
+    Config cfg;
+    std::shared_ptr<GoogleOAuth> oauth;
+    std::unique_ptr<CalendarService> cal;
+};
+
+TEST_F(GoogleOAuthAndCalendarTest, GetAuthUrlAndValidateState) {
+    EXPECT_FALSE(oauth->validateState("any"));
+
+    std::string url = oauth->getAuthUrl();
+    EXPECT_NE(url.find("client_id=test_client_id"), std::string::npos);
+    EXPECT_FALSE(oauth->validateState("wrong_state"));
+
+    // Generate again and validate with matching state
+    url = oauth->getAuthUrl();
+    auto pos = url.find("&state=");
+    ASSERT_NE(pos, std::string::npos);
+    std::string state = url.substr(pos + 7);
+    EXPECT_TRUE(oauth->validateState(state));
+    // State is cleared after one successful validation
+    EXPECT_FALSE(oauth->validateState(state));
+}
+
+TEST_F(GoogleOAuthAndCalendarTest, GetAccessTokenStates) {
+    // 1. No tokens in DB
+    EXPECT_EQ(oauth->getAccessToken(), "");
+    EXPECT_FALSE(oauth->refreshAccessToken());
+
+    // 2. Valid non-expired token in DB
+    ASSERT_TRUE(db->saveGoogleTokens("valid_tok", "ref_tok", 4102444800LL));
+    EXPECT_EQ(oauth->getAccessToken(), "valid_tok");
+
+    // 3. Expired token with empty refresh token
+    ASSERT_TRUE(db->saveGoogleTokens("expired_tok", "", 1000LL));
+    EXPECT_EQ(oauth->getAccessToken(), "");
+
+    // 4. Expired token with refresh token (fails fast via proxy)
+    ASSERT_TRUE(db->saveGoogleTokens("expired_tok", "ref_tok", 1000LL));
+    EXPECT_EQ(oauth->getAccessToken(), "");
+
+    // 5. Exchange code fails fast via proxy
+    EXPECT_FALSE(oauth->exchangeCodeForTokens("dummy_code"));
+}
+
+TEST_F(GoogleOAuthAndCalendarTest, CalendarServiceWithoutAndWithToken) {
+    // Without token in DB
+    EXPECT_EQ(
+        cal->createEvent("Test", "Desc", "2026-03-23T09:00:00Z", "2026-03-23T10:00:00Z", true), "");
+    EXPECT_FALSE(cal->deleteEvent("ev123"));
+    EXPECT_TRUE(cal->listEvents("2026-03-23T00:00:00Z", "2026-03-30T00:00:00Z").empty());
+
+    // With valid token in DB (exercises curl request setup and failure path via proxy)
+    ASSERT_TRUE(db->saveGoogleTokens("valid_tok", "ref_tok", 4102444800LL));
+    EXPECT_EQ(
+        cal->createEvent("Test", "Desc", "2026-03-23T09:00:00Z", "2026-03-23T10:00:00Z", true), "");
+    EXPECT_FALSE(cal->deleteEvent("ev123"));
+    EXPECT_TRUE(cal->listEvents("2026-03-23T00:00:00Z", "2026-03-30T00:00:00Z").empty());
 }
