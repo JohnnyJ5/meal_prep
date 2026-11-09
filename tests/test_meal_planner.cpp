@@ -114,3 +114,44 @@ TEST_F(MealPlannerTest, PrintWeeklyScheduleWithMeals) {
     // Days without meals still show the placeholder
     EXPECT_NE(output.find("(Nothing planned)"), std::string::npos);
 }
+
+TEST_F(MealPlannerTest, FormatWholeFoodsOrderIncludesMealsAndCategories) {
+    Meal meal1("turkey-burgers",
+               {Ingredient("Ground Turkey", Measurement(1.0, MeasurementUnit::POUND)),
+                Ingredient("Spinach", Measurement(2.0, MeasurementUnit::CUP)),
+                Ingredient("Mystery Herb", Measurement(1.0, MeasurementUnit::TEASPOON))});
+    Meal meal2("chicken-stir-fry",
+               {Ingredient("Chicken Breast", Measurement(3.0, MeasurementUnit::WHOLE)),
+                Ingredient("Spinach", Measurement(1.0, MeasurementUnit::CUP))});
+
+    std::vector<std::reference_wrapper<Meal>> meals = {meal1, meal2};
+    std::map<std::string, Ingredient> allIngredients;
+    ConsolidateAllIngredients(allIngredients, meals);
+
+    std::vector<std::pair<std::string, std::string>> availableIngredients = {
+        {"Ground Turkey", "Proteins"},
+        {"Chicken Breast", "Proteins"},
+        {"Spinach", "Vegetables"},
+        {"EmptyCat", ""},
+    };
+
+    std::ostringstream oss;
+    FormatWholeFoodsOrder(oss, meals, allIngredients, availableIngredients);
+    std::string output = oss.str();
+
+    std::string expected =
+        "Whole Foods Order\n\n"
+        "Meals:\n"
+        "- turkey-burgers\n"
+        "- chicken-stir-fry\n\n"
+        "Ingredients:\n\n"
+        "Proteins:\n"
+        "- Chicken Breast: 3 whole\n"
+        "- Ground Turkey: 1 pounds\n\n"
+        "Uncategorized:\n"
+        "- Mystery Herb: 1 teaspoons\n\n"
+        "Vegetables:\n"
+        "- Spinach: 3 cups\n";
+
+    EXPECT_EQ(output, expected);
+}

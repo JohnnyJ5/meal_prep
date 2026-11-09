@@ -1,6 +1,7 @@
 #include "meal_planner.h"
 
 #include <sstream>
+#include <unordered_map>
 
 void ConsolidateAllIngredients(std::map<std::string, Ingredient> &allIngredients,
                                const std::vector<std::reference_wrapper<Meal>> &meals) {
@@ -13,6 +14,39 @@ void ConsolidateAllIngredients(std::map<std::string, Ingredient> &allIngredients
             } else {
                 allIngredients[ingredient.getName()] = ingredient;
             }
+        }
+    }
+}
+
+void FormatWholeFoodsOrder(
+    std::ostream &os, const std::vector<std::reference_wrapper<Meal>> &meals,
+    const std::map<std::string, Ingredient> &allIngredients,
+    const std::vector<std::pair<std::string, std::string>> &availableIngredients) {
+    std::unordered_map<std::string, std::string> categoryLookup;
+    categoryLookup.reserve(availableIngredients.size());
+    for (const auto &pair : availableIngredients) {
+        if (!pair.second.empty()) {
+            categoryLookup[pair.first] = pair.second;
+        }
+    }
+
+    os << "Whole Foods Order\n\nMeals:\n";
+    for (const auto &mealRef : meals) {
+        os << "- " << mealRef.get().getName() << "\n";
+    }
+
+    std::map<std::string, std::vector<Ingredient>> byCategory;
+    for (const auto &pair : allIngredients) {
+        auto it = categoryLookup.find(pair.first);
+        const std::string category = (it != categoryLookup.end()) ? it->second : "Uncategorized";
+        byCategory[category].push_back(pair.second);
+    }
+
+    os << "\nIngredients:\n";
+    for (const auto &catPair : byCategory) {
+        os << "\n" << catPair.first << ":\n";
+        for (const auto &ing : catPair.second) {
+            os << "- " << ing << "\n";
         }
     }
 }
