@@ -2,6 +2,7 @@
 
 #include <crow/json.h>
 
+#include <algorithm>
 #include <string>
 
 #include "../src/calendar_service.h"
@@ -19,12 +20,10 @@ size_t countItems(const std::string &json) {
 bool hasEventWithSummary(const std::string &json, const std::string &summary) {
     auto parsed = crow::json::load(json);
     if (!parsed || !parsed.has("items")) return false;
-    for (const auto &item : parsed["items"]) {
-        if (item.has("summary") && std::string(item["summary"].s()) == summary) {
-            return true;
-        }
-    }
-    return false;
+    const auto &items = parsed["items"];
+    return std::any_of(items.begin(), items.end(), [&summary](const auto &item) {
+        return item.has("summary") && std::string(item["summary"].s()) == summary;
+    });
 }
 
 }  // namespace

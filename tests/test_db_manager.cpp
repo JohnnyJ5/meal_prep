@@ -318,8 +318,12 @@ TEST_F(DBManagerTest, UpdateMealPreservesOptionalFlag) {
     ASSERT_NE(retrieved, nullptr);
     ASSERT_EQ(retrieved->getIngredients().size(), 2u);
     for (const auto &ing : retrieved->getIngredients()) {
-        if (ing.getName() == "Pumpkin") EXPECT_TRUE(ing.isOptional());
-        if (ing.getName() == "Eggs") EXPECT_FALSE(ing.isOptional());
+        if (ing.getName() == "Pumpkin") {
+            EXPECT_TRUE(ing.isOptional());
+        }
+        if (ing.getName() == "Eggs") {
+            EXPECT_FALSE(ing.isOptional());
+        }
     }
 }
 

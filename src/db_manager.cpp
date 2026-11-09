@@ -420,9 +420,8 @@ std::unique_ptr<Meal> DBManager::getMeal(const std::string &mealName) {
             std::string prep = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
             bool isOptional = sqlite3_column_int(stmt, 4) != 0;
 
-            ingredients.emplace_back(ingName,
-                                     Measurement(amount, static_cast<MeasurementUnit>(unit)), prep,
-                                     isOptional);
+            ingredients.emplace_back(
+                ingName, Measurement(amount, static_cast<MeasurementUnit>(unit)), prep, isOptional);
         }
     }
     sqlite3_finalize(stmt);
@@ -459,8 +458,7 @@ std::set<int> DBManager::getMealIdsWithOptionalIngredients() {
     std::set<int> ids;
     if (!d_db) return ids;
 
-    const std::string query =
-        "SELECT DISTINCT meal_id FROM ingredients WHERE is_optional = 1;";
+    const std::string query = "SELECT DISTINCT meal_id FROM ingredients WHERE is_optional = 1;";
     sqlite3_stmt *stmt = nullptr;
     if (sqlite3_prepare_v2(d_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -792,8 +790,7 @@ void bindNullableText(sqlite3_stmt *stmt, int idx, const std::string &value) {
 // "template_id"). exercisesTable's FK to its block is always "block_id".
 bool insertBlocksAndExercisesGeneric(sqlite3 *db, int parentId,
                                      const std::vector<WorkoutBlock> &blocks,
-                                     const std::string &blocksTable,
-                                     const std::string &parentFkCol,
+                                     const std::string &blocksTable, const std::string &parentFkCol,
                                      const std::string &exercisesTable) {
     const std::string insertBlock = "INSERT INTO " + blocksTable + " (" + parentFkCol +
                                     ", position, block_type, rounds, rest_seconds) "
@@ -851,8 +848,7 @@ bool insertBlocksAndExercisesGeneric(sqlite3 *db, int parentId,
     return true;
 }
 
-bool insertBlocksAndExercises(sqlite3 *db, int workoutId,
-                              const std::vector<WorkoutBlock> &blocks) {
+bool insertBlocksAndExercises(sqlite3 *db, int workoutId, const std::vector<WorkoutBlock> &blocks) {
     return insertBlocksAndExercisesGeneric(db, workoutId, blocks, "workout_blocks", "workout_id",
                                            "workout_exercises");
 }
@@ -861,9 +857,9 @@ bool insertBlocksAndExercises(sqlite3 *db, int workoutId,
 void loadBlocksAndExercises(sqlite3 *db, int parentId, std::vector<WorkoutBlock> &outBlocks,
                             const std::string &blocksTable, const std::string &parentFkCol,
                             const std::string &exercisesTable) {
-    const std::string blocksQuery =
-        "SELECT id, position, block_type, rounds, rest_seconds FROM " + blocksTable +
-        " WHERE " + parentFkCol + " = ? ORDER BY position ASC;";
+    const std::string blocksQuery = "SELECT id, position, block_type, rounds, rest_seconds FROM " +
+                                    blocksTable + " WHERE " + parentFkCol +
+                                    " = ? ORDER BY position ASC;";
     sqlite3_stmt *stmt = nullptr;
     if (sqlite3_prepare_v2(db, blocksQuery.c_str(), -1, &stmt, nullptr) != SQLITE_OK) return;
     sqlite3_bind_int(stmt, 1, parentId);
@@ -915,9 +911,8 @@ void loadBlocksAndExercises(sqlite3 *db, int parentId, std::vector<WorkoutBlock>
             }
             e.duration_seconds =
                 sqlite3_column_type(exStmt, 9) == SQLITE_NULL ? 0 : sqlite3_column_int(exStmt, 9);
-            e.rest_seconds = sqlite3_column_type(exStmt, 10) == SQLITE_NULL
-                                 ? 0
-                                 : sqlite3_column_int(exStmt, 10);
+            e.rest_seconds =
+                sqlite3_column_type(exStmt, 10) == SQLITE_NULL ? 0 : sqlite3_column_int(exStmt, 10);
             b.exercises.push_back(std::move(e));
         }
         sqlite3_finalize(exStmt);
@@ -1105,8 +1100,7 @@ bool DBManager::addTemplate(WorkoutTemplate &tmpl) {
 
     executeQuery("BEGIN TRANSACTION;");
 
-    const std::string insert =
-        "INSERT INTO workout_templates (name, created_at) VALUES (?, ?);";
+    const std::string insert = "INSERT INTO workout_templates (name, created_at) VALUES (?, ?);";
     sqlite3_stmt *stmt = nullptr;
     if (sqlite3_prepare_v2(d_db, insert.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
         executeQuery("ROLLBACK;");
