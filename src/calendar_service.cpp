@@ -269,12 +269,22 @@ std::string CalendarService::findCalendarId(const std::string &calendarListJson,
     std::transform(targetLower.begin(), targetLower.end(), targetLower.begin(), ::tolower);
 
     for (const auto &cal : listJson["items"]) {
-        if (!cal.has("summary") || !cal.has("id")) continue;
-        std::string summary = cal["summary"].s();
-        std::string summaryLower = summary;
-        std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(), ::tolower);
-        if (summaryLower == targetLower) {
-            return std::string(cal["id"].s());
+        if (!cal.has("id")) continue;
+        if (cal.has("summary")) {
+            std::string summaryLower = cal["summary"].s();
+            std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(),
+                           ::tolower);
+            if (summaryLower == targetLower) {
+                return std::string(cal["id"].s());
+            }
+        }
+        if (cal.has("summaryOverride")) {
+            std::string overrideLower = cal["summaryOverride"].s();
+            std::transform(overrideLower.begin(), overrideLower.end(), overrideLower.begin(),
+                           ::tolower);
+            if (overrideLower == targetLower) {
+                return std::string(cal["id"].s());
+            }
         }
     }
 

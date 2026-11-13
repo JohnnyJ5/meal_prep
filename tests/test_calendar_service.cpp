@@ -132,7 +132,7 @@ TEST(CalendarServiceFindCalendarIdTest, FindsMatchingCalendarCaseInsensitive) {
             {"id": "incomplete_no_summary"},
             {"summary": "Incomplete No Id"},
             {"id": "family_id@group.calendar.google.com", "summary": "Family Calendar"},
-            {"id": "michaelcoffey5@gmail.com", "summary": "Michael Coffey"}
+            {"id": "michaelcoffey5@gmail.com", "summary": "michaelcoffey5@gmail.com", "summaryOverride": "Michael Coffey"}
         ]
     })";
 
