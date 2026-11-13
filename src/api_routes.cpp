@@ -708,6 +708,60 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
         return res_final;
     });
 
+    // Route: Get the last 10 recipes made from Google Calendar
+    CROW_ROUTE(app, "/api/calendar/history")
+    ([calendarService, &dbManager](const crow::request &req) {
+        std::string maxDate = "";
+        if (req.url_params.get("maxDate")) {
+            maxDate = req.url_params.get("maxDate");
+        }
+
+        std::time_t now = std::time(nullptr);
+        std::time_t oneYearAgo = now - static_cast<std::time_t>(365) * 24 * 60 * 60;
+        std::time_t twoDaysAhead = now + static_cast<std::time_t>(2) * 24 * 60 * 60;
+
+        char minBuf[32];
+        char maxBuf[32];
+        std::tm minTm{};
+        std::tm maxTm{};
+        gmtime_r(&oneYearAgo, &minTm);
+        gmtime_r(&twoDaysAhead, &maxTm);
+        std::strftime(minBuf, sizeof(minBuf), "%Y-%m-%dT%H:%M:%SZ", &minTm);
+        std::strftime(maxBuf, sizeof(maxBuf), "%Y-%m-%dT%H:%M:%SZ", &maxTm);
+
+        auto eventsList = calendarService->listEvents(minBuf, maxBuf, 2500);
+        if (eventsList.empty()) {
+            CROW_LOG_WARNING << "Failed to fetch events for recipe history";
+            crow::response err(403);
+            err.set_header("Content-Type", "application/json");
+            err.body =
+                R"({"linked":false,"message":"Google account not linked or error fetching events"})";
+            return err;
+        }
+
+        std::set<std::string> knownMeals;
+        if (dbManager) {
+            std::vector<std::tuple<int, std::string, std::string, bool>> meals;
+            dbManager->getAllMeals(meals);
+            for (const auto &m : meals) {
+                knownMeals.insert(std::get<1>(m));
+            }
+        }
+
+        auto history = CalendarService::extractRecipeHistory(eventsList, knownMeals, maxDate, 10);
+
+        crow::json::wvalue res = crow::json::wvalue::list();
+        for (size_t i = 0; i < history.size(); ++i) {
+            res[i]["name"] = history[i].name;
+            res[i]["date"] = history[i].date;
+        }
+
+        crow::response resFinal(200);
+        resFinal.set_header("Content-Type", "application/json");
+        resFinal.body = res.dump();
+        return resFinal;
+    });
+
     // Route: Add a meal plan to Google Calendar
     CROW_ROUTE(app, "/api/calendar/sync")
         .methods(crow::HTTPMethod::POST)([calendarService](const crow::request &req) {
@@ -738,8 +792,9 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
 
                     std::string startTime = dateStr + "T18:00:00Z";
                     std::string endTime = dateStr + "T19:00:00Z";
-                    std::string eventId = calendarService->createEvent(
-                        mealName, "Meal planned via app", startTime, endTime);
+                    std::string eventId =
+                        calendarService->createEvent(mealName, "Meal planned via app", startTime,
+                                                     endTime, false, "Michael Coffey");
                     if (!eventId.empty()) {
                         ++successCount;
                         syncedIds.push_back(eventId);
@@ -782,8 +837,8 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             std::string end = body["end"].s();
             std::string ingredients = body["ingredients"].s();
 
-            std::string eventId =
-                calendarService->createEvent("Whole Foods Order", ingredients, start, end, true);
+            std::string eventId = calendarService->createEvent("Whole Foods Order", ingredients,
+                                                               start, end, true, "Family Calendar");
             if (!eventId.empty()) {
                 CROW_LOG_INFO << "Created Whole Foods order calendar event";
                 crow::json::wvalue result;
@@ -810,7 +865,9 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             const auto &ids = body["event_ids"];
             int deleted = 0;
             for (const auto &id : ids) {
-                if (calendarService->deleteEvent(std::string(id.s()))) {
+                std::string evId = id.s();
+                if (calendarService->deleteEvent(evId, "Michael Coffey") ||
+                    calendarService->deleteEvent(evId, "Family Calendar")) {
                     ++deleted;  // cppcheck-suppress useStlAlgorithm
                 }
             }

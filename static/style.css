@@ -452,6 +452,85 @@ h1 {
     margin-left: 4px;
 }
 
+.recipe-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--s-3);
+}
+
+.recipe-search-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--ink-3);
+    font-size: 14px;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.recipe-search-input {
+    width: 100%;
+    padding: 7px 28px 7px 28px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.recipe-search-input::placeholder {
+    color: var(--ink-3);
+    font-style: italic;
+}
+
+.recipe-search-input:focus {
+    background: var(--paper-2);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.recipe-search-clear {
+    position: absolute;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 15px;
+    line-height: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.recipe-search-clear:hover {
+    color: var(--ink);
+    background: var(--bg-2);
+}
+
+.recipe-search-empty {
+    padding: var(--s-4) var(--s-2);
+    text-align: center;
+    color: var(--ink-3);
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-style: italic;
+}
+
+.fuzzy-match {
+    color: var(--accent-color);
+    font-weight: 700;
+    background: var(--accent-soft);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
 .kanban-week {
     min-width: 0;
     display: flex;
@@ -515,6 +594,62 @@ h1 {
     gap: var(--s-1);
     padding-left: var(--s-1);
     padding-top: var(--s-1);
+}
+
+.subcategory-header,
+.modal-content h4.subcategory-header {
+    width: 100%;
+    margin-top: var(--s-1);
+    margin-bottom: 0;
+    padding: var(--s-1) var(--s-2);
+    color: var(--ink-2);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-style: italic;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.subcategory-header:hover {
+    color: var(--ink);
+    background: var(--bg);
+}
+
+.subcategory-header .category-chevron {
+    font-size: 8px;
+}
+
+.subcategory-header.collapsed .category-chevron {
+    transform: rotate(0deg);
+}
+
+.subcategory-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-style: normal;
+    color: var(--ink-3);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 6px;
+    line-height: 1.5;
+}
+
+.subcategory-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding-left: var(--s-3);
+    margin-left: var(--s-2);
+    border-left: 1px solid var(--line);
+    margin-bottom: var(--s-1);
 }
 
 /* Meal card — base (used as drag source in recipe library) */
@@ -1063,6 +1198,17 @@ h1 {
     gap: 6px;
 }
 
+.manage-list .category-group {
+    gap: 6px;
+    padding-left: 0;
+    margin-bottom: var(--s-2);
+}
+
+.manage-list .subcategory-group {
+    gap: 6px;
+    margin-bottom: var(--s-2);
+}
+
 .manage-item {
     display: flex;
     justify-content: space-between;
@@ -1184,6 +1330,63 @@ h1 {
 
 .addon-row input[type="checkbox"] {
     cursor: pointer;
+}
+
+/* Recipe History modal list */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 10px 12px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-color);
+    border-radius: 3px;
+}
+
+.history-rank {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    min-width: 22px;
+    text-align: right;
+}
+
+.history-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-recipe-name {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+}
+
+.history-recipe-date {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+.history-empty {
+    padding: var(--s-5) var(--s-3);
+    text-align: center;
+    color: var(--ink-3);
+    font-style: italic;
 }
 
 /* Verified-recipe badge — shown on meal cards and in the manage list */

@@ -8,6 +8,7 @@ function isMobile() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeWeekDates();
     initMobileTabs();
+    initRecipeSearch();
     fetchMeals();
     fetchIngredients();
     fetchCalendarEventsForWeek();
@@ -98,10 +99,63 @@ async function fetchMeals() {
 
 let mealMetaById = {}; // { mealId: { hasOptional: bool } }
 
+function parseCategoryPath(rawCategory) {
+    const raw = (rawCategory || 'Uncategorized').trim() || 'Uncategorized';
+    const slashIdx = raw.indexOf('/');
+    if (slashIdx === -1) {
+        return { topCategory: raw, subCategory: null, fullCategory: raw };
+    }
+    const topCategory = raw.slice(0, slashIdx).trim() || 'Uncategorized';
+    const subCategory = raw.slice(slashIdx + 1).trim() || null;
+    return {
+        topCategory,
+        subCategory,
+        fullCategory: subCategory ? `${topCategory} / ${subCategory}` : topCategory
+    };
+}
+
+function updateMealCategoryDatalist(meals) {
+    const datalist = document.getElementById('meal-category-list');
+    if (!datalist) return;
+    const seen = new Set();
+    meals.forEach(meal => {
+        const { topCategory, fullCategory } = parseCategoryPath(meal.category);
+        seen.add(topCategory);
+        seen.add(fullCategory);
+    });
+    datalist.innerHTML = '';
+    Array.from(seen).sort().forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        datalist.appendChild(option);
+    });
+}
+
+function attachHeaderTouchToggle(header, group) {
+    header.addEventListener('click', () => {
+        const isCollapsed = header.classList.toggle('collapsed');
+        group.classList.toggle('hidden', isCollapsed);
+    });
+
+    let hTouchStartX = 0, hTouchStartY = 0;
+    header.addEventListener('touchstart', (e) => {
+        hTouchStartX = e.touches[0].clientX;
+        hTouchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    header.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - hTouchStartX;
+        const dy = e.changedTouches[0].clientY - hTouchStartY;
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return;
+        e.preventDefault();
+        header.click();
+    }, { passive: false });
+}
+
 function renderMeals(meals) {
     const grid = document.getElementById('meal-grid');
     grid.innerHTML = '';
     mealMetaById = {};
+    updateMealCategoryDatalist(meals);
 
     // Format meal names (e.g. "baked-chicken-breast" -> "Baked Chicken Breast")
     const formatName = (str) => {
@@ -112,14 +166,88 @@ function renderMeals(meals) {
 
     const grouped = {};
     meals.forEach(meal => {
-        const cat = meal.category || 'Uncategorized';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(meal);
+        const { topCategory, subCategory } = parseCategoryPath(meal.category);
+        if (!grouped[topCategory]) {
+            grouped[topCategory] = { directMeals: [], subcategories: {} };
+        }
+        if (subCategory) {
+            if (!grouped[topCategory].subcategories[subCategory]) {
+                grouped[topCategory].subcategories[subCategory] = [];
+            }
+            grouped[topCategory].subcategories[subCategory].push(meal);
+        } else {
+            grouped[topCategory].directMeals.push(meal);
+        }
         mealMetaById[meal.name] = { hasOptional: !!meal.has_optional_ingredients };
     });
 
-    for (const [category, categoryMeals] of Object.entries(grouped)) {
+    const createMealCard = (meal, index) => {
+        const mealId = meal.name;
+        const card = document.createElement('div');
+        card.className = 'meal-card';
+        card.style.animationDelay = `${index * 0.05}s`;
+
+        // Add emoji based on name just for visual flair
+        let emoji = '🍲';
+        if (mealId.includes('chicken')) emoji = '🍗';
+        if (mealId.includes('turkey')) emoji = '🦃';
+        if (mealId.includes('pasta') || mealId.includes('penne')) emoji = '🍝';
+        if (mealId.includes('burger') || mealId.includes('hamburger')) emoji = '🍔';
+        if (mealId.includes('pancake')) emoji = '🥞';
+        if (mealId.includes('muffin')) emoji = '🧁';
+
+        const hasOptional = !!meal.has_optional_ingredients;
+        const customizeHint = hasOptional ? '<span class="meal-card-customize">+ add-ons</span>' : '';
+        const verifiedBadge = meal.verified ? '<span class="verified-badge" title="Verified recipe">✓ Verified</span>' : '';
+        const displayName = formatName(mealId);
+
+        card.innerHTML = `
+            <div class="meal-card-header">
+                <h3>${emoji} ${displayName}</h3>
+                ${verifiedBadge}
+                ${customizeHint}
+            </div>
+            <div class="meal-card-addons" hidden></div>
+            <button type="button" class="meal-card-remove" draggable="false" onclick="removeMealFromSlot(event, this)" title="Remove from day" aria-label="Remove from day">&times;</button>
+        `;
+        card.id = `meal-${mealId}-${index}`;
+        card.setAttribute('data-meal-id', mealId);
+        card.dataset.displayName = displayName;
+        card.dataset.emoji = emoji;
+        card.setAttribute('draggable', 'true');
+        card.setAttribute('ondragstart', 'drag(event)');
+        if (hasOptional) card.dataset.hasOptional = '1';
+
+        // Click behaviour: if the meal has optional ingredients, the click
+        // opens the add-on picker for this tile. Otherwise, fall back to
+        // the existing selection toggle used by "View Ingredients".
+        card.addEventListener('click', (e) => {
+            if (card.classList.contains('dragging')) return;
+
+            if (hasOptional) {
+                openAddonsModal(card, mealId);
+                return;
+            }
+
+            if (selectedMeals.has(mealId)) {
+                selectedMeals.delete(mealId);
+                card.classList.remove('selected');
+            } else {
+                selectedMeals.add(mealId);
+                card.classList.add('selected');
+            }
+            updateActionBar();
+        });
+
+        attachMealTouchListeners(card, mealId);
+        return card;
+    };
+
+    const sortedTopCategories = Object.keys(grouped).sort();
+    for (const category of sortedTopCategories) {
+        const { directMeals, subcategories } = grouped[category];
         let index = 0;
+
         const header = document.createElement('h3');
         header.className = 'category-header collapsed';
         header.innerHTML = `<span class="category-chevron">&#9654;</span> ${category}`;
@@ -129,83 +257,351 @@ function renderMeals(meals) {
         group.className = 'category-group hidden';
         grid.appendChild(group);
 
-        header.addEventListener('click', () => {
-            const isCollapsed = header.classList.toggle('collapsed');
-            group.classList.toggle('hidden', isCollapsed);
+        attachHeaderTouchToggle(header, group);
+
+        // Render collapsible subcategories first
+        const sortedSubcategories = Object.keys(subcategories).sort();
+        for (const subName of sortedSubcategories) {
+            const subMeals = subcategories[subName];
+            const subHeader = document.createElement('h4');
+            subHeader.className = 'subcategory-header collapsed';
+            subHeader.dataset.totalCount = String(subMeals.length);
+            subHeader.innerHTML = `<span class="category-chevron">&#9654;</span> <span>${subName}</span> <span class="subcategory-count">${subMeals.length}</span>`;
+            group.appendChild(subHeader);
+
+            const subGroup = document.createElement('div');
+            subGroup.className = 'subcategory-group hidden';
+            group.appendChild(subGroup);
+
+            attachHeaderTouchToggle(subHeader, subGroup);
+
+            subMeals.forEach(meal => {
+                subGroup.appendChild(createMealCard(meal, index++));
+            });
+        }
+
+        // Render direct meals in this category
+        directMeals.forEach(meal => {
+            group.appendChild(createMealCard(meal, index++));
         });
+    }
 
-        // Touch tap on header — same scroll-guard
-        let hTouchStartX = 0, hTouchStartY = 0;
-        header.addEventListener('touchstart', (e) => {
-            hTouchStartX = e.touches[0].clientX;
-            hTouchStartY = e.touches[0].clientY;
-        }, { passive: true });
-        header.addEventListener('touchend', (e) => {
-            const dx = e.changedTouches[0].clientX - hTouchStartX;
-            const dy = e.changedTouches[0].clientY - hTouchStartY;
-            if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return;
+    // Re-apply active search filter if the user already typed a query
+    const searchInput = document.getElementById('recipe-search-input');
+    if (searchInput && searchInput.value.trim() !== '') {
+        isSearchActive = false;
+        filterRecipes(searchInput.value);
+    }
+}
+
+// ── VS Code-style Fuzzy Recipe Search ───────────────────────────────────────
+
+let isSearchActive = false;
+
+function initRecipeSearch() {
+    const input = document.getElementById('recipe-search-input');
+    const clearBtn = document.getElementById('recipe-search-clear');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+        filterRecipes(input.value);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
             e.preventDefault();
-            header.click();
-        }, { passive: false });
+            input.value = '';
+            filterRecipes('');
+        }
+    });
 
-        categoryMeals.forEach((meal) => {
-            const mealId = meal.name;
-            const card = document.createElement('div');
-            card.className = 'meal-card';
-            card.style.animationDelay = `${index * 0.05}s`;
-            index++;
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            filterRecipes('');
+            input.focus();
+        });
+    }
+}
 
-            // Add emoji based on name just for visual flair
-            let emoji = '🍲';
-            if (mealId.includes('chicken')) emoji = '🍗';
-            if (mealId.includes('turkey')) emoji = '🦃';
-            if (mealId.includes('pasta') || mealId.includes('penne')) emoji = '🍝';
-            if (mealId.includes('burger') || mealId.includes('hamburger')) emoji = '🍔';
-            if (mealId.includes('pancake')) emoji = '🥞';
+/**
+ * Matches `query` against `text` using VS Code-style fuzzy matching:
+ * 1) Contiguous substring matches are prioritized (preferring word boundaries).
+ * 2) Ordered character subsequences across words are scored by consecutive runs
+ *    and word-boundary alignment.
+ * Returns { matched: boolean, indices: number[], score: number }.
+ */
+function fuzzyMatch(query, text) {
+    const q = query.trim().toLowerCase().replace(/\s+/g, '');
+    if (!q) return { matched: true, indices: [], score: 0 };
 
-            const hasOptional = !!meal.has_optional_ingredients;
-            const customizeHint = hasOptional ? '<span class="meal-card-customize">+ add-ons</span>' : '';
-            const verifiedBadge = meal.verified ? '<span class="verified-badge" title="Verified recipe">✓ Verified</span>' : '';
+    const t = text.toLowerCase();
+    const n = q.length;
+    const m = t.length;
+    if (n > m) return { matched: false, indices: [], score: -Infinity };
 
-            card.innerHTML = `
-                <div class="meal-card-header">
-                    <h3>${emoji} ${formatName(mealId)}</h3>
-                    ${verifiedBadge}
-                    ${customizeHint}
-                </div>
-                <div class="meal-card-addons" hidden></div>
-                <button type="button" class="meal-card-remove" draggable="false" onclick="removeMealFromSlot(event, this)" title="Remove from day" aria-label="Remove from day">&times;</button>
-            `;
-            card.id = `meal-${mealId}-${index}`;
-            card.setAttribute('data-meal-id', mealId);
-            card.setAttribute('draggable', 'true');
-            card.setAttribute('ondragstart', 'drag(event)');
-            if (hasOptional) card.dataset.hasOptional = '1';
+    const isWordBoundary = (idx) => idx === 0 || t[idx - 1] === ' ' || t[idx - 1] === '-';
 
-            // Click behaviour: if the meal has optional ingredients, the click
-            // opens the add-on picker for this tile. Otherwise, fall back to
-            // the existing selection toggle used by "View Ingredients".
-            card.addEventListener('click', (e) => {
-                if (card.classList.contains('dragging')) return;
+    // 1. Check for contiguous substring match first (preferring word boundaries)
+    const rawQ = query.trim().toLowerCase();
+    let bestSubIdx = -1;
+    let searchFrom = 0;
+    while (searchFrom <= m - rawQ.length) {
+        const idx = t.indexOf(rawQ, searchFrom);
+        if (idx === -1) break;
+        if (bestSubIdx === -1 || (isWordBoundary(idx) && !isWordBoundary(bestSubIdx))) {
+            bestSubIdx = idx;
+            if (isWordBoundary(idx)) break;
+        }
+        searchFrom = idx + 1;
+    }
 
-                if (hasOptional) {
-                    openAddonsModal(card, mealId);
-                    return;
-                }
+    if (bestSubIdx !== -1) {
+        const indices = [];
+        for (let i = 0; i < rawQ.length; i++) {
+            indices.push(bestSubIdx + i);
+        }
+        const score = 200 + (isWordBoundary(bestSubIdx) ? 50 : 0) - bestSubIdx;
+        return { matched: true, indices, score };
+    }
 
-                if (selectedMeals.has(mealId)) {
-                    selectedMeals.delete(mealId);
-                    card.classList.remove('selected');
+    // 2. Dynamic programming for highest-scoring VS Code-style subsequence
+    // Across a gap (j > prevJ + 1), require either:
+    //   - t[j] is a word boundary (e.g. "lco" -> "Lemon Chicken Orzo"), or
+    //   - t[prevJ] was a word boundary within the same word (e.g. "ck" in "Chicken").
+    const sameWord = (a, b) => {
+        for (let k = a + 1; k <= b; k++) {
+            if (t[k] === ' ' || t[k] === '-') return false;
+        }
+        return true;
+    };
+
+    const NEG_INF = -1e9;
+    const dp = Array.from({ length: n }, () => new Array(m).fill(NEG_INF));
+    const parent = Array.from({ length: n }, () => new Array(m).fill(-1));
+
+    for (let j = 0; j < m; j++) {
+        if (t[j] === q[0]) {
+            dp[0][j] = (isWordBoundary(j) ? 15 : 0) - j * 0.1;
+        }
+    }
+
+    for (let i = 1; i < n; i++) {
+        for (let j = i; j < m; j++) {
+            if (t[j] !== q[i]) continue;
+            for (let prevJ = i - 1; prevJ < j; prevJ++) {
+                if (dp[i - 1][prevJ] <= NEG_INF / 2) continue;
+                let transitionScore = dp[i - 1][prevJ];
+                if (j === prevJ + 1) {
+                    transitionScore += 18; // Consecutive character bonus
+                } else if (isWordBoundary(j)) {
+                    transitionScore += 14 - (j - prevJ - 1) * 0.3; // Word-start jump
+                } else if (isWordBoundary(prevJ) && sameWord(prevJ, j)) {
+                    transitionScore += 6 - (j - prevJ - 1) * 0.5; // Same-word consonant jump (e.g. "ck" in "Chicken")
                 } else {
-                    selectedMeals.add(mealId);
-                    card.classList.add('selected');
+                    continue; // Disallow arbitrary mid-word to mid-word jumps
                 }
-                updateActionBar();
+                if (transitionScore > dp[i][j]) {
+                    dp[i][j] = transitionScore;
+                    parent[i][j] = prevJ;
+                }
+            }
+        }
+    }
+
+    let bestEndJ = -1;
+    let bestScore = NEG_INF;
+    for (let j = n - 1; j < m; j++) {
+        if (dp[n - 1][j] > bestScore) {
+            bestScore = dp[n - 1][j];
+            bestEndJ = j;
+        }
+    }
+
+    if (bestEndJ === -1 || bestScore <= NEG_INF / 2) {
+        return { matched: false, indices: [], score: -Infinity };
+    }
+
+    const indices = new Array(n);
+    let curJ = bestEndJ;
+    for (let i = n - 1; i >= 0; i--) {
+        indices[i] = curJ;
+        curJ = parent[i][curJ];
+    }
+
+    return { matched: true, indices, score: bestScore };
+}
+
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function highlightMatches(text, indices) {
+    if (!indices || indices.length === 0) return escapeHtml(text);
+    const matchSet = new Set(indices);
+    let result = '';
+    let inMatch = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const isMatched = matchSet.has(i);
+        if (isMatched && !inMatch) {
+            result += '<span class="fuzzy-match">';
+            inMatch = true;
+        } else if (!isMatched && inMatch) {
+            result += '</span>';
+            inMatch = false;
+        }
+        result += escapeHtml(text[i]);
+    }
+    if (inMatch) {
+        result += '</span>';
+    }
+    return result;
+}
+
+function resetCardTitleHtml(cardEl) {
+    const h3 = cardEl.querySelector('h3');
+    if (h3 && cardEl.dataset.displayName) {
+        h3.textContent = `${cardEl.dataset.emoji || ''} ${cardEl.dataset.displayName}`.trim();
+    }
+}
+
+function filterRecipes(rawQuery) {
+    const grid = document.getElementById('meal-grid');
+    const clearBtn = document.getElementById('recipe-search-clear');
+    const emptyEl = document.getElementById('recipe-search-empty');
+    if (!grid) return;
+
+    const query = (rawQuery || '').trim();
+    if (clearBtn) {
+        clearBtn.classList.toggle('hidden', query.length === 0);
+    }
+
+    if (query.length === 0) {
+        if (isSearchActive) {
+            // Restore all cards and category states
+            grid.querySelectorAll('.meal-card').forEach(card => {
+                card.classList.remove('hidden');
+                resetCardTitleHtml(card);
             });
 
-            group.appendChild(card);
-            attachMealTouchListeners(card, mealId);
+            grid.querySelectorAll('.subcategory-header').forEach(subHeader => {
+                const subGroup = subHeader.nextElementSibling;
+                subHeader.classList.remove('hidden');
+                const wasCollapsed = subHeader.dataset.preSearchCollapsed !== '0';
+                subHeader.classList.toggle('collapsed', wasCollapsed);
+                if (subGroup && subGroup.classList.contains('subcategory-group')) {
+                    subGroup.classList.toggle('hidden', wasCollapsed);
+                }
+                const countEl = subHeader.querySelector('.subcategory-count');
+                if (countEl && subHeader.dataset.totalCount) {
+                    countEl.textContent = subHeader.dataset.totalCount;
+                }
+            });
+
+            grid.querySelectorAll('.category-header').forEach(header => {
+                const group = header.nextElementSibling;
+                header.classList.remove('hidden');
+                const wasCollapsed = header.dataset.preSearchCollapsed !== '0';
+                header.classList.toggle('collapsed', wasCollapsed);
+                if (group && group.classList.contains('category-group')) {
+                    group.classList.toggle('hidden', wasCollapsed);
+                }
+            });
+
+            isSearchActive = false;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
+        return;
+    }
+
+    // Snapshot pre-search collapsed state when entering search mode
+    if (!isSearchActive) {
+        grid.querySelectorAll('.category-header, .subcategory-header').forEach(h => {
+            h.dataset.preSearchCollapsed = h.classList.contains('collapsed') ? '1' : '0';
         });
+        isSearchActive = true;
+    }
+
+    let totalMatches = 0;
+    const categoryHeaders = grid.querySelectorAll(':scope > .category-header');
+
+    categoryHeaders.forEach(header => {
+        const group = header.nextElementSibling;
+        if (!group || !group.classList.contains('category-group')) return;
+
+        let categoryMatches = 0;
+
+        // 1. Filter subcategories within this category
+        const subHeaders = group.querySelectorAll(':scope > .subcategory-header');
+        subHeaders.forEach(subHeader => {
+            const subGroup = subHeader.nextElementSibling;
+            if (!subGroup || !subGroup.classList.contains('subcategory-group')) return;
+
+            let subMatches = 0;
+            const subCards = subGroup.querySelectorAll(':scope > .meal-card');
+            subCards.forEach(card => {
+                const displayName = card.dataset.displayName || card.getAttribute('data-meal-id') || '';
+                const match = fuzzyMatch(query, displayName);
+                if (match.matched) {
+                    card.classList.remove('hidden');
+                    const h3 = card.querySelector('h3');
+                    if (h3) {
+                        h3.innerHTML = `${card.dataset.emoji || ''} ${highlightMatches(displayName, match.indices)}`.trim();
+                    }
+                    subMatches++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            const countEl = subHeader.querySelector('.subcategory-count');
+            if (countEl) countEl.textContent = String(subMatches);
+
+            if (subMatches > 0) {
+                subHeader.classList.remove('hidden', 'collapsed');
+                subGroup.classList.remove('hidden');
+                categoryMatches += subMatches;
+            } else {
+                subHeader.classList.add('hidden');
+                subGroup.classList.add('hidden');
+            }
+        });
+
+        // 2. Filter direct meal cards in this category
+        const directCards = group.querySelectorAll(':scope > .meal-card');
+        directCards.forEach(card => {
+            const displayName = card.dataset.displayName || card.getAttribute('data-meal-id') || '';
+            const match = fuzzyMatch(query, displayName);
+            if (match.matched) {
+                card.classList.remove('hidden');
+                const h3 = card.querySelector('h3');
+                if (h3) {
+                    h3.innerHTML = `${card.dataset.emoji || ''} ${highlightMatches(displayName, match.indices)}`.trim();
+                }
+                categoryMatches++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        if (categoryMatches > 0) {
+            header.classList.remove('hidden', 'collapsed');
+            group.classList.remove('hidden');
+            totalMatches += categoryMatches;
+        } else {
+            header.classList.add('hidden');
+            group.classList.add('hidden');
+        }
+    });
+
+    if (emptyEl) {
+        emptyEl.classList.toggle('hidden', totalMatches > 0);
     }
 }
 
@@ -370,6 +766,7 @@ function drop(ev) {
             const clone = draggedElt.cloneNode(true);
             clone.id = draggedElt.id + '-clone-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
             clone.classList.remove('selected', 'dragging');
+            resetCardTitleHtml(clone);
             const dayCol = dropTarget.closest('.day-col');
             if (dayCol) clone.dataset.placedDate = dayCol.dataset.date;
             dropTarget.appendChild(clone);
@@ -485,6 +882,7 @@ function handleDayTap(dayColEl) {
             const clone = cardEl.cloneNode(true);
             clone.id = cardEl.id + '-clone-' + Date.now();
             clone.classList.remove('selected', 'dragging', 'pending-tap');
+            resetCardTitleHtml(clone);
             clone.dataset.placedDate = dayColEl.dataset.date;
             attachMealTouchListeners(clone, mealId);
             mealSlot.appendChild(clone);
@@ -882,6 +1280,96 @@ async function viewIngredients() {
     }
 }
 
+function getRecipeEmoji(rawName) {
+    const lower = (rawName || '').toLowerCase();
+    if (lower.includes('chicken')) return '🍗';
+    if (lower.includes('turkey')) return '🦃';
+    if (lower.includes('pasta') || lower.includes('penne')) return '🍝';
+    if (lower.includes('burger') || lower.includes('hamburger')) return '🍔';
+    if (lower.includes('pancake')) return '🥞';
+    if (lower.includes('muffin')) return '🧁';
+    return '🍲';
+}
+
+function formatRecipeDisplayName(rawName) {
+    return (rawName || '')
+        .trim()
+        .split(/[-\s]+/)
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+function formatHistoryDate(dateStr) {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+async function openHistoryModal() {
+    const modal = document.getElementById('history-modal');
+    const listEl = document.getElementById('history-list');
+    if (!modal || !listEl) return;
+
+    modal.classList.remove('hidden');
+    listEl.innerHTML = '<div class="spinner"></div>';
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+
+    try {
+        const response = await fetch(`/api/calendar/history?maxDate=${encodeURIComponent(todayStr)}`);
+        if (response.status === 403) {
+            listEl.innerHTML = `
+                <div class="history-empty">
+                    <p>Your Google Calendar is not linked yet.</p>
+                    <a href="/auth/google" class="btn btn-primary btn-sm mt-2">Connect Google Calendar</a>
+                </div>
+            `;
+            return;
+        }
+        if (!response.ok) {
+            throw new Error('Failed to load recipe history');
+        }
+
+        const items = await response.json();
+        if (!Array.isArray(items) || items.length === 0) {
+            listEl.innerHTML = '<p class="history-empty">No past recipes found on your calendar yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        items.slice(0, 10).forEach((entry, idx) => {
+            const row = document.createElement('div');
+            row.className = 'history-item';
+            const displayName = formatRecipeDisplayName(entry.name);
+            const emoji = getRecipeEmoji(entry.name);
+            const prettyDate = formatHistoryDate(entry.date);
+
+            row.innerHTML = `
+                <span class="history-rank">${idx + 1}</span>
+                <div class="history-item-main">
+                    <span class="history-recipe-name">${emoji} ${escapeHtml(displayName)}</span>
+                </div>
+                <time class="history-recipe-date" datetime="${escapeHtml(entry.date || '')}" title="${escapeHtml(entry.date || '')}">${escapeHtml(prettyDate)}</time>
+            `;
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        console.error('Error fetching recipe history:', e);
+        listEl.innerHTML = '<p class="history-empty" style="color:var(--error-color)">Failed to load recipe history.</p>';
+    }
+}
+
 async function openManageModal() {
     document.getElementById('manage-modal').classList.remove('hidden');
     document.getElementById('manage-list-view').classList.remove('hidden');
@@ -896,6 +1384,7 @@ async function fetchManageMeals() {
     try {
         const response = await fetch('/api/meals');
         const meals = await response.json();
+        updateMealCategoryDatalist(meals);
 
         listContainer.innerHTML = '';
         if (meals.length === 0) {
@@ -903,12 +1392,28 @@ async function fetchManageMeals() {
             return;
         }
 
+        const formatName = str => str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+        const grouped = {};
         meals.forEach(meal => {
+            const { topCategory, subCategory } = parseCategoryPath(meal.category);
+            if (!grouped[topCategory]) {
+                grouped[topCategory] = { directMeals: [], subcategories: {} };
+            }
+            if (subCategory) {
+                if (!grouped[topCategory].subcategories[subCategory]) {
+                    grouped[topCategory].subcategories[subCategory] = [];
+                }
+                grouped[topCategory].subcategories[subCategory].push(meal);
+            } else {
+                grouped[topCategory].directMeals.push(meal);
+            }
+        });
+
+        const createManageItem = (meal) => {
             const mealId = meal.name;
             const item = document.createElement('div');
             item.className = 'manage-item';
-
-            const formatName = str => str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
             const verifiedBadge = meal.verified
                 ? '<span class="verified-badge" style="margin-left:8px;" title="Verified recipe">✓ Verified</span>'
@@ -917,7 +1422,7 @@ async function fetchManageMeals() {
             item.innerHTML = `
                 <div class="manage-item-info">
                     <strong>${formatName(mealId)}</strong>
-                    <span class="badge" style="margin-left:8px; font-size:0.8rem; background:var(--primary-color); padding:2px 6px; border-radius:4px; color:white;">${meal.category}</span>
+                    <span class="badge" style="margin-left:8px; font-size:0.8rem; background:var(--primary-color); padding:2px 6px; border-radius:4px; color:white;">${meal.category || 'Uncategorized'}</span>
                     ${verifiedBadge}
                     <br><small style="color: var(--text-secondary);">${mealId}</small>
                     <br><small style="color: var(--text-secondary);">ID: ${meal.id}</small>
@@ -927,8 +1432,46 @@ async function fetchManageMeals() {
                     <button class="btn btn-danger btn-sm" onclick="deleteMeal('${mealId}')">Delete</button>
                 </div>
             `;
-            listContainer.appendChild(item);
-        });
+            return item;
+        };
+
+        const sortedTopCategories = Object.keys(grouped).sort();
+        for (const category of sortedTopCategories) {
+            const { directMeals, subcategories } = grouped[category];
+            const header = document.createElement('h3');
+            header.className = 'category-header collapsed';
+            header.innerHTML = `<span class="category-chevron">&#9654;</span> ${category}`;
+            listContainer.appendChild(header);
+
+            const group = document.createElement('div');
+            group.className = 'category-group hidden';
+            listContainer.appendChild(group);
+
+            attachHeaderTouchToggle(header, group);
+
+            const sortedSubcategories = Object.keys(subcategories).sort();
+            for (const subName of sortedSubcategories) {
+                const subMeals = subcategories[subName];
+                const subHeader = document.createElement('h4');
+                subHeader.className = 'subcategory-header collapsed';
+                subHeader.innerHTML = `<span class="category-chevron">&#9654;</span> <span>${subName}</span> <span class="subcategory-count">${subMeals.length}</span>`;
+                group.appendChild(subHeader);
+
+                const subGroup = document.createElement('div');
+                subGroup.className = 'subcategory-group hidden';
+                group.appendChild(subGroup);
+
+                attachHeaderTouchToggle(subHeader, subGroup);
+
+                subMeals.forEach(meal => {
+                    subGroup.appendChild(createManageItem(meal));
+                });
+            }
+
+            directMeals.forEach(meal => {
+                group.appendChild(createManageItem(meal));
+            });
+        }
     } catch (e) {
         listContainer.innerHTML = '<p style="color:var(--error-color)">Error loading meals.</p>';
     }
@@ -1041,7 +1584,7 @@ async function saveMeal(e) {
     e.preventDefault();
 
     const name = document.getElementById('meal-name').value.trim().toLowerCase().replace(/\s+/g, '-');
-    const category = document.getElementById('meal-category').value.trim() || 'Uncategorized';
+    const category = parseCategoryPath(document.getElementById('meal-category').value).fullCategory;
     const verified = document.getElementById('meal-verified').checked;
     const ingredientRows = document.querySelectorAll('.ingredient-row');
 

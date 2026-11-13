@@ -65,6 +65,9 @@
         <section class="page-h">
             <div>
                 <div class="topbar-actions hidden" id="action-bar">
+                    <button id="history-btn" type="button" class="btn btn-secondary" onclick="openHistoryModal()">
+                        History
+                    </button>
                     <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
                         Manage Recipes
                     </button>
@@ -105,6 +108,28 @@
             <aside class="recipe-library sidebar-container" data-panel="meals">
                 <div class="recipe-library-h">
                     <h2>Recipes</h2>
+                </div>
+                <div class="recipe-search-wrap">
+                    <span class="recipe-search-icon" aria-hidden="true">⌕</span>
+                    <input
+                        type="text"
+                        id="recipe-search-input"
+                        class="recipe-search-input"
+                        placeholder="Filter recipes…"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-label="Filter recipes"
+                    >
+                    <button
+                        type="button"
+                        id="recipe-search-clear"
+                        class="recipe-search-clear hidden"
+                        title="Clear search (Esc)"
+                        aria-label="Clear search"
+                    >&times;</button>
+                </div>
+                <div id="recipe-search-empty" class="recipe-search-empty hidden">
+                    No matching recipes
                 </div>
                 <p class="touch-hint">Tap a recipe, then tap a day to assign it.</p>
                 <div class="meal-grid" id="meal-grid" ondrop="drop(event)" ondragover="allowDrop(event)">
@@ -218,6 +243,23 @@
             </div>
         </div>
 
+        <!-- Recipe History Modal -->
+        <div id="history-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Recipe History</h2>
+                    <button onclick="closeModal('history-modal')" class="btn-close" type="button">&times;</button>
+                </div>
+                <p class="text-secondary">The last 10 recipes made from your meal prep calendar.</p>
+                <div id="history-list" class="history-list mt-2">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="closeModal('history-modal')" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Management Modal -->
         <div id="manage-modal" class="modal hidden">
             <div class="modal-content large-modal">
@@ -241,9 +283,11 @@
                             <input type="text" id="meal-name" required class="form-control">
                         </div>
                         <div class="form-group mt-2">
-                            <label for="meal-category">Category</label>
+                            <label for="meal-category">Category (use <code>/</code> for subcategory, e.g., Bakegoods / Muffins)</label>
                             <input type="text" id="meal-category" class="form-control"
-                                placeholder="e.g., Poultry, Breakfast" value="Uncategorized">
+                                placeholder="e.g., Poultry, Bakegoods / Muffins" value="Uncategorized"
+                                list="meal-category-list">
+                            <datalist id="meal-category-list"></datalist>
                         </div>
                         <div class="form-group mt-2">
                             <label class="verified-toggle" title="Mark this recipe as verified">

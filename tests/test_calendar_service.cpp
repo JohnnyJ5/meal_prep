@@ -126,6 +126,74 @@ TEST(CalendarServiceFilterTest, PreservesTopLevelFields) {
     EXPECT_TRUE(hasEventWithSummary(out, "Real Meeting"));
 }
 
+TEST(CalendarServiceFindCalendarIdTest, FindsMatchingCalendarCaseInsensitive) {
+    std::string listJson = R"({
+        "items": [
+            {"id": "incomplete_no_summary"},
+            {"summary": "Incomplete No Id"},
+            {"id": "family_id@group.calendar.google.com", "summary": "Family Calendar"},
+            {"id": "michaelcoffey5@gmail.com", "summary": "Michael Coffey"}
+        ]
+    })";
+
+    EXPECT_EQ(CalendarService::findCalendarId(listJson, "Michael Coffey"),
+              "michaelcoffey5@gmail.com");
+    EXPECT_EQ(CalendarService::findCalendarId(listJson, "michael coffey"),
+              "michaelcoffey5@gmail.com");
+    EXPECT_EQ(CalendarService::findCalendarId(listJson, "Family Calendar"),
+              "family_id@group.calendar.google.com");
+    EXPECT_EQ(CalendarService::findCalendarId(listJson, "Nonexistent Calendar"), "primary");
+    EXPECT_EQ(CalendarService::findCalendarId(listJson, ""), "primary");
+    EXPECT_EQ(CalendarService::findCalendarId("", "Michael Coffey"), "primary");
+    EXPECT_EQ(CalendarService::findCalendarId("not json{{{", "Michael Coffey"), "primary");
+    EXPECT_EQ(CalendarService::findCalendarId(R"({"kind": "calendar#calendarList"})",
+                                              "Michael Coffey"),
+              "primary");
+}
+
+TEST(CalendarServiceRecipeHistoryTest, ExtractsSortsAndLimitsLastTenRecipes) {
+    CalendarService::CalendarEvents badCal{"Bad", "#000", "#fff", "not json{{{"};
+    CalendarService::CalendarEvents noItemsCal{"NoItems", "#000", "#fff", R"({"kind":"events"})"};
+    CalendarService::CalendarEvents mainCal{
+        "Michael Coffey", "#000", "#fff", R"({
+            "items": [
+                {"id": "no_summary", "start": {"date": "2026-11-01"}},
+                {"summary": "   ", "start": {"date": "2026-11-01"}},
+                {"summary": "Whole Foods Order", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-12T09:00:00Z"}},
+                {"summary": "Random Meeting", "start": {"dateTime": "2026-11-11T10:00:00Z"}},
+                {"summary": "turkey-burgers", "extendedProperties": {"private": {"mealPrepApp": "true"}}},
+                {"summary": "turkey-burgers", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {}},
+                {"summary": "turkey-burgers", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"date": "bad"}},
+                {"summary": "future-meal", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-20T18:00:00Z"}},
+                {"summary": "meal-01", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-01T18:00:00Z"}},
+                {"summary": "meal-02", "description": "Meal planned via app", "start": {"date": "2026-11-02"}},
+                {"summary": "Turkey Meatballs", "start": {"dateTime": "2026-11-03T18:00:00Z"}},
+                {"summary": "meal-04", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-04T18:00:00Z"}},
+                {"summary": "meal-05", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-05T18:00:00Z"}},
+                {"summary": "meal-06", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-06T18:00:00Z"}},
+                {"summary": "meal-07", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-07T18:00:00Z"}},
+                {"summary": "meal-08", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-08T18:00:00Z"}},
+                {"summary": "meal-09", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-09T18:00:00Z"}},
+                {"summary": "meal-10", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-10T18:00:00Z"}},
+                {"summary": "meal-11 -- ", "extendedProperties": {"private": {"mealPrepApp": "true"}}, "start": {"dateTime": "2026-11-11T18:00:00Z"}}
+            ]
+        })"};
+
+    std::set<std::string> knownMeals = {"turkey-meatballs", "  "};
+    auto history = CalendarService::extractRecipeHistory(
+        {badCal, noItemsCal, mainCal}, knownMeals, "2026-11-13", 10);
+
+    ASSERT_EQ(history.size(), 10u);
+    EXPECT_EQ(history[0].name, "meal-11 -- ");
+    EXPECT_EQ(history[0].date, "2026-11-11");
+    EXPECT_EQ(history[1].name, "meal-10");
+    EXPECT_EQ(history[1].date, "2026-11-10");
+    EXPECT_EQ(history[8].name, "Turkey Meatballs");
+    EXPECT_EQ(history[8].date, "2026-11-03");
+    EXPECT_EQ(history[9].name, "meal-02");
+    EXPECT_EQ(history[9].date, "2026-11-02");
+}
+
 TEST(CurlUtilsTest, UrlEncodeAndWriteCallback) {
     EXPECT_EQ(curl_utils::urlEncode("hello world@2026"), "hello%20world%402026");
 
@@ -206,6 +274,10 @@ TEST_F(GoogleOAuthAndCalendarTest, CalendarServiceWithoutAndWithToken) {
     ASSERT_TRUE(db->saveGoogleTokens("valid_tok", "ref_tok", 4102444800LL));
     EXPECT_EQ(
         cal->createEvent("Test", "Desc", "2026-03-23T09:00:00Z", "2026-03-23T10:00:00Z", true), "");
+    EXPECT_EQ(cal->createEvent("Order", "Desc", "2026-03-23T09:00:00Z", "2026-03-23T10:00:00Z",
+                               true, "Family Calendar"),
+              "");
     EXPECT_FALSE(cal->deleteEvent("ev123"));
+    EXPECT_FALSE(cal->deleteEvent("ev123", "Family Calendar"));
     EXPECT_TRUE(cal->listEvents("2026-03-23T00:00:00Z", "2026-03-30T00:00:00Z").empty());
 }

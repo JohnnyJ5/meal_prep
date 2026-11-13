@@ -4,12 +4,102 @@
 #include <curl/curl.h>
 
 #include <algorithm>
+#include <cctype>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "curl_utils.h"
 
+namespace {
+
+std::string normalizeMealSlug(const std::string &str) {
+    std::string out;
+    bool prevHyphen = true;
+    for (unsigned char ch : str) {
+        if (std::isspace(ch) || ch == '-') {
+            if (!prevHyphen) {
+                out.push_back('-');
+                prevHyphen = true;
+            }
+        } else {
+            out.push_back(static_cast<char>(std::tolower(ch)));
+            prevHyphen = false;
+        }
+    }
+    if (!out.empty() && out.back() == '-') {
+        out.pop_back();
+    }
+    return out;
+}
+
+}  // namespace
+
 CalendarService::CalendarService(std::shared_ptr<GoogleOAuth> oauth) : d_oauth(std::move(oauth)) {}
+
+std::vector<CalendarService::RecipeHistoryEntry> CalendarService::extractRecipeHistory(
+    const std::vector<CalendarEvents> &calendars, const std::set<std::string> &knownMeals,
+    const std::string &maxDate, size_t limit) {
+    std::set<std::string> normalizedKnown;
+    for (const auto &meal : knownMeals) {
+        std::string slug = normalizeMealSlug(meal);
+        if (!slug.empty()) {
+            normalizedKnown.insert(slug);
+        }
+    }
+
+    std::vector<RecipeHistoryEntry> entries;
+    for (const auto &cal : calendars) {
+        auto parsed = crow::json::load(cal.eventsJson);
+        if (!parsed || !parsed.has("items")) {
+            continue;
+        }
+        for (const auto &item : parsed["items"]) {
+            if (!item.has("summary")) continue;
+            std::string summary = item["summary"].s();
+            std::string normSummary = normalizeMealSlug(summary);
+            if (normSummary.empty() || normSummary == "whole-foods-order") {
+                continue;
+            }
+
+            bool isAppEvent =
+                item.has("extendedProperties") && item["extendedProperties"].has("private") &&
+                item["extendedProperties"]["private"].has("mealPrepApp") &&
+                std::string(item["extendedProperties"]["private"]["mealPrepApp"].s()) == "true";
+            bool isPlannedDesc = item.has("description") &&
+                                 std::string(item["description"].s()) == "Meal planned via app";
+            bool isKnownMeal = normalizedKnown.count(normSummary) > 0;
+            if (!isAppEvent && !isPlannedDesc && !isKnownMeal) {
+                continue;
+            }
+
+            if (!item.has("start")) continue;
+            std::string startStr;
+            if (item["start"].has("dateTime")) {
+                startStr = item["start"]["dateTime"].s();
+            } else if (item["start"].has("date")) {
+                startStr = item["start"]["date"].s();
+            }
+            if (startStr.size() < 10) continue;
+
+            std::string date = startStr.substr(0, 10);
+            if (!maxDate.empty() && date > maxDate) {
+                continue;
+            }
+
+            entries.push_back({summary, date});
+        }
+    }
+
+    std::stable_sort(
+        entries.begin(), entries.end(),
+        [](const RecipeHistoryEntry &a, const RecipeHistoryEntry &b) { return a.date > b.date; });
+
+    if (entries.size() > limit) {
+        entries.resize(limit);
+    }
+    return entries;
+}
 
 std::string CalendarService::filterBirthdayEvents(const std::string &eventsJson) {
     auto parsed = crow::json::load(eventsJson);
@@ -35,7 +125,7 @@ std::string CalendarService::filterBirthdayEvents(const std::string &eventsJson)
 
 std::string CalendarService::createEvent(const std::string &summary, const std::string &description,
                                          const std::string &startTime, const std::string &endTime,
-                                         bool withReminders) {
+                                         bool withReminders, const std::string &calendarName) {
     crow::json::wvalue body;
     body["summary"] = summary;
     body["description"] = description;
@@ -51,7 +141,7 @@ std::string CalendarService::createEvent(const std::string &summary, const std::
         body["reminders"]["overrides"][1]["minutes"] = 1440;  // 1 day prior
     }
 
-    std::string calId = getFamilyCalendarId();
+    std::string calId = getCalendarId(calendarName);
     std::string response =
         makeAuthorizedRequest("https://www.googleapis.com/calendar/v3/calendars/" +
                                   curl_utils::urlEncode(calId) + "/events",
@@ -71,11 +161,11 @@ std::string CalendarService::createEvent(const std::string &summary, const std::
     return "";
 }
 
-bool CalendarService::deleteEvent(const std::string &eventId) {
+bool CalendarService::deleteEvent(const std::string &eventId, const std::string &calendarName) {
     std::string token = d_oauth->getAccessToken();
     if (token.empty()) return false;
 
-    std::string calId = getFamilyCalendarId();
+    std::string calId = getCalendarId(calendarName);
     std::string url = "https://www.googleapis.com/calendar/v3/calendars/" +
                       curl_utils::urlEncode(calId) + "/events/" + eventId;
 
@@ -168,26 +258,33 @@ std::vector<CalendarService::CalendarEvents> CalendarService::listEvents(const s
     return results;
 }
 
-std::string CalendarService::getFamilyCalendarId() {
-    std::string listResponse =
-        makeAuthorizedRequest("https://www.googleapis.com/calendar/v3/users/me/calendarList");
-    if (listResponse.empty()) return "primary";
+std::string CalendarService::findCalendarId(const std::string &calendarListJson,
+                                            const std::string &calendarName) {
+    if (calendarListJson.empty() || calendarName.empty()) return "primary";
 
-    auto listJson = crow::json::load(listResponse);
+    auto listJson = crow::json::load(calendarListJson);
     if (!listJson || !listJson.has("items")) return "primary";
+
+    std::string targetLower = calendarName;
+    std::transform(targetLower.begin(), targetLower.end(), targetLower.begin(), ::tolower);
 
     for (const auto &cal : listJson["items"]) {
         if (!cal.has("summary") || !cal.has("id")) continue;
         std::string summary = cal["summary"].s();
-        // Case-insensitive match for "Family"
         std::string summaryLower = summary;
         std::transform(summaryLower.begin(), summaryLower.end(), summaryLower.begin(), ::tolower);
-        if (summaryLower == "family calendar") {
+        if (summaryLower == targetLower) {
             return std::string(cal["id"].s());
         }
     }
 
     return "primary";
+}
+
+std::string CalendarService::getCalendarId(const std::string &calendarName) {
+    std::string listResponse =
+        makeAuthorizedRequest("https://www.googleapis.com/calendar/v3/users/me/calendarList");
+    return findCalendarId(listResponse, calendarName);
 }
 
 std::string CalendarService::makeAuthorizedRequest(const std::string &url,
