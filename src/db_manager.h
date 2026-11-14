@@ -193,4 +193,5 @@ class DBManager {
 
     bool executeQuery(const std::string &query);
     int getMealId(const std::string &mealName);
+    bool insertMealIngredients(int mealId, const std::vector<Ingredient> &ingredients);
 };

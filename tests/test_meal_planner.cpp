@@ -155,3 +155,53 @@ TEST_F(MealPlannerTest, FormatWholeFoodsOrderIncludesMealsAndCategories) {
 
     EXPECT_EQ(output, expected);
 }
+
+TEST_F(MealPlannerTest, ConsolidateAndFormatCaseInsensitive) {
+    Meal meal1("dish-1", {Ingredient("Olive Oil", Measurement(1.0, MeasurementUnit::TABLESPOON)),
+                          Ingredient("  Salt ", Measurement(1.0, MeasurementUnit::TEASPOON))});
+    Meal meal2("dish-2", {Ingredient("olive oil", Measurement(2.0, MeasurementUnit::TABLESPOON)),
+                          Ingredient("salt", Measurement(0.5, MeasurementUnit::TEASPOON))});
+
+    std::vector<std::reference_wrapper<Meal>> meals = {meal1, meal2};
+    std::map<std::string, Ingredient> allIngredients;
+    ConsolidateAllIngredients(allIngredients, meals);
+
+    ASSERT_EQ(allIngredients.size(), 2u);
+    EXPECT_DOUBLE_EQ(allIngredients["Olive Oil"].getAmount().getValue(), 3.0);
+    EXPECT_DOUBLE_EQ(allIngredients["  Salt "].getAmount().getValue(), 1.5);
+
+    std::vector<std::pair<std::string, std::string>> availableIngredients = {
+        {"olive oil", "Pantry Staples"},
+        {"SALT", "Pantry Staples"},
+    };
+    std::ostringstream oss;
+    FormatWholeFoodsOrder(oss, meals, allIngredients, availableIngredients);
+    std::string output = oss.str();
+    EXPECT_NE(output.find("Pantry Staples:"), std::string::npos);
+    EXPECT_EQ(output.find("Uncategorized:"), std::string::npos);
+}
+
+TEST_F(MealPlannerTest, ConsolidateIncompatibleUnitsPreservesBothAmounts) {
+    Meal meal1("dish-1", {Ingredient("Chicken Breast", Measurement(1.5, MeasurementUnit::POUND))});
+    Meal meal2("dish-2", {Ingredient("chicken breast", Measurement(2.0, MeasurementUnit::WHOLE)),
+                          Ingredient("Chicken Breast", Measurement(0.5, MeasurementUnit::POUND))});
+
+    std::vector<std::reference_wrapper<Meal>> meals = {meal1, meal2};
+    std::map<std::string, Ingredient> allIngredients;
+    ConsolidateAllIngredients(allIngredients, meals);
+
+    // 1.5 lb + 0.5 lb = 2.0 lb, and 2 whole preserved separately
+    ASSERT_EQ(allIngredients.size(), 2u);
+    EXPECT_DOUBLE_EQ(allIngredients["Chicken Breast"].getAmount().getValue(), 2.0);
+    EXPECT_EQ(allIngredients["Chicken Breast"].getAmount().getUnit(), MeasurementUnit::POUND);
+
+    std::vector<std::pair<std::string, std::string>> availableIngredients = {
+        {"Chicken Breast", "Proteins"},
+    };
+    std::ostringstream oss;
+    FormatWholeFoodsOrder(oss, meals, allIngredients, availableIngredients);
+    std::string output = oss.str();
+    EXPECT_NE(output.find("- Chicken Breast: 2 pounds"), std::string::npos);
+    EXPECT_NE(output.find("- Chicken Breast: 2 whole"), std::string::npos);
+    EXPECT_EQ(output.find("Uncategorized:"), std::string::npos);
+}

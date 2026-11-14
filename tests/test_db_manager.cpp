@@ -329,12 +329,13 @@ TEST_F(DBManagerTest, UpdateMealPreservesOptionalFlag) {
 
 // getMealIdsWithOptionalIngredients identifies meals with any optional ingredient
 TEST_F(DBManagerTest, GetMealIdsWithOptionalIngredients) {
-    db->addMeal(Meal(
-        "no-options", {Ingredient("Salt", Measurement(1.0, MeasurementUnit::TEASPOON))}, "Cat"));
-    db->addMeal(Meal("with-options",
-                     {Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE)),
-                      Ingredient("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true)},
-                     "Cat"));
+    db->addMeal(Meal("no-options",
+                     {Ingredient("Salt", Measurement(1.0, MeasurementUnit::TEASPOON))}, "Cat"));
+    db->addMeal(
+        Meal("with-options",
+             {Ingredient("Eggs", Measurement(2.0, MeasurementUnit::WHOLE)),
+              Ingredient("Blueberry", Measurement(0.5, MeasurementUnit::CUP), "None", true)},
+             "Cat"));
 
     auto ids = db->getMealIdsWithOptionalIngredients();
 
@@ -350,4 +351,34 @@ TEST_F(DBManagerTest, GetMealIdsWithOptionalIngredients) {
 
     EXPECT_EQ(ids.count(noOptionsId), 0u);
     EXPECT_EQ(ids.count(withOptionsId), 1u);
+}
+
+TEST_F(DBManagerTest, AddIngredientRejectsCaseInsensitiveDuplicatesAndTrims) {
+    EXPECT_TRUE(db->addIngredient("  Olive Oil ", "Pantry Staples"));
+    EXPECT_FALSE(db->addIngredient("olive oil", "Pantry Staples"));
+    EXPECT_FALSE(db->addIngredient("OLIVE OIL", "Pantry Staples"));
+    EXPECT_FALSE(db->addIngredient("   ", "Pantry Staples"));
+    EXPECT_FALSE(db->addIngredient("Garlic", "   "));
+
+    std::vector<std::pair<std::string, std::string>> ingredients;
+    EXPECT_TRUE(db->getAllIngredients(ingredients));
+    ASSERT_EQ(ingredients.size(), 1u);
+    EXPECT_EQ(ingredients[0].first, "Olive Oil");
+}
+
+TEST_F(DBManagerTest, MealIngredientsSnapToCanonicalCasing) {
+    EXPECT_TRUE(db->addIngredient("Olive Oil", "Pantry Staples"));
+    EXPECT_TRUE(db->addIngredient("Garlic", "Produce"));
+
+    Meal meal("snap-test",
+              {Ingredient("  olive oil ", Measurement(2.0, MeasurementUnit::TABLESPOON)),
+               Ingredient("GARLIC", Measurement(3.0, MeasurementUnit::CLOVE))},
+              "Dinner");
+    EXPECT_TRUE(db->addMeal(meal));
+
+    auto retrieved = db->getMeal("snap-test");
+    ASSERT_NE(retrieved, nullptr);
+    ASSERT_EQ(retrieved->getIngredients().size(), 2u);
+    EXPECT_EQ(retrieved->getIngredients()[0].getName(), "Olive Oil");
+    EXPECT_EQ(retrieved->getIngredients()[1].getName(), "Garlic");
 }

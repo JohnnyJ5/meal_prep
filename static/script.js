@@ -1242,10 +1242,11 @@ async function viewIngredients() {
                 html += `<li>${ing.name}: ${amountStr} ${unitStr} ${ing.preparation !== 'None' ? `(${ing.preparation})` : ''}</li>`;
 
                 // Build consolidated
-                const key = `${ing.name.toLowerCase()}_${ing.unit}`;
+                const canonicalName = canonicalizeIngredientName(ing.name);
+                const key = `${canonicalName.toLowerCase()}_${ing.unit}`;
                 if (!consolidated[key]) {
                     consolidated[key] = {
-                        name: ing.name,
+                        name: canonicalName,
                         amount: 0,
                         unitStr: unitStr
                     };
@@ -1531,6 +1532,14 @@ function closeEditView() {
     document.getElementById('manage-edit-view').classList.add('hidden');
 }
 
+function canonicalizeIngredientName(rawName) {
+    const trimmed = (rawName || '').trim();
+    if (!trimmed) return '';
+    const lower = trimmed.toLowerCase();
+    const match = availableIngredients.find(ing => ing.name.toLowerCase() === lower);
+    return match ? match.name : trimmed;
+}
+
 function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
     const container = document.getElementById('ingredients-list');
     const row = document.createElement('div');
@@ -1566,8 +1575,10 @@ function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
 
     // Auto-focus amount when ingredient is selected or Enter is pressed
     nameInput.addEventListener('input', (e) => {
-        const val = e.target.value;
-        if (availableIngredients.some(ing => ing.name === val)) {
+        const val = (e.target.value || '').trim().toLowerCase();
+        const match = availableIngredients.find(ing => ing.name.toLowerCase() === val);
+        if (match) {
+            nameInput.value = match.name;
             setTimeout(() => amountInput.focus(), 10);
         }
     });
@@ -1575,8 +1586,13 @@ function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
     nameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            nameInput.value = canonicalizeIngredientName(nameInput.value);
             setTimeout(() => amountInput.focus(), 10);
         }
+    });
+
+    nameInput.addEventListener('blur', () => {
+        nameInput.value = canonicalizeIngredientName(nameInput.value);
     });
 }
 
@@ -1596,7 +1612,7 @@ async function saveMeal(e) {
     const ingredients = [];
     ingredientRows.forEach(row => {
         ingredients.push({
-            name: row.querySelector('.name-input').value,
+            name: canonicalizeIngredientName(row.querySelector('.name-input').value),
             amount: parseFloat(row.querySelector('.amount-input').value),
             unit: parseInt(row.querySelector('.unit-input').value),
             preparation: "None",
@@ -1668,6 +1684,18 @@ async function createNewIngredient(e) {
     const category = document.getElementById('new-ing-category').value.trim();
 
     if (!name || !category) return;
+
+    const existing = availableIngredients.find(
+        ing => ing.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+        alert(`"${existing.name}" already exists in ${existing.category}.`);
+        closeModal('add-ingredient-modal');
+        if (lastActiveInput) {
+            lastActiveInput.value = existing.name;
+        }
+        return;
+    }
 
     try {
         const response = await fetch('/api/ingredients/add', {

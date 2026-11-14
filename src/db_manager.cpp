@@ -5,6 +5,17 @@
 #include "measurement.h"
 #include "token_encryption.h"
 
+namespace {
+
+std::string trimWhitespace(const std::string &str) {
+    size_t start = str.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    size_t end = str.find_last_not_of(" \t\r\n");
+    return str.substr(start, end - start + 1);
+}
+
+}  // namespace
+
 DBManager::DBManager(const std::string &dbPath) : d_dbPath(dbPath) {
     if (sqlite3_open(dbPath.c_str(), &d_db) != SQLITE_OK) {
         std::cerr << "Can't open database: " << sqlite3_errmsg(d_db) << "\n";
@@ -267,31 +278,10 @@ bool DBManager::addMeal(const Meal &meal) {
 
     int mealId = static_cast<int>(sqlite3_last_insert_rowid(d_db));
 
-    std::string insertIngredient =
-        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation, is_optional) "
-        "VALUES (?, ?, ?, ?, ?, ?);";
-    sqlite3_stmt *stmtIngred = nullptr;
-    if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred, nullptr) != SQLITE_OK) {
+    if (!insertMealIngredients(mealId, meal.getIngredients())) {
         executeQuery("ROLLBACK;");
         return false;
     }
-
-    for (const auto &ing : meal.getIngredients()) {
-        sqlite3_bind_int(stmtIngred, 1, mealId);
-        sqlite3_bind_text(stmtIngred, 2, ing.getName().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
-        sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
-        sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
-
-        if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
-            sqlite3_finalize(stmtIngred);
-            executeQuery("ROLLBACK;");
-            return false;
-        }
-        sqlite3_reset(stmtIngred);
-    }
-    sqlite3_finalize(stmtIngred);
 
     executeQuery("COMMIT;");
     return true;
@@ -337,30 +327,10 @@ bool DBManager::updateMeal(const Meal &meal) {
 
     int mealId = static_cast<int>(sqlite3_last_insert_rowid(d_db));
 
-    // Insert updated ingredients
-    std::string insertIngredient =
-        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation, is_optional) "
-        "VALUES (?, ?, ?, ?, ?, ?);";
-    sqlite3_stmt *stmtIngred = nullptr;
-    if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred, nullptr) != SQLITE_OK) {
+    if (!insertMealIngredients(mealId, meal.getIngredients())) {
         executeQuery("ROLLBACK;");
         return false;
     }
-    for (const auto &ing : meal.getIngredients()) {
-        sqlite3_bind_int(stmtIngred, 1, mealId);
-        sqlite3_bind_text(stmtIngred, 2, ing.getName().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
-        sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
-        sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
-        if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
-            sqlite3_finalize(stmtIngred);
-            executeQuery("ROLLBACK;");
-            return false;
-        }
-        sqlite3_reset(stmtIngred);
-    }
-    sqlite3_finalize(stmtIngred);
 
     executeQuery("COMMIT;");
     return true;
@@ -491,9 +461,71 @@ bool DBManager::getAllIngredients(std::vector<std::pair<std::string, std::string
     return true;
 }
 
+bool DBManager::insertMealIngredients(int mealId, const std::vector<Ingredient> &ingredients) {
+    std::string insertIngredient =
+        "INSERT INTO ingredients (meal_id, name, amount, unit, preparation, is_optional) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
+    sqlite3_stmt *stmtIngred = nullptr;
+    if (sqlite3_prepare_v2(d_db, insertIngredient.c_str(), -1, &stmtIngred, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    std::string lookupQuery =
+        "SELECT name FROM available_ingredients WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1;";
+    sqlite3_stmt *stmtLookup = nullptr;
+    sqlite3_prepare_v2(d_db, lookupQuery.c_str(), -1, &stmtLookup, nullptr);
+
+    for (const auto &ing : ingredients) {
+        std::string canonicalName = trimWhitespace(ing.getName());
+        if (!canonicalName.empty() && stmtLookup) {
+            sqlite3_bind_text(stmtLookup, 1, canonicalName.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(stmtLookup) == SQLITE_ROW) {
+                if (const char *found =
+                        reinterpret_cast<const char *>(sqlite3_column_text(stmtLookup, 0))) {
+                    canonicalName = found;
+                }
+            }
+            sqlite3_reset(stmtLookup);
+        }
+
+        sqlite3_bind_int(stmtIngred, 1, mealId);
+        sqlite3_bind_text(stmtIngred, 2, canonicalName.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
+        sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
+        sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
+
+        if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
+            sqlite3_finalize(stmtLookup);
+            sqlite3_finalize(stmtIngred);
+            return false;
+        }
+        sqlite3_reset(stmtIngred);
+    }
+    sqlite3_finalize(stmtLookup);
+    sqlite3_finalize(stmtIngred);
+    return true;
+}
+
 bool DBManager::addIngredient(const std::string &name, const std::string &category) {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     if (!d_db) return false;
+
+    std::string trimmedName = trimWhitespace(name);
+    std::string trimmedCategory = trimWhitespace(category);
+    if (trimmedName.empty() || trimmedCategory.empty()) return false;
+
+    // Prevent case-insensitive duplicates in available_ingredients
+    std::string checkDup =
+        "SELECT 1 FROM available_ingredients WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1;";
+    sqlite3_stmt *stmtCheck = nullptr;
+    if (sqlite3_prepare_v2(d_db, checkDup.c_str(), -1, &stmtCheck, nullptr) != SQLITE_OK) {
+        return false;
+    }
+    sqlite3_bind_text(stmtCheck, 1, trimmedName.c_str(), -1, SQLITE_TRANSIENT);
+    bool exists = (sqlite3_step(stmtCheck) == SQLITE_ROW);
+    sqlite3_finalize(stmtCheck);
+    if (exists) return false;
 
     std::string insertIngredient =
         "INSERT INTO available_ingredients (name, category) VALUES (?, ?);";
@@ -502,8 +534,8 @@ bool DBManager::addIngredient(const std::string &name, const std::string &catego
         return false;
     }
 
-    sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, category.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, trimmedName.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, trimmedCategory.c_str(), -1, SQLITE_TRANSIENT);
 
     bool success = (sqlite3_step(stmt) == SQLITE_DONE);
     sqlite3_finalize(stmt);
@@ -530,7 +562,6 @@ bool DBManager::seedDefaultIngredients() {
         {"Ground Turkey", "Proteins"},
         {"Ground Beef", "Proteins"},
         {"Eggs", "Proteins"},
-        {"Egg", "Proteins"},
         {"Cottage Cheese", "Proteins"},
 
         // Dairy

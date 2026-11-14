@@ -11,6 +11,7 @@ cmake_install.cmake
 CMakeCache.txt
 CTestTestfile.cmake
 meals.db
+meals.db.bak*
 server.log
 
 # Runtime config (contains environment-specific paths and PII)

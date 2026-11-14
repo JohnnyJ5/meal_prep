@@ -1,18 +1,81 @@
 #include "meal_planner.h"
 
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <unordered_map>
 
+namespace {
+
+std::string normalizeIngredientKey(const std::string &name) {
+    size_t start = name.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    size_t end = name.find_last_not_of(" \t\r\n");
+    std::string trimmed = name.substr(start, end - start + 1);
+    std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return trimmed;
+}
+
+bool isVolumeUnit(MeasurementUnit unit) {
+    return unit == MeasurementUnit::TABLESPOON || unit == MeasurementUnit::TEASPOON ||
+           unit == MeasurementUnit::CUP || unit == MeasurementUnit::OUNCE;
+}
+
+std::string unitCompatibilityGroup(MeasurementUnit unit) {
+    if (isVolumeUnit(unit)) {
+        return "vol";
+    }
+    return std::to_string(static_cast<int>(unit));
+}
+
+}  // namespace
+
 void ConsolidateAllIngredients(std::map<std::string, Ingredient> &allIngredients,
                                const std::vector<std::reference_wrapper<Meal>> &meals) {
+    std::unordered_map<std::string, std::string> compositeKeyToMapKey;
+    std::unordered_map<std::string, std::string> normNameToDisplayName;
+    for (const auto &pair : allIngredients) {
+        std::string normName = normalizeIngredientKey(pair.second.getName());
+        std::string compKey =
+            normName + "|" + unitCompatibilityGroup(pair.second.getAmount().getUnit());
+        compositeKeyToMapKey[compKey] = pair.first;
+        if (normNameToDisplayName.find(normName) == normNameToDisplayName.end()) {
+            normNameToDisplayName[normName] = pair.second.getName();
+        }
+    }
+
     for (const auto &mealRef : meals) {
         const Meal &meal = mealRef.get();
         for (const auto &ingredient : meal.getIngredients()) {
-            auto it = allIngredients.find(ingredient.getName());
-            if (it != allIngredients.end()) {
-                it->second += ingredient;
+            std::string normName = normalizeIngredientKey(ingredient.getName());
+            std::string unitGroup = unitCompatibilityGroup(ingredient.getAmount().getUnit());
+            std::string compKey = normName + "|" + unitGroup;
+
+            auto compIt = compositeKeyToMapKey.find(compKey);
+            if (compIt != compositeKeyToMapKey.end()) {
+                Ingredient &existing = allIngredients[compIt->second];
+                Ingredient normalized(existing.getName(), ingredient.getAmount(),
+                                      ingredient.getPreparation(), ingredient.isOptional());
+                existing += normalized;
             } else {
-                allIngredients[ingredient.getName()] = ingredient;
+                std::string displayName = ingredient.getName();
+                auto nameIt = normNameToDisplayName.find(normName);
+                if (nameIt != normNameToDisplayName.end()) {
+                    displayName = nameIt->second;
+                } else {
+                    normNameToDisplayName[normName] = displayName;
+                }
+
+                // Use plain displayName for the first unit group of this ingredient;
+                // append #unitGroup if another incompatible unit group already uses displayName.
+                std::string mapKey = (allIngredients.find(displayName) == allIngredients.end())
+                                         ? displayName
+                                         : (displayName + "#" + unitGroup);
+                compositeKeyToMapKey[compKey] = mapKey;
+                allIngredients[mapKey] =
+                    Ingredient(displayName, ingredient.getAmount(), ingredient.getPreparation(),
+                               ingredient.isOptional());
             }
         }
     }
@@ -26,7 +89,7 @@ void FormatWholeFoodsOrder(
     categoryLookup.reserve(availableIngredients.size());
     for (const auto &pair : availableIngredients) {
         if (!pair.second.empty()) {
-            categoryLookup[pair.first] = pair.second;
+            categoryLookup[normalizeIngredientKey(pair.first)] = pair.second;
         }
     }
 
@@ -37,7 +100,9 @@ void FormatWholeFoodsOrder(
 
     std::map<std::string, std::vector<Ingredient>> byCategory;
     for (const auto &pair : allIngredients) {
-        auto it = categoryLookup.find(pair.first);
+        std::string lookupKey = normalizeIngredientKey(
+            pair.second.getName().empty() ? pair.first : pair.second.getName());
+        auto it = categoryLookup.find(lookupKey);
         const std::string category = (it != categoryLookup.end()) ? it->second : "Uncategorized";
         byCategory[category].push_back(pair.second);
     }
