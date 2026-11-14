@@ -40,9 +40,7 @@ void ConsolidateAllIngredients(std::map<std::string, Ingredient> &allIngredients
         std::string compKey =
             normName + "|" + unitCompatibilityGroup(pair.second.getAmount().getUnit());
         compositeKeyToMapKey[compKey] = pair.first;
-        if (normNameToDisplayName.find(normName) == normNameToDisplayName.end()) {
-            normNameToDisplayName[normName] = pair.second.getName();
-        }
+        normNameToDisplayName.try_emplace(normName, pair.second.getName());
     }
 
     for (const auto &mealRef : meals) {

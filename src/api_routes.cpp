@@ -6,6 +6,7 @@
 #include <set>
 #include <tuple>
 
+#include "ingredient_normalizer.h"
 #include "meal_planner.h"
 #include "workout.h"
 
@@ -65,8 +66,14 @@ void setupRoutes(crow::App<RequestTimerMiddleware> &app, std::shared_ptr<DBManag
             std::string category = body["category"].s();
 
             if (dbManager->addIngredient(name, category)) {
-                CROW_LOG_INFO << "Successfully added ingredient: " << name;
-                return crow::response(200, "Ingredient added successfully");
+                std::string canonicalName = normalizeIngredient(name).name;
+                std::string canonicalCategory = normalizeIngredientCategory(category);
+                CROW_LOG_INFO << "Successfully added ingredient: " << canonicalName;
+                crow::json::wvalue res;
+                res["message"] = "Ingredient added successfully";
+                res["name"] = canonicalName;
+                res["category"] = canonicalCategory;
+                return crow::response(200, std::move(res));
             } else {
                 CROW_LOG_ERROR << "Failed to add ingredient: " << name;
                 return crow::response(500, "Failed to add ingredient");

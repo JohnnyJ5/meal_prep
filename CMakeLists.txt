@@ -71,6 +71,7 @@ find_package(SQLite3 REQUIRED)
 # Explicitly listing sources is preferred over file(GLOB ...)
 set(LIB_SOURCES
     src/db_manager.cpp
+    src/ingredient_normalizer.cpp
     src/meal_factory.cpp
     src/meal_planner.cpp
     src/api_routes.cpp

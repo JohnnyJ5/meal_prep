@@ -1287,6 +1287,127 @@ h1 {
     align-items: center;
 }
 
+.ing-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.ing-fuzzy-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--paper);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    box-shadow:
+        0 1px 0 var(--paper-2) inset,
+        0 14px 28px -8px rgba(26, 20, 16, 0.25),
+        0 4px 10px -4px rgba(26, 20, 16, 0.12);
+    z-index: 1200;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.ing-fuzzy-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2);
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.1s ease;
+}
+
+.ing-fuzzy-item:last-child {
+    border-bottom: none;
+}
+
+.ing-fuzzy-item:hover,
+.ing-fuzzy-item.active {
+    background: var(--bg-2);
+}
+
+.ing-fuzzy-item-name {
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ing-fuzzy-item-cat {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+.ing-fuzzy-item-add {
+    color: var(--accent-color);
+    font-weight: 600;
+    background: var(--paper-2);
+    border-top: 1px dashed var(--line-2);
+}
+
+.ing-fuzzy-item-add:hover,
+.ing-fuzzy-item-add.active {
+    background: var(--accent-soft);
+    color: var(--accent-2);
+}
+
+.add-ing-prompt-banner {
+    background: var(--accent-soft);
+    color: var(--accent-2);
+    border-left: 3px solid var(--accent-color);
+    padding: var(--s-2) var(--s-3);
+    border-radius: 2px;
+    font-size: 13px;
+    margin-bottom: var(--s-3);
+}
+
+.ing-fuzzy-hints {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ink-2);
+}
+
+.ing-fuzzy-hints-label {
+    font-style: italic;
+    color: var(--ink-3);
+}
+
+.ing-fuzzy-hint-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--bg);
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.ing-fuzzy-hint-chip:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent-color);
+}
+
 .optional-toggle {
     display: inline-flex;
     align-items: center;

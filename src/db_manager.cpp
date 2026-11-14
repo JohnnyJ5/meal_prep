@@ -1,20 +1,11 @@
 #include "db_manager.h"
 
+#include <algorithm>
 #include <iostream>
 
+#include "ingredient_normalizer.h"
 #include "measurement.h"
 #include "token_encryption.h"
-
-namespace {
-
-std::string trimWhitespace(const std::string &str) {
-    size_t start = str.find_first_not_of(" \t\r\n");
-    if (start == std::string::npos) return "";
-    size_t end = str.find_last_not_of(" \t\r\n");
-    return str.substr(start, end - start + 1);
-}
-
-}  // namespace
 
 DBManager::DBManager(const std::string &dbPath) : d_dbPath(dbPath) {
     if (sqlite3_open(dbPath.c_str(), &d_db) != SQLITE_OK) {
@@ -475,11 +466,21 @@ bool DBManager::insertMealIngredients(int mealId, const std::vector<Ingredient> 
     sqlite3_stmt *stmtLookup = nullptr;
     sqlite3_prepare_v2(d_db, lookupQuery.c_str(), -1, &stmtLookup, nullptr);
 
+    std::string autoRegisterQuery =
+        "INSERT OR IGNORE INTO available_ingredients (name, category) VALUES (?, 'Uncategorized');";
+    sqlite3_stmt *stmtAutoReg = nullptr;
+    sqlite3_prepare_v2(d_db, autoRegisterQuery.c_str(), -1, &stmtAutoReg, nullptr);
+
     for (const auto &ing : ingredients) {
-        std::string canonicalName = trimWhitespace(ing.getName());
+        NormalizedIngredient norm = normalizeIngredient(ing.getName(), ing.getPreparation());
+        std::string canonicalName = norm.name;
+        std::string finalPrep = norm.preparation;
+
+        bool foundInAvailable = false;
         if (!canonicalName.empty() && stmtLookup) {
             sqlite3_bind_text(stmtLookup, 1, canonicalName.c_str(), -1, SQLITE_TRANSIENT);
             if (sqlite3_step(stmtLookup) == SQLITE_ROW) {
+                foundInAvailable = true;
                 if (const char *found =
                         reinterpret_cast<const char *>(sqlite3_column_text(stmtLookup, 0))) {
                     canonicalName = found;
@@ -488,20 +489,28 @@ bool DBManager::insertMealIngredients(int mealId, const std::vector<Ingredient> 
             sqlite3_reset(stmtLookup);
         }
 
+        if (!canonicalName.empty() && !foundInAvailable && stmtAutoReg) {
+            sqlite3_bind_text(stmtAutoReg, 1, canonicalName.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_step(stmtAutoReg);
+            sqlite3_reset(stmtAutoReg);
+        }
+
         sqlite3_bind_int(stmtIngred, 1, mealId);
         sqlite3_bind_text(stmtIngred, 2, canonicalName.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_double(stmtIngred, 3, ing.getAmount().getValue());
         sqlite3_bind_int(stmtIngred, 4, static_cast<int>(ing.getAmount().getUnit()));
-        sqlite3_bind_text(stmtIngred, 5, ing.getPreparation().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmtIngred, 5, finalPrep.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int(stmtIngred, 6, ing.isOptional() ? 1 : 0);
 
         if (sqlite3_step(stmtIngred) != SQLITE_DONE) {
+            sqlite3_finalize(stmtAutoReg);
             sqlite3_finalize(stmtLookup);
             sqlite3_finalize(stmtIngred);
             return false;
         }
         sqlite3_reset(stmtIngred);
     }
+    sqlite3_finalize(stmtAutoReg);
     sqlite3_finalize(stmtLookup);
     sqlite3_finalize(stmtIngred);
     return true;
@@ -511,21 +520,64 @@ bool DBManager::addIngredient(const std::string &name, const std::string &catego
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     if (!d_db) return false;
 
-    std::string trimmedName = trimWhitespace(name);
-    std::string trimmedCategory = trimWhitespace(category);
-    if (trimmedName.empty() || trimmedCategory.empty()) return false;
+    std::string normalizedName = normalizeIngredient(name).name;
+    std::string normalizedCategory = normalizeIngredientCategory(category);
+    if (normalizedName.empty() || normalizedCategory.empty()) return false;
 
-    // Prevent case-insensitive duplicates in available_ingredients
+    // Snap category to existing canonical category casing if one matches case-insensitively
+    std::string checkCat =
+        "SELECT category FROM available_ingredients WHERE LOWER(TRIM(category)) = LOWER(?) "
+        "LIMIT 1;";
+    sqlite3_stmt *stmtCat = nullptr;
+    if (sqlite3_prepare_v2(d_db, checkCat.c_str(), -1, &stmtCat, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmtCat, 1, normalizedCategory.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmtCat) == SQLITE_ROW) {
+            if (const char *existingCat =
+                    reinterpret_cast<const char *>(sqlite3_column_text(stmtCat, 0))) {
+                normalizedCategory = existingCat;
+            }
+        }
+        sqlite3_finalize(stmtCat);
+    }
+
+    // Check for case-insensitive duplicate in available_ingredients
     std::string checkDup =
-        "SELECT 1 FROM available_ingredients WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1;";
+        "SELECT id, category FROM available_ingredients WHERE LOWER(TRIM(name)) = LOWER(?) "
+        "LIMIT 1;";
     sqlite3_stmt *stmtCheck = nullptr;
     if (sqlite3_prepare_v2(d_db, checkDup.c_str(), -1, &stmtCheck, nullptr) != SQLITE_OK) {
         return false;
     }
-    sqlite3_bind_text(stmtCheck, 1, trimmedName.c_str(), -1, SQLITE_TRANSIENT);
-    bool exists = (sqlite3_step(stmtCheck) == SQLITE_ROW);
+    sqlite3_bind_text(stmtCheck, 1, normalizedName.c_str(), -1, SQLITE_TRANSIENT);
+    int existingId = -1;
+    std::string existingCategory;
+    if (sqlite3_step(stmtCheck) == SQLITE_ROW) {
+        existingId = sqlite3_column_int(stmtCheck, 0);
+        if (const char *catText =
+                reinterpret_cast<const char *>(sqlite3_column_text(stmtCheck, 1))) {
+            existingCategory = catText;
+        }
+    }
     sqlite3_finalize(stmtCheck);
-    if (exists) return false;
+
+    if (existingId != -1) {
+        // Allow upgrading an auto-registered 'Uncategorized' ingredient to a real category
+        if (existingCategory == "Uncategorized" && normalizedCategory != "Uncategorized") {
+            std::string updateCat =
+                "UPDATE available_ingredients SET name = ?, category = ? WHERE id = ?;";
+            sqlite3_stmt *stmtUpd = nullptr;
+            if (sqlite3_prepare_v2(d_db, updateCat.c_str(), -1, &stmtUpd, nullptr) != SQLITE_OK) {
+                return false;
+            }
+            sqlite3_bind_text(stmtUpd, 1, normalizedName.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmtUpd, 2, normalizedCategory.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmtUpd, 3, existingId);
+            bool updated = (sqlite3_step(stmtUpd) == SQLITE_DONE);
+            sqlite3_finalize(stmtUpd);
+            return updated;
+        }
+        return false;
+    }
 
     std::string insertIngredient =
         "INSERT INTO available_ingredients (name, category) VALUES (?, ?);";
@@ -534,8 +586,8 @@ bool DBManager::addIngredient(const std::string &name, const std::string &catego
         return false;
     }
 
-    sqlite3_bind_text(stmt, 1, trimmedName.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, trimmedCategory.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, normalizedName.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, normalizedCategory.c_str(), -1, SQLITE_TRANSIENT);
 
     bool success = (sqlite3_step(stmt) == SQLITE_DONE);
     sqlite3_finalize(stmt);
@@ -546,7 +598,10 @@ bool DBManager::seedDefaultIngredients() {
     std::lock_guard<std::recursive_mutex> lock(d_mutex);
     std::vector<std::pair<std::string, std::string>> existing;
     getAllIngredients(existing);
-    if (!existing.empty()) return true;  // Already seeded
+    bool hasCategorized = std::any_of(existing.begin(), existing.end(), [](const auto &ing) {
+        return ing.second != "Uncategorized";
+    });
+    if (hasCategorized) return true;  // Already seeded
 
     std::vector<std::pair<std::string, std::string>> defaultIngredients = {
         // Vegetables

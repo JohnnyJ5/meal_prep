@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeWeekDates();
     initMobileTabs();
     initRecipeSearch();
+    initNewIngredientModalSearch();
     fetchMeals();
     fetchIngredients();
     fetchCalendarEventsForWeek();
@@ -57,15 +58,46 @@ async function fetchIngredients() {
     }
 }
 
+const DEFAULT_INGREDIENT_CATEGORIES = [
+    'Vegetables',
+    'Proteins',
+    'Dairy',
+    'Pantry Staples',
+    'Seasonings & Spices',
+    'Produce',
+    'Grains & Pasta',
+    'Broths & Sauces',
+    'Sweeteners',
+    'Other'
+];
+
 function updateIngredientsDatalist() {
     const datalist = document.getElementById('available-ingredients');
-    if (!datalist) return;
-    datalist.innerHTML = '';
-    availableIngredients.forEach(ing => {
-        const option = document.createElement('option');
-        option.value = ing.name;
-        datalist.appendChild(option);
-    });
+    if (datalist) {
+        datalist.innerHTML = '';
+        availableIngredients.forEach(ing => {
+            const option = document.createElement('option');
+            option.value = ing.name;
+            datalist.appendChild(option);
+        });
+    }
+
+    const catDatalist = document.getElementById('category-list');
+    if (catDatalist) {
+        const categories = new Set(DEFAULT_INGREDIENT_CATEGORIES);
+        availableIngredients.forEach(ing => {
+            const cat = (ing.category || '').trim();
+            if (cat && cat !== 'Uncategorized') {
+                categories.add(cat);
+            }
+        });
+        catDatalist.innerHTML = '';
+        Array.from(categories).sort().forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            catDatalist.appendChild(option);
+        });
+    }
 }
 
 async function fetchMeals() {
@@ -1499,7 +1531,7 @@ async function editMeal(mealId) {
             document.getElementById('meal-category').value = mealData.category || "Uncategorized";
             document.getElementById('meal-verified').checked = !!mealData.verified;
             mealData.ingredients.forEach(ing => {
-                addIngredientRow(ing.name, ing.amount, ing.unit, !!ing.optional);
+                addIngredientRow(ing.name, ing.amount, ing.unit, !!ing.optional, ing.preparation || 'None');
             });
         } else {
             addIngredientRow(); // Fallback to empty row
@@ -1532,18 +1564,148 @@ function closeEditView() {
     document.getElementById('manage-edit-view').classList.add('hidden');
 }
 
-function canonicalizeIngredientName(rawName) {
-    const trimmed = (rawName || '').trim();
-    if (!trimmed) return '';
-    const lower = trimmed.toLowerCase();
-    const match = availableIngredients.find(ing => ing.name.toLowerCase() === lower);
-    return match ? match.name : trimmed;
+const INGREDIENT_MINOR_WORDS = new Set(['of', 'and', 'in', 'to', 'for', 'with', 'on', 'at']);
+
+const INGREDIENT_ALIAS_MAP = {
+    'low sodumn chicken broth': { name: 'Reduced Sodium Chicken Broth', prep: null },
+    'cornstarch': { name: 'Corn Starch', prep: null },
+    'mayo': { name: 'Mayonnaise', prep: null },
+    'boneless skinless chicken breast': { name: 'Chicken Breast', prep: null },
+    'salt': { name: 'Salt', prep: null },
+    'kosher salt': { name: 'Salt', prep: null },
+    'sea salt': { name: 'Salt', prep: null },
+    'black pepper': { name: 'Pepper', prep: null },
+    'ground black pepper': { name: 'Pepper', prep: null },
+    'unsalted butter': { name: 'Butter', prep: null },
+    'unsweetened almond milk': { name: 'Almond Milk', prep: null },
+    'heavy whipping cream': { name: 'Heavy Cream', prep: null },
+    'whole milk cottage cheese': { name: 'Cottage Cheese', prep: null },
+    'plain whole milk cottage cheese': { name: 'Cottage Cheese', prep: null },
+    'grated parmesan cheese': { name: 'Parmesan Cheese', prep: 'Grated' },
+    'egg': { name: 'Eggs', prep: null },
+    'eggs': { name: 'Eggs', prep: null },
+    'large egg': { name: 'Eggs', prep: null },
+    'large eggs': { name: 'Eggs', prep: null },
+    '80% lean ground beef': { name: 'Ground Beef', prep: null },
+    'plain flour': { name: 'All-Purpose Flour', prep: null },
+    'mini chocolate chips': { name: 'Chocolate Chips', prep: null },
+    'natural peanut butter': { name: 'Peanut Butter', prep: null },
+    'ground flaxseed': { name: 'Flax Seed', prep: 'Ground' },
+    'ground cinnamon': { name: 'Cinnamon', prep: null },
+    'dried oregano': { name: 'Oregano', prep: 'Dried' },
+    'fresh basil leaves': { name: 'Fresh Basil', prep: null },
+    'fresh italian flat leaf parsley': { name: 'Parsley', prep: 'Fresh' },
+    'garlic cloves': { name: 'Garlic', prep: null },
+    'fresh blueberries': { name: 'Blueberries', prep: null },
+    'banana': { name: 'Banana', prep: null },
+    'mashed banana': { name: 'Banana', prep: 'Mashed' },
+    'boiling water': { name: 'Water', prep: 'Boiling' },
+    'water': { name: 'Water', prep: null }
+};
+
+function toTitleCaseIngredientClient(rawStr) {
+    const collapsed = (rawStr || '').trim().replace(/\s+/g, ' ');
+    if (!collapsed) return '';
+    const words = collapsed.split(' ');
+    return words.map((word, idx) => {
+        const lower = word.toLowerCase();
+        if (idx > 0 && idx + 1 < words.length && INGREDIENT_MINOR_WORDS.has(lower)) {
+            return lower;
+        }
+        return word.split('-').map(seg =>
+            seg ? seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase() : ''
+        ).join('-');
+    }).join(' ');
 }
 
-function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
+function normalizeIngredientClient(rawName, rawPrep = 'None') {
+    const collapsed = (rawName || '').trim().replace(/\s+/g, ' ');
+    let prep = (rawPrep || '').trim().replace(/\s+/g, ' ') || 'None';
+    if (!collapsed) return { name: '', preparation: prep };
+
+    const lower = collapsed.toLowerCase();
+    let candidateName = collapsed;
+    if (INGREDIENT_ALIAS_MAP[lower]) {
+        candidateName = INGREDIENT_ALIAS_MAP[lower].name;
+        if (INGREDIENT_ALIAS_MAP[lower].prep && (prep === 'None' || prep.toLowerCase() === 'none')) {
+            prep = INGREDIENT_ALIAS_MAP[lower].prep;
+        }
+    } else {
+        candidateName = toTitleCaseIngredientClient(collapsed);
+    }
+
+    const match = availableIngredients.find(
+        ing => ing.name.toLowerCase() === candidateName.toLowerCase()
+    );
+    return {
+        name: match ? match.name : candidateName,
+        preparation: prep
+    };
+}
+
+function canonicalizeIngredientName(rawName) {
+    return normalizeIngredientClient(rawName).name;
+}
+
+function normalizeCategoryNameClient(rawCategory) {
+    const titled = toTitleCaseIngredientClient(rawCategory);
+    if (!titled) return '';
+    const existing = availableIngredients.find(
+        ing => ing.category && ing.category.toLowerCase() === titled.toLowerCase()
+    );
+    return existing ? existing.category : titled;
+}
+
+function findCategorizedIngredient(rawName) {
+    const canonical = canonicalizeIngredientName(rawName);
+    if (!canonical) return null;
+    return availableIngredients.find(
+        ing => ing.name.toLowerCase() === canonical.toLowerCase() &&
+               ing.category && ing.category !== 'Uncategorized'
+    ) || null;
+}
+
+function getFuzzyIngredientMatches(rawQuery, maxResults = 8) {
+    const query = (rawQuery || '').trim();
+    if (!query) {
+        return availableIngredients.slice(0, maxResults).map(ing => ({
+            ing,
+            indices: [],
+            score: 0
+        }));
+    }
+
+    // Check if query matches an alias so we boost the target canonical ingredient
+    const lowerQ = query.toLowerCase().replace(/\s+/g, ' ');
+    const aliasTarget = INGREDIENT_ALIAS_MAP[lowerQ]?.name?.toLowerCase() || null;
+
+    const scored = [];
+    availableIngredients.forEach(ing => {
+        const m = fuzzyMatch(query, ing.name);
+        if (m.matched) {
+            scored.push({
+                ing,
+                indices: m.indices,
+                score: m.score + (aliasTarget === ing.name.toLowerCase() ? 500 : 0)
+            });
+        } else if (aliasTarget && aliasTarget === ing.name.toLowerCase()) {
+            scored.push({
+                ing,
+                indices: [],
+                score: 500
+            });
+        }
+    });
+
+    scored.sort((a, b) => b.score - a.score || a.ing.name.localeCompare(b.ing.name));
+    return scored.slice(0, maxResults);
+}
+
+function addIngredientRow(name = "", amount = "", unit = 0, optional = false, preparation = "None") {
     const container = document.getElementById('ingredients-list');
     const row = document.createElement('div');
     row.className = 'ingredient-row';
+    row.dataset.preparation = preparation || 'None';
 
     // Create unit options
     let unitOptions = '';
@@ -1552,9 +1714,12 @@ function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
     }
 
     row.innerHTML = `
-        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-            <input type="text" list="available-ingredients" placeholder="Ingredient Name (e.g., Chicken Breast)" value="${name}" required class="form-control name-input" style="flex: 1;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="openAddIngredientModal(this)" title="New Ingredient">+</button>
+        <div style="flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <div class="ing-search-wrap">
+                <input type="text" placeholder="Search ingredient (e.g., Chicken Breast)" value="${escapeHtml(name)}" required class="form-control name-input" autocomplete="off">
+                <div class="ing-fuzzy-dropdown hidden"></div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm add-ing-btn" onclick="openAddIngredientModal(this)" title="New Ingredient">+</button>
         </div>
         <input type="number" step="0.01" placeholder="Amount" value="${amount}" required class="form-control amount-input">
         <select class="form-control unit-input">
@@ -1569,35 +1734,177 @@ function addIngredientRow(name = "", amount = "", unit = 0, optional = false) {
 
     container.appendChild(row);
     const nameInput = row.querySelector('.name-input');
+    const dropdown = row.querySelector('.ing-fuzzy-dropdown');
     const amountInput = row.querySelector('.amount-input');
+    const addBtn = row.querySelector('.add-ing-btn');
+
+    let activeIndex = -1;
+
+    function closeDropdown() {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        activeIndex = -1;
+    }
+
+    function selectExistingIngredient(ingName) {
+        const norm = normalizeIngredientClient(nameInput.value, row.dataset.preparation || 'None');
+        row.dataset.preparation = norm.preparation;
+        nameInput.value = ingName;
+        closeDropdown();
+        setTimeout(() => amountInput.focus(), 10);
+    }
+
+    function updateActiveItem(items) {
+        items.forEach((el, idx) => {
+            el.classList.toggle('active', idx === activeIndex);
+            if (idx === activeIndex && typeof el.scrollIntoView === 'function') {
+                el.scrollIntoView({ block: 'nearest' });
+            }
+        });
+    }
+
+    function renderDropdown() {
+        const rawVal = nameInput.value || '';
+        const trimmed = rawVal.trim();
+        const matches = getFuzzyIngredientMatches(trimmed, 8);
+        const exactCategorized = findCategorizedIngredient(trimmed);
+
+        dropdown.innerHTML = '';
+        if (matches.length === 0 && !trimmed) {
+            closeDropdown();
+            return;
+        }
+
+        matches.forEach((m, idx) => {
+            const item = document.createElement('div');
+            item.className = 'ing-fuzzy-item';
+            const catLabel = m.ing.category || 'Uncategorized';
+            item.innerHTML = `
+                <span class="ing-fuzzy-item-name">${highlightMatches(m.ing.name, m.indices)}</span>
+                <span class="ing-fuzzy-item-cat">${escapeHtml(catLabel)}</span>
+            `;
+            item.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                selectExistingIngredient(m.ing.name);
+            });
+            item.addEventListener('mouseenter', () => {
+                activeIndex = idx;
+                updateActiveItem(Array.from(dropdown.querySelectorAll('.ing-fuzzy-item')));
+            });
+            dropdown.appendChild(item);
+        });
+
+        if (trimmed && !exactCategorized) {
+            const addRow = document.createElement('div');
+            addRow.className = 'ing-fuzzy-item ing-fuzzy-item-add';
+            const previewName = canonicalizeIngredientName(trimmed);
+            addRow.innerHTML = `<span>+ Add "${escapeHtml(previewName)}" as new ingredient…</span>`;
+            addRow.dataset.action = 'add-new';
+            addRow.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                closeDropdown();
+                openAddIngredientModal(addBtn);
+            });
+            dropdown.appendChild(addRow);
+        }
+
+        const allItems = Array.from(dropdown.querySelectorAll('.ing-fuzzy-item'));
+        if (allItems.length === 0) {
+            closeDropdown();
+            return;
+        }
+        activeIndex = 0;
+        updateActiveItem(allItems);
+        dropdown.classList.remove('hidden');
+    }
 
     nameInput.focus();
 
-    // Auto-focus amount when ingredient is selected or Enter is pressed
-    nameInput.addEventListener('input', (e) => {
-        const val = (e.target.value || '').trim().toLowerCase();
-        const match = availableIngredients.find(ing => ing.name.toLowerCase() === val);
-        if (match) {
-            nameInput.value = match.name;
-            setTimeout(() => amountInput.focus(), 10);
+    nameInput.addEventListener('focus', () => {
+        if (nameInput.value.trim().length > 0) {
+            renderDropdown();
         }
     });
 
+    nameInput.addEventListener('input', () => {
+        renderDropdown();
+    });
+
     nameInput.addEventListener('keydown', (e) => {
+        const items = Array.from(dropdown.querySelectorAll('.ing-fuzzy-item'));
+        const isOpen = !dropdown.classList.contains('hidden') && items.length > 0;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isOpen) {
+                renderDropdown();
+            } else {
+                activeIndex = (activeIndex + 1) % items.length;
+                updateActiveItem(items);
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!isOpen) {
+                renderDropdown();
+            } else {
+                activeIndex = (activeIndex - 1 + items.length) % items.length;
+                updateActiveItem(items);
+            }
+            return;
+        }
+
+        if (e.key === 'Escape') {
+            if (isOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeDropdown();
+            }
+            return;
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
-            nameInput.value = canonicalizeIngredientName(nameInput.value);
+            if (isOpen && activeIndex >= 0 && activeIndex < items.length) {
+                const chosen = items[activeIndex];
+                if (chosen.dataset.action === 'add-new') {
+                    closeDropdown();
+                    openAddIngredientModal(addBtn);
+                } else {
+                    const matches = getFuzzyIngredientMatches(nameInput.value.trim(), 8);
+                    if (matches[activeIndex]) {
+                        selectExistingIngredient(matches[activeIndex].ing.name);
+                        return;
+                    }
+                }
+                return;
+            }
+            const norm = normalizeIngredientClient(nameInput.value, row.dataset.preparation || 'None');
+            nameInput.value = norm.name;
+            row.dataset.preparation = norm.preparation;
+            closeDropdown();
             setTimeout(() => amountInput.focus(), 10);
         }
     });
 
     nameInput.addEventListener('blur', () => {
-        nameInput.value = canonicalizeIngredientName(nameInput.value);
+        setTimeout(() => {
+            closeDropdown();
+            const norm = normalizeIngredientClient(nameInput.value, row.dataset.preparation || 'None');
+            nameInput.value = norm.name;
+            row.dataset.preparation = norm.preparation;
+        }, 120);
     });
 }
 
+let pendingMealSaveAfterIngredient = false;
+
 async function saveMeal(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+    }
 
     const name = document.getElementById('meal-name').value.trim().toLowerCase().replace(/\s+/g, '-');
     const category = parseCategoryPath(document.getElementById('meal-category').value).fullCategory;
@@ -1609,13 +1916,37 @@ async function saveMeal(e) {
         return;
     }
 
+    // Option A: Ensure every ingredient row is registered with a category in availableIngredients
+    for (const row of ingredientRows) {
+        const nameInput = row.querySelector('.name-input');
+        const addBtn = row.querySelector('.add-ing-btn');
+        const norm = normalizeIngredientClient(nameInput.value, row.dataset.preparation || 'None');
+        nameInput.value = norm.name;
+        row.dataset.preparation = norm.preparation;
+
+        if (!findCategorizedIngredient(norm.name)) {
+            pendingMealSaveAfterIngredient = true;
+            openAddIngredientModal(
+                addBtn,
+                `"${norm.name}" isn't in your ingredients list yet. Choose a category to add it and continue saving.`
+            );
+            return;
+        }
+    }
+
+    pendingMealSaveAfterIngredient = false;
+
     const ingredients = [];
     ingredientRows.forEach(row => {
+        const norm = normalizeIngredientClient(
+            row.querySelector('.name-input').value,
+            row.dataset.preparation || 'None'
+        );
         ingredients.push({
-            name: canonicalizeIngredientName(row.querySelector('.name-input').value),
+            name: norm.name,
             amount: parseFloat(row.querySelector('.amount-input').value),
             unit: parseInt(row.querySelector('.unit-input').value),
-            preparation: "None",
+            preparation: norm.preparation,
             optional: row.querySelector('.optional-input')?.checked || false
         });
     });
@@ -1636,6 +1967,7 @@ async function saveMeal(e) {
             closeEditView();
             fetchManageMeals(); // Refresh list
             fetchMeals();       // Refresh main grid
+            fetchIngredients(); // Refresh available ingredients
         } else {
             alert("Failed to save meal.");
         }
@@ -1670,29 +2002,120 @@ async function deleteMeal(mealId) {
 
 let lastActiveInput = null;
 
-function openAddIngredientModal(btn) {
-    lastActiveInput = btn.previousElementSibling;
-    const currentVal = lastActiveInput.value.trim();
-    document.getElementById('new-ing-name').value = currentVal;
+function initNewIngredientModalSearch() {
+    const newIngInput = document.getElementById('new-ing-name');
+    if (!newIngInput) return;
+    newIngInput.addEventListener('input', () => {
+        renderNewIngredientFuzzyHints(newIngInput.value);
+    });
+}
+
+function renderNewIngredientFuzzyHints(rawQuery) {
+    const hintsEl = document.getElementById('new-ing-fuzzy-hints');
+    if (!hintsEl) return;
+
+    const query = (rawQuery || '').trim();
+    if (!query) {
+        hintsEl.classList.add('hidden');
+        hintsEl.innerHTML = '';
+        return;
+    }
+
+    const matches = getFuzzyIngredientMatches(query, 5).filter(
+        m => m.ing.category && m.ing.category !== 'Uncategorized'
+    );
+    if (matches.length === 0) {
+        hintsEl.classList.add('hidden');
+        hintsEl.innerHTML = '';
+        return;
+    }
+
+    hintsEl.innerHTML = '<span class="ing-fuzzy-hints-label">Similar existing (click to use):</span>';
+    matches.forEach(m => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'ing-fuzzy-hint-chip';
+        chip.innerHTML = `${highlightMatches(m.ing.name, m.indices)} <small style="color:var(--ink-3)">(${escapeHtml(m.ing.category)})</small>`;
+        chip.addEventListener('click', () => {
+            if (lastActiveInput) {
+                lastActiveInput.value = m.ing.name;
+            }
+            closeAddIngredientModalCleanup();
+            if (pendingMealSaveAfterIngredient) {
+                saveMeal();
+            }
+        });
+        hintsEl.appendChild(chip);
+    });
+    hintsEl.classList.remove('hidden');
+}
+
+function closeAddIngredientModalCleanup() {
+    const banner = document.getElementById('add-ing-prompt-banner');
+    if (banner) {
+        banner.classList.add('hidden');
+        banner.textContent = '';
+    }
+    const hintsEl = document.getElementById('new-ing-fuzzy-hints');
+    if (hintsEl) {
+        hintsEl.classList.add('hidden');
+        hintsEl.innerHTML = '';
+    }
+    closeModal('add-ingredient-modal');
+}
+
+function cancelAddIngredientModal() {
+    pendingMealSaveAfterIngredient = false;
+    closeAddIngredientModalCleanup();
+}
+
+function openAddIngredientModal(btn, promptMessage = null) {
+    const row = btn ? btn.closest('.ingredient-row') : null;
+    lastActiveInput = row ? row.querySelector('.name-input') : (btn ? btn.previousElementSibling : null);
+    const currentVal = lastActiveInput ? canonicalizeIngredientName(lastActiveInput.value) : '';
+    const newIngInput = document.getElementById('new-ing-name');
+    const newCatInput = document.getElementById('new-ing-category');
+    const banner = document.getElementById('add-ing-prompt-banner');
+
+    if (banner) {
+        if (promptMessage) {
+            banner.textContent = promptMessage;
+            banner.classList.remove('hidden');
+        } else {
+            banner.textContent = '';
+            banner.classList.add('hidden');
+        }
+    }
+
+    newIngInput.value = currentVal;
+    newCatInput.value = '';
+    renderNewIngredientFuzzyHints(currentVal);
     document.getElementById('add-ingredient-modal').classList.remove('hidden');
-    document.getElementById('new-ing-name').focus();
+    if (currentVal) {
+        newCatInput.focus();
+    } else {
+        newIngInput.focus();
+    }
 }
 
 async function createNewIngredient(e) {
     e.preventDefault();
-    const name = document.getElementById('new-ing-name').value.trim();
-    const category = document.getElementById('new-ing-category').value.trim();
+    const rawName = document.getElementById('new-ing-name').value;
+    const rawCategory = document.getElementById('new-ing-category').value;
+    const name = canonicalizeIngredientName(rawName);
+    const category = normalizeCategoryNameClient(rawCategory);
 
     if (!name || !category) return;
 
-    const existing = availableIngredients.find(
-        ing => ing.name.toLowerCase() === name.toLowerCase()
-    );
+    const existing = findCategorizedIngredient(name);
     if (existing) {
-        alert(`"${existing.name}" already exists in ${existing.category}.`);
-        closeModal('add-ingredient-modal');
+        showToast(`"${existing.name}" already exists in ${existing.category}.`, true);
+        closeAddIngredientModalCleanup();
         if (lastActiveInput) {
             lastActiveInput.value = existing.name;
+        }
+        if (pendingMealSaveAfterIngredient) {
+            await saveMeal();
         }
         return;
     }
@@ -1705,18 +2128,26 @@ async function createNewIngredient(e) {
         });
 
         if (response.ok) {
-            closeModal('add-ingredient-modal');
+            let savedName = name;
+            try {
+                const data = await response.json();
+                if (data && data.name) savedName = data.name;
+            } catch (_) { /* ignore non-JSON fallback */ }
+
+            closeAddIngredientModalCleanup();
             await fetchIngredients(); // Refresh list
             if (lastActiveInput) {
-                lastActiveInput.value = name;
-                // Focus the amount input in the same row
+                lastActiveInput.value = savedName;
                 const row = lastActiveInput.closest('.ingredient-row');
-                if (row) {
+                if (row && !pendingMealSaveAfterIngredient) {
                     const amountInput = row.querySelector('.amount-input');
                     if (amountInput) setTimeout(() => amountInput.focus(), 10);
                 }
             }
             document.getElementById('new-ingredient-form').reset();
+            if (pendingMealSaveAfterIngredient) {
+                await saveMeal();
+            }
         } else {
             alert("Failed to add ingredient. It might already exist.");
         }

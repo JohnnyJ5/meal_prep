@@ -5,6 +5,7 @@
 
 #include "../src/db_manager.h"
 #include "../src/ingredient.h"
+#include "../src/ingredient_normalizer.h"
 #include "../src/meal.h"
 #include "../src/measurement.h"
 
@@ -381,4 +382,80 @@ TEST_F(DBManagerTest, MealIngredientsSnapToCanonicalCasing) {
     ASSERT_EQ(retrieved->getIngredients().size(), 2u);
     EXPECT_EQ(retrieved->getIngredients()[0].getName(), "Olive Oil");
     EXPECT_EQ(retrieved->getIngredients()[1].getName(), "Garlic");
+}
+
+TEST_F(DBManagerTest, AddIngredientNormalizesTitleCaseCategoriesAndAliases) {
+    EXPECT_TRUE(db->addIngredient("  baby   spinach ", "  vegetables "));
+    EXPECT_TRUE(db->addIngredient("all-purpose   flour", "pantry   staples"));
+    EXPECT_TRUE(db->addIngredient("fruit of choice", "other"));
+    EXPECT_TRUE(db->addIngredient("Salt", "pantry staples"));
+
+    // Alias of Salt should be rejected as duplicate
+    EXPECT_FALSE(db->addIngredient("kosher salt", "Pantry Staples"));
+    EXPECT_FALSE(db->addIngredient("sea salt", "Pantry Staples"));
+
+    std::vector<std::pair<std::string, std::string>> ingredients;
+    EXPECT_TRUE(db->getAllIngredients(ingredients));
+    ASSERT_EQ(ingredients.size(), 4u);
+
+    std::map<std::string, std::string> byName;
+    for (const auto &p : ingredients) {
+        byName[p.first] = p.second;
+    }
+    EXPECT_EQ(byName["Baby Spinach"], "Vegetables");
+    EXPECT_EQ(byName["All-Purpose Flour"], "Pantry Staples");
+    EXPECT_EQ(byName["Fruit of Choice"], "Other");
+    EXPECT_EQ(byName["Salt"], "Pantry Staples");
+}
+
+TEST_F(DBManagerTest, MealIngredientsResolveAliasesImpliedPrepAndAutoRegister) {
+    Meal meal(
+        "alias-meal",
+        {Ingredient("mashed banana", Measurement(1.0, MeasurementUnit::WHOLE), "None"),
+         Ingredient("grated parmesan cheese", Measurement(0.5, MeasurementUnit::CUP), ""),
+         Ingredient("boiling water", Measurement(1.0, MeasurementUnit::CUP), "Warm"),
+         Ingredient("  dragon   fruit ", Measurement(1.0, MeasurementUnit::WHOLE), "Diced")},
+        "Breakfast");
+    EXPECT_TRUE(db->addMeal(meal));
+
+    auto retrieved = db->getMeal("alias-meal");
+    ASSERT_NE(retrieved, nullptr);
+    ASSERT_EQ(retrieved->getIngredients().size(), 4u);
+
+    EXPECT_EQ(retrieved->getIngredients()[0].getName(), "Banana");
+    EXPECT_EQ(retrieved->getIngredients()[0].getPreparation(), "Mashed");
+
+    EXPECT_EQ(retrieved->getIngredients()[1].getName(), "Parmesan Cheese");
+    EXPECT_EQ(retrieved->getIngredients()[1].getPreparation(), "Grated");
+
+    // Explicit non-"None" preparation is preserved
+    EXPECT_EQ(retrieved->getIngredients()[2].getName(), "Water");
+    EXPECT_EQ(retrieved->getIngredients()[2].getPreparation(), "Warm");
+
+    EXPECT_EQ(retrieved->getIngredients()[3].getName(), "Dragon Fruit");
+    EXPECT_EQ(retrieved->getIngredients()[3].getPreparation(), "Diced");
+
+    // Auto-registered in available_ingredients as Uncategorized
+    std::vector<std::pair<std::string, std::string>> avail;
+    ASSERT_TRUE(db->getAllIngredients(avail));
+    ASSERT_EQ(avail.size(), 4u);
+
+    // Upgrading an Uncategorized ingredient to a real category succeeds once
+    EXPECT_TRUE(db->addIngredient("dragon fruit", "produce"));
+    EXPECT_FALSE(db->addIngredient("dragon fruit", "produce"));
+
+    avail.clear();
+    ASSERT_TRUE(db->getAllIngredients(avail));
+    for (const auto &p : avail) {
+        if (p.first == "Dragon Fruit") {
+            EXPECT_EQ(p.second, "Produce");
+        }
+    }
+}
+
+TEST_F(DBManagerTest, NormalizeIngredientHandlesEmptyInput) {
+    auto norm = normalizeIngredient("   ", "   ");
+    EXPECT_EQ(norm.name, "");
+    EXPECT_EQ(norm.preparation, "None");
+    EXPECT_EQ(toTitleCaseIngredient("   "), "");
 }

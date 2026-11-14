@@ -50,6 +50,7 @@ fi
 # Source files to check (project sources only, excluding third-party)
 PROJECT_SOURCES=(
   src/db_manager.cpp
+  src/ingredient_normalizer.cpp
   src/meal_factory.cpp
   src/email_service.cpp
   src/meal_planner.cpp
