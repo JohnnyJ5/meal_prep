@@ -78,6 +78,8 @@ Additional quality targets:
 | `make tsan` | Build and test with ThreadSanitizer. |
 | `make coverage` | Build with coverage instrumentation and print a summary. |
 | `make cppcheck` | Run static analysis with cppcheck. |
+| `make package` | Build a self-contained Ubuntu `.deb` release package locally. |
+| `make install-package` | Build and install the `.deb` package via `apt`. |
 
 ## Architecture
 
@@ -145,6 +147,7 @@ The project follows a streamlined development-to-deployment workflow:
     - [API Reference](docs/API.md)
     - [GCP Commands](docs/GCP_COMMANDS.md)
     - [Docker Commands](docs/DOCKER_COMMANDS.md)
+    - [Ubuntu Packaging & Installation](docs/UBUNTU_PACKAGING.md)
     - [DB Dump Job](docs/DB_DUMP_JOB.md)
 - `Dockerfile` & `docker-compose.yml`: Definitions for the Docker development environment.
 - `Makefile`: Provides shortcuts for building, starting, and testing the project.

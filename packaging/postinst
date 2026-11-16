@@ -1,0 +1,50 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # 1. Create dedicated system user/group if missing
+        if ! id -u mealprep >/dev/null 2>&1; then
+            adduser --system --group --no-create-home --home /opt/meal_prep mealprep
+        fi
+
+        # 2. Seed initial database if not already present
+        if [ ! -f /opt/meal_prep/meals.db ] && [ -f /opt/meal_prep/meals.db.seed ]; then
+            cp /opt/meal_prep/meals.db.seed /opt/meal_prep/meals.db
+            chmod 0600 /opt/meal_prep/meals.db
+        fi
+
+        # 3. Ensure calendar_credentials.json is in place (bundled in .deb or copied from invoking user's ~/.meal_prep)
+        if [ ! -f /opt/meal_prep/calendar_credentials.json ]; then
+            if [ -n "${SUDO_USER:-}" ] && [ -f "/home/${SUDO_USER}/.meal_prep/dev_calendar_credentials.json" ]; then
+                cp "/home/${SUDO_USER}/.meal_prep/dev_calendar_credentials.json" /opt/meal_prep/calendar_credentials.json
+            elif [ -f "/root/.meal_prep/dev_calendar_credentials.json" ]; then
+                cp "/root/.meal_prep/dev_calendar_credentials.json" /opt/meal_prep/calendar_credentials.json
+            fi
+        fi
+        if [ -f /opt/meal_prep/calendar_credentials.json ]; then
+            chmod 0600 /opt/meal_prep/calendar_credentials.json
+        fi
+
+        # 4. Auto-generate MEAL_PREP_TOKEN_KEY on first install if unset
+        if [ -f /etc/default/meal-prep ]; then
+            chmod 0600 /etc/default/meal-prep
+            if ! grep -q '^MEAL_PREP_TOKEN_KEY=' /etc/default/meal-prep && command -v openssl >/dev/null 2>&1; then
+                TOKEN_KEY=$(openssl rand -hex 32)
+                echo "MEAL_PREP_TOKEN_KEY=${TOKEN_KEY}" >> /etc/default/meal-prep
+            fi
+        fi
+
+        # 5. Ensure /opt/meal_prep is owned by mealprep user
+        chown -R mealprep:mealprep /opt/meal_prep
+
+        # 6. Reload systemd and enable/start service if systemd is active
+        if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload
+            systemctl enable meal-prep.service
+            systemctl restart meal-prep.service || true
+        fi
+        ;;
+esac
+
+exit 0

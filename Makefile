@@ -1,5 +1,5 @@
 .PHONY: all build start stop test clean internal-build lint lint-fix \
-        asan tsan coverage cppcheck
+        asan tsan coverage cppcheck package install-package
 
 LOCAL ?= 0
 
@@ -62,11 +62,11 @@ endif
 clean:
 ifeq ($(LOCAL),1)
 	@echo "Cleaning local build directory..."
-	rm -rf ./build
+	rm -rf ./build ./build_pkg
 else
 	$(MAKE) stop
 	@echo "Cleaning build directories..."
-	rm -rf ./build ./build_docker
+	rm -rf ./build ./build_docker ./build_pkg
 endif
 
 lint: build
@@ -176,3 +176,9 @@ else
 	    --inline-suppr --std=c++17 --check-level=exhaustive \
 	    -I src src/ tests/"
 endif
+
+package:
+	./scripts/build_package.sh
+
+install-package:
+	./scripts/build_package.sh --install

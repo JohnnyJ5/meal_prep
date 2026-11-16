@@ -44,6 +44,7 @@ include(FetchContent)
 # 1. Google Test
 FetchContent_Declare(googletest GIT_REPOSITORY https://github.com/google/googletest.git GIT_TAG v1.14.0)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # 2. Standalone Asio (Header Only)
@@ -58,6 +59,7 @@ set(ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include CACHE PATH "" FORCE)
 FetchContent_Declare(Crow GIT_REPOSITORY https://github.com/CrowCpp/Crow.git GIT_TAG v1.2.0)
 set(CROW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CROW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CROW_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(Crow)
 
 # 2. Find system dependencies (Boost & OpenSSL)
@@ -150,3 +152,59 @@ if(_EXTRA_LINK_FLAGS)
   target_link_options(meal_prep      PRIVATE ${_EXTRA_LINK_FLAGS})
   target_link_options(meal_prep_tests PRIVATE ${_EXTRA_LINK_FLAGS})
 endif()
+
+# --- Installation & Debian Packaging (CPack) ---
+install(TARGETS meal_prep
+    RUNTIME DESTINATION /opt/meal_prep/bin
+)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/static
+    DESTINATION /opt/meal_prep
+    PATTERN "mockups" EXCLUDE
+)
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/meal_prep.conf.json
+    DESTINATION /opt/meal_prep
+)
+if(EXISTS "${CMAKE_SOURCE_DIR}/meals.db")
+    install(FILES ${CMAKE_SOURCE_DIR}/meals.db
+        DESTINATION /opt/meal_prep
+        RENAME meals.db.seed
+        PERMISSIONS OWNER_READ OWNER_WRITE
+    )
+endif()
+
+if(NOT DEFINED CALENDAR_CREDENTIALS_FILE)
+    set(CALENDAR_CREDENTIALS_FILE "$ENV{HOME}/.meal_prep/dev_calendar_credentials.json")
+endif()
+if(EXISTS "${CALENDAR_CREDENTIALS_FILE}")
+    message(STATUS "Bundling calendar credentials from ${CALENDAR_CREDENTIALS_FILE}")
+    install(FILES "${CALENDAR_CREDENTIALS_FILE}"
+        DESTINATION /opt/meal_prep
+        RENAME calendar_credentials.json
+        PERMISSIONS OWNER_READ OWNER_WRITE
+    )
+endif()
+
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/meal-prep.service
+    DESTINATION /lib/systemd/system
+)
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/meal-prep.default
+    DESTINATION /etc/default
+    RENAME meal-prep
+)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGE_NAME "meal-prep")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
+set(CPACK_PACKAGE_VENDOR "JohnnyJ5")
+set(CPACK_PACKAGE_CONTACT "JohnnyJ5 <https://github.com/JohnnyJ5/meal_prep>")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "JohnnyJ5 <https://github.com/JohnnyJ5/meal_prep>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "web")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libssl3, libcurl4, libsqlite3-0, ca-certificates, adduser, openssl")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_SOURCE_DIR}/packaging/postinst;${CMAKE_SOURCE_DIR}/packaging/prerm;${CMAKE_SOURCE_DIR}/packaging/conffiles"
+)
+include(CPack)

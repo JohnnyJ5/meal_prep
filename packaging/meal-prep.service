@@ -1,0 +1,27 @@
+[Unit]
+Description=Meal Prep API Server
+Documentation=https://github.com/JohnnyJ5/meal_prep
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mealprep
+Group=mealprep
+WorkingDirectory=/opt/meal_prep
+EnvironmentFile=-/etc/default/meal-prep
+ExecStart=/opt/meal_prep/bin/meal_prep --serve
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meal-prep
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/meal_prep
+
+[Install]
+WantedBy=multi-user.target

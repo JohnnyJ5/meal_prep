@@ -5,6 +5,8 @@ compile_commands.json
 *.o
 *.so
 *.a
+*.deb
+*.deb.sha256
 .DS_Store
 CMakeFiles/
 cmake_install.cmake
