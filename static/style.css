@@ -1408,6 +1408,171 @@ h1 {
     border-color: var(--accent-color);
 }
 
+/* Available Ingredients modal & VS Code-style fuzzy search */
+.available-ingredients-modal-content {
+    max-width: 680px;
+}
+
+.available-ing-subtitle {
+    margin-top: var(--s-1);
+    font-size: 13px;
+    font-style: italic;
+}
+
+.available-ing-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin-bottom: var(--s-3);
+}
+
+.available-ing-search-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.available-ing-search-icon {
+    position: absolute;
+    left: 11px;
+    color: var(--ink-3);
+    font-size: 14px;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.available-ing-search-input {
+    width: 100%;
+    padding: 8px 96px 8px 32px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    color: var(--ink);
+    background: var(--paper-2);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.available-ing-search-input::placeholder {
+    color: var(--ink-3);
+    font-style: italic;
+}
+
+.available-ing-search-input:focus {
+    background: var(--paper);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.available-ing-search-count {
+    position: absolute;
+    right: 30px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    pointer-events: none;
+}
+
+.available-ing-search-clear {
+    position: absolute;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.available-ing-search-clear:hover {
+    color: var(--ink);
+    background: var(--bg-2);
+}
+
+.available-ing-empty {
+    padding: var(--s-6) var(--s-3);
+    text-align: center;
+    color: var(--ink-3);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-style: italic;
+}
+
+.available-ing-list {
+    max-height: 440px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper-2);
+    padding: var(--s-2) var(--s-3);
+}
+
+.available-ing-cat-header,
+.modal-content h3.available-ing-cat-header {
+    margin-top: var(--s-2);
+    margin-bottom: var(--s-1);
+    padding: var(--s-1) var(--s-2);
+    font-size: 14px;
+    border-bottom: 1px dotted var(--line);
+}
+
+.available-ing-cat-header:first-child {
+    margin-top: 0;
+}
+
+.available-ing-cat-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 4px 10px;
+    padding: var(--s-1) var(--s-1) var(--s-2);
+}
+
+.available-ing-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.available-ing-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2);
+    padding: 6px 10px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    color: var(--ink);
+    transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.available-ing-row:hover,
+.available-ing-row.active {
+    background: var(--bg);
+    border-color: var(--line);
+}
+
+.available-ing-search-results .available-ing-row.active {
+    background: var(--accent-soft);
+    border-color: var(--accent-mid);
+}
+
+.available-ing-name {
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .optional-toggle {
     display: inline-flex;
     align-items: center;

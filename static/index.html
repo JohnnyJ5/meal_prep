@@ -71,6 +71,9 @@
                     <button id="manage-recipes-btn" type="button" class="btn btn-secondary" onclick="openManageModal()">
                         Manage Recipes
                     </button>
+                    <button id="available-ingredients-btn" type="button" class="btn btn-secondary" onclick="openAvailableIngredientsModal()">
+                        Available Ingredients
+                    </button>
                     <button id="view-ingredients-btn" type="button" class="btn btn-secondary" onclick="viewIngredients()" disabled>
                         <span class="btn-text">View Ingredients</span>
                     </button>
@@ -325,6 +328,55 @@
                 <div class="form-actions mt-4">
                     <button type="button" onclick="cancelAddonsModal()" class="btn btn-secondary">Cancel</button>
                     <button type="button" onclick="confirmAddonsModal()" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Ingredients Modal -->
+        <div id="available-ingredients-modal" class="modal hidden">
+            <div class="modal-content large-modal available-ingredients-modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h2>Available Ingredients</h2>
+                        <p class="text-secondary available-ing-subtitle">Browse and fuzzy-search all ingredients available to use in recipes.</p>
+                    </div>
+                    <button onclick="closeModal('available-ingredients-modal')" class="btn-close" type="button" aria-label="Close">&times;</button>
+                </div>
+
+                <div class="available-ing-toolbar">
+                    <div class="available-ing-search-wrap">
+                        <span class="available-ing-search-icon" aria-hidden="true">⌕</span>
+                        <input
+                            type="text"
+                            id="available-ing-search-input"
+                            class="available-ing-search-input"
+                            placeholder="Search ingredients by name or category (e.g. 'chkn', 'grlc', 'dairy')…"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Search available ingredients"
+                        >
+                        <span id="available-ing-search-count" class="available-ing-search-count"></span>
+                        <button
+                            type="button"
+                            id="available-ing-search-clear"
+                            class="available-ing-search-clear hidden"
+                            title="Clear search (Esc)"
+                            aria-label="Clear search"
+                        >&times;</button>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="openAddIngredientModal(null)">+ New Ingredient</button>
+                </div>
+
+                <div id="available-ing-empty" class="available-ing-empty hidden">
+                    No matching ingredients found
+                </div>
+
+                <div id="available-ing-list" class="available-ing-list" role="listbox" aria-label="Available ingredients">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="closeModal('available-ingredients-modal')" class="btn btn-primary">Close</button>
                 </div>
             </div>
         </div>

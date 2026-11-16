@@ -8,7 +8,7 @@ case "$1" in
             adduser --system --group --no-create-home --home /opt/meal_prep mealprep
         fi
 
-        # 2. Seed initial database if not already present
+        # # 2. Seed initial database if not already present
         if [ ! -f /opt/meal_prep/meals.db ] && [ -f /opt/meal_prep/meals.db.seed ]; then
             cp /opt/meal_prep/meals.db.seed /opt/meal_prep/meals.db
             chmod 0600 /opt/meal_prep/meals.db

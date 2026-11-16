@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileTabs();
     initRecipeSearch();
     initNewIngredientModalSearch();
+    initAvailableIngredientsModal();
     fetchMeals();
     fetchIngredients();
     fetchCalendarEventsForWeek();
@@ -52,6 +53,11 @@ async function fetchIngredients() {
         if (response.ok) {
             availableIngredients = await response.json();
             updateIngredientsDatalist();
+            const availModal = document.getElementById('available-ingredients-modal');
+            if (availModal && !availModal.classList.contains('hidden')) {
+                const searchInput = document.getElementById('available-ing-search-input');
+                renderAvailableIngredientsList(searchInput ? searchInput.value : '');
+            }
         }
     } catch (e) {
         console.error("Error fetching ingredients:", e);
@@ -2001,6 +2007,249 @@ async function deleteMeal(mealId) {
 }
 
 let lastActiveInput = null;
+let availableIngActiveIdx = -1;
+
+function initAvailableIngredientsModal() {
+    const input = document.getElementById('available-ing-search-input');
+    const clearBtn = document.getElementById('available-ing-search-clear');
+    const modal = document.getElementById('available-ingredients-modal');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+        availableIngActiveIdx = 0;
+        renderAvailableIngredientsList(input.value);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const listEl = document.getElementById('available-ing-list');
+        const items = listEl ? Array.from(listEl.querySelectorAll('.available-ing-row')) : [];
+
+        if (e.key === 'ArrowDown' && items.length > 0) {
+            e.preventDefault();
+            availableIngActiveIdx = (availableIngActiveIdx + 1) % items.length;
+            updateAvailableIngActiveRow(items);
+            return;
+        }
+
+        if (e.key === 'ArrowUp' && items.length > 0) {
+            e.preventDefault();
+            availableIngActiveIdx = (availableIngActiveIdx - 1 + items.length) % items.length;
+            updateAvailableIngActiveRow(items);
+            return;
+        }
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (input.value.trim().length > 0) {
+                input.value = '';
+                availableIngActiveIdx = -1;
+                renderAvailableIngredientsList('');
+            } else {
+                closeModal('available-ingredients-modal');
+            }
+        }
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            availableIngActiveIdx = -1;
+            renderAvailableIngredientsList('');
+            input.focus();
+        });
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal('available-ingredients-modal');
+            }
+        });
+    }
+}
+
+function updateAvailableIngActiveRow(items) {
+    items.forEach((el, idx) => {
+        const isActive = idx === availableIngActiveIdx;
+        el.classList.toggle('active', isActive);
+        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        if (isActive && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ block: 'nearest' });
+        }
+    });
+}
+
+async function openAvailableIngredientsModal() {
+    const modal = document.getElementById('available-ingredients-modal');
+    const input = document.getElementById('available-ing-search-input');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    if (input) {
+        input.value = '';
+    }
+    availableIngActiveIdx = -1;
+
+    if (!availableIngredients || availableIngredients.length === 0) {
+        const listEl = document.getElementById('available-ing-list');
+        if (listEl) listEl.innerHTML = '<div class="spinner"></div>';
+        await fetchIngredients();
+    } else {
+        renderAvailableIngredientsList('');
+        fetchIngredients();
+    }
+
+    if (input) {
+        setTimeout(() => input.focus(), 20);
+    }
+}
+
+function renderAvailableIngredientsList(rawQuery = '') {
+    const listEl = document.getElementById('available-ing-list');
+    const emptyEl = document.getElementById('available-ing-empty');
+    const clearBtn = document.getElementById('available-ing-search-clear');
+    const countEl = document.getElementById('available-ing-search-count');
+    if (!listEl) return;
+
+    const query = (rawQuery || '').trim();
+    if (clearBtn) {
+        clearBtn.classList.toggle('hidden', query.length === 0);
+    }
+
+    const totalCount = availableIngredients.length;
+    listEl.innerHTML = '';
+
+    if (totalCount === 0) {
+        if (countEl) countEl.textContent = '0 ingredients';
+        if (emptyEl) {
+            emptyEl.textContent = 'No available ingredients yet.';
+            emptyEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // 1. Default view (empty query): grouped by category, expanded for immediate browsing
+    if (query.length === 0) {
+        if (emptyEl) emptyEl.classList.add('hidden');
+        if (countEl) countEl.textContent = `${totalCount} ingredients`;
+
+        const grouped = {};
+        availableIngredients.forEach(ing => {
+            const cat = (ing.category || 'Uncategorized').trim() || 'Uncategorized';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(ing);
+        });
+
+        const sortedCategories = Object.keys(grouped).sort((a, b) => {
+            if (a === 'Uncategorized') return 1;
+            if (b === 'Uncategorized') return -1;
+            return a.localeCompare(b);
+        });
+
+        sortedCategories.forEach(cat => {
+            const items = grouped[cat].slice().sort((a, b) => a.name.localeCompare(b.name));
+
+            const header = document.createElement('h3');
+            header.className = 'category-header available-ing-cat-header';
+            header.innerHTML = `<span class="category-chevron">&#9654;</span> <span>${escapeHtml(cat)}</span> <span class="subcategory-count">${items.length}</span>`;
+            listEl.appendChild(header);
+
+            const group = document.createElement('div');
+            group.className = 'category-group available-ing-cat-group';
+            listEl.appendChild(group);
+
+            attachHeaderTouchToggle(header, group);
+
+            items.forEach(ing => {
+                const row = document.createElement('div');
+                row.className = 'available-ing-row';
+                row.setAttribute('role', 'option');
+                row.setAttribute('aria-selected', 'false');
+                row.innerHTML = `
+                    <span class="available-ing-name">${escapeHtml(ing.name)}</span>
+                    <span class="ing-fuzzy-item-cat">${escapeHtml(cat)}</span>
+                `;
+                group.appendChild(row);
+            });
+        });
+        return;
+    }
+
+    // 2. VS Code-style fuzzy search view: score by name, alias, and category
+    const lowerQ = query.toLowerCase().replace(/\s+/g, ' ');
+    const aliasTarget = INGREDIENT_ALIAS_MAP[lowerQ]?.name?.toLowerCase() || null;
+
+    const scored = [];
+    availableIngredients.forEach(ing => {
+        const catLabel = (ing.category || 'Uncategorized').trim() || 'Uncategorized';
+        const nameMatch = fuzzyMatch(query, ing.name);
+        const catMatch = fuzzyMatch(query, catLabel);
+        const isAliasMatch = aliasTarget && aliasTarget === ing.name.toLowerCase();
+
+        if (nameMatch.matched || catMatch.matched || isAliasMatch) {
+            let score = -Infinity;
+            if (nameMatch.matched) {
+                score = nameMatch.score + (catMatch.matched ? 15 : 0);
+            } else if (catMatch.matched) {
+                score = catMatch.score - 60;
+            } else {
+                score = 0;
+            }
+            if (isAliasMatch) {
+                score += 500;
+            }
+
+            scored.push({
+                ing,
+                catLabel,
+                nameIndices: nameMatch.matched ? nameMatch.indices : [],
+                catIndices: catMatch.matched ? catMatch.indices : [],
+                score
+            });
+        }
+    });
+
+    scored.sort((a, b) => b.score - a.score || a.ing.name.localeCompare(b.ing.name));
+
+    if (countEl) {
+        countEl.textContent = `${scored.length} of ${totalCount}`;
+    }
+
+    if (scored.length === 0) {
+        if (emptyEl) {
+            emptyEl.textContent = `No ingredients matching "${query}"`;
+            emptyEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    if (availableIngActiveIdx < 0 || availableIngActiveIdx >= scored.length) {
+        availableIngActiveIdx = 0;
+    }
+
+    const resultsContainer = document.createElement('div');
+    resultsContainer.className = 'available-ing-search-results';
+
+    scored.forEach((m, idx) => {
+        const row = document.createElement('div');
+        row.className = 'available-ing-row' + (idx === availableIngActiveIdx ? ' active' : '');
+        row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', idx === availableIngActiveIdx ? 'true' : 'false');
+        row.innerHTML = `
+            <span class="available-ing-name">${highlightMatches(m.ing.name, m.nameIndices)}</span>
+            <span class="ing-fuzzy-item-cat">${highlightMatches(m.catLabel, m.catIndices)}</span>
+        `;
+        row.addEventListener('mouseenter', () => {
+            availableIngActiveIdx = idx;
+            updateAvailableIngActiveRow(Array.from(resultsContainer.querySelectorAll('.available-ing-row')));
+        });
+        resultsContainer.appendChild(row);
+    });
+
+    listEl.appendChild(resultsContainer);
+}
 
 function initNewIngredientModalSearch() {
     const newIngInput = document.getElementById('new-ing-name');
