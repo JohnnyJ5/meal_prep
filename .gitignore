@@ -17,7 +17,7 @@ meals.db.bak*
 server.log
 
 # Runtime config (contains environment-specific paths and PII)
-meal_prep.conf.json
+/meal_prep.conf.json
 
 # Gemini / Agent machine-specific files (shared skills under .agents/ are tracked)
 .gemini/
