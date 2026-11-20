@@ -1,5 +1,5 @@
 .PHONY: all build start stop test clean internal-build lint lint-fix \
-        asan tsan coverage cppcheck package install-package
+        asan tsan coverage cppcheck package install-package run
 
 LOCAL ?= 0
 
@@ -38,6 +38,12 @@ else
 	@echo "Starting Meal Prep API on port 8080 inside container..."
 	docker exec -d meal_prep_dev bash -c "cd /home/devuser/meal_prep && ./build_docker/meal_prep --serve > server.log 2>&1"
 endif
+
+run:
+	@echo "Stopping any existing server instances..."
+	-pkill meal_prep || true
+	@echo "Starting Meal Prep API on port 8080 locally..."
+	./build/meal_prep --serve > server.log 2>&1 &
 
 stop:
 ifeq ($(LOCAL),1)

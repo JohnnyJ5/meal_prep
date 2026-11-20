@@ -246,6 +246,25 @@
             </div>
         </div>
 
+        <!-- Single Recipe Ingredients Popup Modal (right-click on a recipe) -->
+        <div id="recipe-ingredients-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recipe-preview-title">
+            <div class="modal-content recipe-preview-modal-content">
+                <div class="modal-header">
+                    <div class="recipe-preview-heading">
+                        <h2 id="recipe-preview-title">Recipe Ingredients</h2>
+                        <div id="recipe-preview-meta" class="recipe-preview-meta"></div>
+                    </div>
+                    <button onclick="closeModal('recipe-ingredients-modal')" class="btn-close" type="button" aria-label="Close">&times;</button>
+                </div>
+                <div id="recipe-preview-body" class="recipe-preview-body">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="form-actions mt-4">
+                    <button type="button" onclick="closeModal('recipe-ingredients-modal')" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Recipe History Modal -->
         <div id="history-modal" class="modal hidden">
             <div class="modal-content">

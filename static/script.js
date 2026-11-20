@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeWeekDates();
     initMobileTabs();
     initRecipeSearch();
+    initRecipeContextMenu();
     initNewIngredientModalSearch();
     initAvailableIngredientsModal();
     fetchMeals();
@@ -252,6 +253,7 @@ function renderMeals(meals) {
         card.setAttribute('data-meal-id', mealId);
         card.dataset.displayName = displayName;
         card.dataset.emoji = emoji;
+        card.title = 'Right-click to view ingredients';
         card.setAttribute('draggable', 'true');
         card.setAttribute('ondragstart', 'drag(event)');
         if (hasOptional) card.dataset.hasOptional = '1';
@@ -1316,6 +1318,150 @@ async function viewIngredients() {
         console.error("Error fetching ingredients:", error);
         perMealList.innerHTML = '<p class="text-error">Failed to load ingredients.</p>';
         consolidatedList.innerHTML = '';
+    }
+}
+
+// ── Right-click Recipe Ingredients Popup ─────────────────────────────────────
+
+let _recipePreviewReqId = 0;
+
+function initRecipeContextMenu() {
+    const plannerLayout = document.getElementById('planner-layout');
+    if (plannerLayout) {
+        plannerLayout.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.meal-card-remove')) return;
+            const card = e.target.closest('.meal-card[data-meal-id]');
+            if (!card) return;
+            e.preventDefault();
+            const mealId = card.getAttribute('data-meal-id');
+            if (mealId) {
+                openRecipeIngredientsModal(mealId, card);
+            }
+        });
+    }
+
+    const modal = document.getElementById('recipe-ingredients-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal('recipe-ingredients-modal');
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modalEl = document.getElementById('recipe-ingredients-modal');
+            if (modalEl && !modalEl.classList.contains('hidden')) {
+                e.preventDefault();
+                closeModal('recipe-ingredients-modal');
+            }
+        }
+    });
+}
+
+function formatIngredientAmount(amount) {
+    if (typeof amount !== 'number' || Number.isNaN(amount)) return '';
+    if (Number.isInteger(amount)) return String(amount);
+    return parseFloat(amount.toFixed(2)).toString();
+}
+
+function renderRecipeIngredientRow(ing, isIncludedAddon = false) {
+    const unitStr = UnitEnum[ing.unit] || '';
+    const amountStr = formatIngredientAmount(ing.amount);
+    const amountText = [amountStr, unitStr].filter(Boolean).join(' ');
+    const prepText = ing.preparation && ing.preparation !== 'None'
+        ? `<span class="recipe-preview-ing-prep">(${escapeHtml(ing.preparation)})</span>`
+        : '';
+    const addonBadge = ing.optional
+        ? `<span class="recipe-preview-addon-tag${isIncludedAddon ? ' is-included' : ''}">${isIncludedAddon ? 'Included' : 'Optional'}</span>`
+        : '';
+
+    return `
+        <li class="recipe-preview-row">
+            <div class="recipe-preview-ing-main">
+                <span class="recipe-preview-ing-name">${escapeHtml(ing.name || '')}</span>
+                ${prepText}
+                ${addonBadge}
+            </div>
+            <span class="recipe-preview-ing-amount">${escapeHtml(amountText)}</span>
+        </li>
+    `;
+}
+
+async function openRecipeIngredientsModal(mealId, cardEl = null) {
+    const modal = document.getElementById('recipe-ingredients-modal');
+    const titleEl = document.getElementById('recipe-preview-title');
+    const metaEl = document.getElementById('recipe-preview-meta');
+    const bodyEl = document.getElementById('recipe-preview-body');
+    if (!modal || !titleEl || !metaEl || !bodyEl) return;
+
+    const reqId = ++_recipePreviewReqId;
+    const emoji = getRecipeEmoji(mealId);
+    const displayName = formatRecipeDisplayName(mealId);
+    const selectedAddons = new Set(readAddonsFromCard(cardEl));
+
+    titleEl.textContent = `${emoji} ${displayName}`;
+    metaEl.innerHTML = '';
+    bodyEl.innerHTML = '<div class="spinner"></div>';
+    modal.classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/api/meals/${encodeURIComponent(mealId)}`);
+        if (reqId !== _recipePreviewReqId) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const meal = await res.json();
+        if (reqId !== _recipePreviewReqId) return;
+
+        const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+        const requiredIngs = ingredients.filter(i => !i.optional);
+        const optionalIngs = ingredients.filter(i => !!i.optional);
+
+        // Render metadata pills
+        const metaParts = [];
+        if (meal.category) {
+            metaParts.push(`<span class="recipe-preview-category">${escapeHtml(meal.category)}</span>`);
+        }
+        if (meal.verified) {
+            metaParts.push('<span class="verified-badge" title="Verified recipe">✓ Verified</span>');
+        }
+        const countLabel = `${ingredients.length} ${ingredients.length === 1 ? 'ingredient' : 'ingredients'}`;
+        metaParts.push(`<span class="recipe-preview-count">${countLabel}</span>`);
+        metaEl.innerHTML = metaParts.join('');
+
+        if (ingredients.length === 0) {
+            bodyEl.innerHTML = '<p class="recipe-preview-empty">No ingredients listed for this recipe.</p>';
+            return;
+        }
+
+        let html = '';
+        if (requiredIngs.length > 0) {
+            html += `
+                <div class="recipe-preview-section">
+                    <ul class="recipe-preview-list">
+                        ${requiredIngs.map(ing => renderRecipeIngredientRow(ing, false)).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (optionalIngs.length > 0) {
+            html += `
+                <div class="recipe-preview-section recipe-preview-section-optional">
+                    <h3>Optional Add-ons</h3>
+                    <ul class="recipe-preview-list">
+                        ${optionalIngs.map(ing => renderRecipeIngredientRow(ing, selectedAddons.has(ing.name))).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        bodyEl.innerHTML = html;
+    } catch (error) {
+        if (reqId !== _recipePreviewReqId) return;
+        console.error('Error loading recipe ingredients:', error);
+        bodyEl.innerHTML = '<p class="recipe-preview-error">Failed to load ingredients for this recipe.</p>';
     }
 }
 

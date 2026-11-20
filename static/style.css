@@ -1191,6 +1191,133 @@ h1 {
     font-weight: 600;
 }
 
+/* Single recipe right-click ingredients popup */
+.recipe-preview-modal-content {
+    max-width: 540px;
+}
+
+.recipe-preview-heading {
+    min-width: 0;
+    flex: 1;
+    padding-right: var(--s-3);
+}
+
+.recipe-preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2);
+    margin-top: var(--s-2);
+}
+
+.recipe-preview-category {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 7px;
+}
+
+.recipe-preview-count {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-style: italic;
+}
+
+.recipe-preview-body {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.recipe-preview-section-optional {
+    margin-top: var(--s-4);
+    padding-top: var(--s-3);
+    border-top: 1px dashed var(--line-2);
+}
+
+.recipe-preview-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.recipe-preview-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--line);
+    border-radius: 3px;
+    transition: background 0.12s ease;
+}
+
+.recipe-preview-row:last-child {
+    border-bottom: none;
+}
+
+.recipe-preview-row:hover {
+    background: var(--paper-2);
+}
+
+.recipe-preview-ing-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.recipe-preview-ing-name {
+    font-weight: 500;
+    font-size: 13.5px;
+    color: var(--ink);
+}
+
+.recipe-preview-ing-prep {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--ink-3);
+}
+
+.recipe-preview-ing-amount {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.recipe-preview-addon-tag {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: var(--bg-2);
+    color: var(--ink-2);
+    letter-spacing: 0.01em;
+}
+
+.recipe-preview-addon-tag.is-included {
+    background: var(--accent-soft);
+    color: var(--accent-2);
+}
+
+.recipe-preview-empty,
+.recipe-preview-error {
+    padding: var(--s-5) var(--s-3);
+    text-align: center;
+    font-style: italic;
+    color: var(--ink-3);
+}
+
+.recipe-preview-error {
+    color: var(--error-color);
+}
+
 /* Manage list */
 .manage-list {
     display: flex;
